@@ -8,4 +8,4 @@
 	dh $@ 
 
 override_dh_auto_install:
-	$(MAKE) PREFIX=$$(pwd)/debian/l3overlay install
+	$(MAKE) PREFIX=$$(pwd)/debian/l3overlay SBIN_DIR=$$(pwd)/debian/l3overlay/usr/sbin install

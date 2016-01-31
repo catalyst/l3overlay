@@ -9,7 +9,7 @@ X-Python3-Version: >= 3.4
 
 Package: l3overlay
 Architecture: all
-Depends: iproute2, ${python3:Depends}, python3-jinja2
+Depends: iproute2, ${python3:Depends}
 Recommends: vlan, strongswan
 Description: Create overlay network between sites across the Internet
  l3overlay is a tool used to build a MPLS-like VRF network between nodes across 
