@@ -31,7 +31,7 @@ endif
 # Used to install l3overlayd to a non-standard Python installation
 # (for example, a virtualenv).
 ifdef INSTALL_PREFIX
-override INSTALL_PREFIX = --prefix=$(INSTALL_PREFIX)
+override INSTALL_PREFIX := --prefix=$(INSTALL_PREFIX)
 endif
 
 ##############################
