@@ -85,10 +85,10 @@ Specifies the logging output level that l3overlay should use. The default value 
 Specifies whether or not IPsec should be used to encrypt the overlay mesh tunnels. The default value is `false`.
 
 #### ipsec-psk
-* Type: **hex**
+* Type: **hex**, 6-64 digits
 * Required: **yes**, **IF** `use-ipsec` is `true`
 
-The hex string used as the pre-shared key (PSK) for authentication of the IPsec tunnels encapsulating the overlay.
+The hex string used as the pre-shared key (PSK) for authentication of the IPsec tunnels encapsulating the overlay. The PSK must be at least 6 digits long, and has a maximum length of 64 digits.
 
 Overlay configuration
 ---------------------
