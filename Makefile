@@ -70,4 +70,4 @@ clean:
 	$(RMDIR) dist
 	$(RMDIR) l3overlay.egg-info
 
-.PHONY: all sdist bdist_wheel install clean
+.PHONY: all sdist bdist_wheel install uninstall clean
