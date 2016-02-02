@@ -50,7 +50,7 @@ bdist_wheel:
 
 install:
 	@echo $(DATA_ROOT) > .data_root
-	$(PYTHON) $(SETUP_PY) install --install-scripts=$(SBIN_DIR) --install-data=$(DATA_ROOT)
+	$(PYTHON) $(SETUP_PY) install --install-scripts=$(SBIN_DIR)
 
 clean:
 	$(RM) .data_root
