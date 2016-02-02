@@ -74,7 +74,7 @@ class OverlayDaemon(object):
             self.use_ipsec = False
 
         # IPsec PSK, to be configured onto all tunnels.
-        self.ipsec_psk = config['global']['ipsec-psk'] if self.use_ipsec == True else None
+        self.ipsec_psk = get_hex_string(config['global']['ipsec-psk'], min=6, max=64) if self.use_ipsec == True else None
 
         #
         # Find external files needed in overlay configuration.
@@ -402,10 +402,10 @@ class Overlay(object):
         self.nodes = [nodes_dict[key] for key in sorted(nodes_dict.keys())]
 
         # Get the node dictionary for this node from the list of nodes.
-        self.this_node = next((node for node in self.nodes if node[0] == self.config['overlay']['this-node']), None)
+        self.this_node = next((node for node in self.nodes if node[0] == get_name(self.config['overlay']['this-node'])), None)
 
         # The name of the overlay. Also the name of the network namespace.
-        self.name = self.config['overlay']['name']
+        self.name = get_name(self.config['overlay']['name'])
         self.netns_name = self.name
 
         # Used to configure the overlay's BGP routing system AS number. 
@@ -976,9 +976,9 @@ class Overlay(object):
 
         for section in self.config.sections():
             if section.startswith('static-vlan'):
-                name = section.lstrip('static-vlan:')
+                name = get_name(section.lstrip('static-vlan:'))
                 id = int(self.config[section]['id'])
-                physical_interface = self.config[section]['physical-interface']
+                physical_interface = get_name(self.config[section]['physical-interface'])
                 netmask = self.config[section]['netmask']
                 address = self.config[section]['address']
 
@@ -1080,7 +1080,7 @@ class Overlay(object):
 
         for section in self.config.sections():
             if section.startswith('static-tunnel'):
-                name = section.lstrip('static-tunnel:')
+                name = get_name(section.lstrip('static-tunnel:'))
                 mode = self.config[section]['mode']
                 local = self.config[section]['local']
                 remote = self.config[section]['remote']
@@ -1133,7 +1133,7 @@ class Overlay(object):
 
         for section in self.config.sections():
             if section.startswith('static-veth'):
-                name = section.lstrip('static-veth:')
+                name = get_name(section.lstrip('static-veth:'))
                 netmask = self.config[section]['netmask']
                 inner_address = self.config[section]['inner-address']
                 outer_address = self.config[section]['outer-address']
@@ -1203,14 +1203,14 @@ class Overlay(object):
         for section in self.config.sections():
             if section.startswith('static-bgp'):
                 bgp = {}
-                name = section.lstrip('static-bgp:')
+                name = get_name(section.lstrip('static-bgp:'))
 
                 logging.debug("adding static bgp %s to bird configuration" % name)
 
                 bgp['name'] = name
-                bgp['local_asn'] = self.config[section]['local-asn']
+                bgp['local_asn'] = int(self.config[section]['local-asn'])
                 bgp['neighbor'] = self.config[section]['neighbor']
-                bgp['neighbor_asn'] = self.config[section]['neighbor-asn']
+                bgp['neighbor_asn'] = int(self.config[section]['neighbor-asn'])
 
                 if 'description' in self.config[section]:
                     bgp['description'] = self.config[section]['description']
@@ -1483,6 +1483,48 @@ def get_boolean(value):
         raise Exception("invalid value for boolean: %s" % lower_value)
 
     return True if lower_value == "true" else False
+
+
+def get_name(value):
+    """
+    Check that a string is a valid name, and return it. A name is a string
+    that is just one word, without whitespace. Raise an exception if the string
+    is not a valid name.
+    """
+
+    name = value.strip()
+
+    if len(name) == 0:
+        raise Exception("empty string not a valid name")
+
+    if not re.fullmatch("[^\s][^\s]*", value):
+        raise Exception("given string not a valid name (contains whitespace): %s" % name)
+
+    return name
+
+
+def get_hex_string(value, min=None, max=None):
+    """
+    Check that a string is a valid hexadecimal integer, optionally checking if
+    it is within a minimum and maximum length. Returns the string if the
+    conditions are satisfied, raises an exception otherwise.
+    """
+
+    length = len(value)
+
+    if length == 0:
+        raise Exception("empty string not a valid hexadecimal integer")
+
+    if min is not None and length < min:
+        raise Exception("hexadecimal integer too short, minimum %i digits required: %s" % (min, value))
+
+    if max is not None and length > max:
+        raise Exception("hexadecimal integer too long, maximum %i digits required: %s" % (max, value))
+
+    if not re.fullmatch("[0-9A-Fa-f][0-9A-Fa-f]*", value):
+        raise Exception("given string not a valid hexadecimal integer: %s" % value)
+
+    return value
 
 
 def my_path():
