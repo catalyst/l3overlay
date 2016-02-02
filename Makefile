@@ -20,56 +20,42 @@
 
 PREFIX     = /usr/local
 SBIN_DIR   = $(PREFIX)/sbin
-CONFIG_DIR = $(PREFIX)/etc/l3overlay
+
+ifndef NO_DATA_ROOT
+DATA_ROOT  = $(PREFIX)
+endif
 
 ##############################
 
-TEMPLATES = bird.conf ipsec.conf ipsec.secrets
+SETUP_PY = setup.py
 
 ##############################
 
-INSTALL = install
-MKDIR   = mkdir -p
-
-LS      = ls
+# At this point, l3overlayd only supports Python >= 3.4.
+PYTHON  = python3
 
 RM      = rm -f
 RMDIR   = rm -rf
 
-TEST    = test
-
 ##############################
 
-all:
-	@echo "To install l3overlayd, run 'make install'."
+all: bdist_wheel
+	@echo "To install l3overlay, run 'make install'."
+
+sdist:
+	$(PYTHON) $(SETUP_PY) sdist
+
+bdist_wheel:
+	$(PYTHON) $(SETUP_PY) bdist_wheel
 
 install:
-	$(MKDIR) $(SBIN_DIR)
-	$(MKDIR) $(CONFIG_DIR)
-	$(MKDIR) $(CONFIG_DIR)/fwbuilder_scripts
-	$(MKDIR) $(CONFIG_DIR)/overlays
-	$(MKDIR) $(CONFIG_DIR)/templates
-	
-	$(INSTALL) -m 755 l3overlayd $(SBIN_DIR)/l3overlayd
-	$(INSTALL) -m 600 global.conf $(CONFIG_DIR)/global.conf
-	
-	for template in $(TEMPLATES); \
-	do \
-		$(INSTALL) -m 644 templates/$$template $(CONFIG_DIR)/templates/$$template; \
-	done
+	@echo $(DATA_ROOT) > .data_root
+	$(PYTHON) $(SETUP_PY) install --install-scripts=$(SBIN_DIR) --install-data=$(DATA_ROOT)
 
-uninstall:
-	$(RM) $(SBIN_DIR)/l3overlayd
-	$(RM) $(CONFIG_DIR)/global.conf
-	
-	for template in $(TEMPLATES); \
-	do \
-		$(RM) $(CONFIG_DIR)/templates/$$template; \
-	done
-	
-	$(TEST) -z "`$(LS) -A $(CONFIG_DIR)/fwbuilder_scripts`" && $(RMDIR) $(CONFIG_DIR)/fwbuilder_scripts
-	$(TEST) -z "`$(LS) -A $(CONFIG_DIR)/overlays`" && $(RMDIR) $(CONFIG_DIR)/overlays
-	$(TEST) -z "`$(LS) -A $(CONFIG_DIR)/templates`" && $(RMDIR) $(CONFIG_DIR)/templates
-	$(TEST) -z "`$(LS) -A $(CONFIG_DIR)`" && $(RMDIR) $(CONFIG_DIR)
+clean:
+	$(RM) .data_root
+	$(RMDIR) build
+	$(RMDIR) dist
+	$(RMDIR) l3overlay.egg-info
 
-.PHONY: all install uninstall
+.PHONY: all sdist bdist_wheel install clean

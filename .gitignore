@@ -5,6 +5,9 @@ __pycache__/
 # C extensions
 *.so
 
+# Makefile data
+.data_root
+
 # Distribution / packaging
 .Python
 /env/
