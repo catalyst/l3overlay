@@ -25,13 +25,13 @@ SBIN_DIR   = $(PREFIX)/sbin
 # Prefix the data file locations (/etc/l3overlay/...) with this filepath,
 # if enabled.
 ifndef NO_DATA_ROOT
-DATA_ROOT  = $(PREFIX)
+DATA_ROOT = $(PREFIX)
 endif
 
 # Used to install l3overlayd to a non-standard Python installation
 # (for example, a virtualenv).
 ifdef INSTALL_PREFIX
-override INSTALL_PREFIX=--prefix=$(INSTALL_PREFIX)
+override INSTALL_PREFIX = --prefix=$(INSTALL_PREFIX)
 endif
 
 ##############################
