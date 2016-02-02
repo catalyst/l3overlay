@@ -61,6 +61,9 @@ install:
 	@echo $(DATA_ROOT) > .data_root
 	$(PYTHON) $(SETUP_PY) install --install-scripts=$(SBIN_DIR) $(INSTALL_PREFIX)
 
+uninstall:
+	$(PYTHON) -m pip uninstall -y l3overlay
+
 clean:
 	$(RM) .data_root
 	$(RMDIR) build
