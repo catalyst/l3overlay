@@ -59,9 +59,9 @@ class OverlayDaemon(object):
         # Filepaths to the overlay configuration files.
         self.overlay_paths = tuple(overlay_paths)
 
-        # Initial state for an OverlayDaemon is stopped, and NOT shutdown.
+        # Initial state for an OverlayDaemon is stopped, and NOT shut down.
         self.stopped = True
-        self.shutdown = False
+        self.shut_down = False
 
         # Root namespace IPDB. Ideally, this would be loaded in config_load(),
         # but IPDB's weren't designed to be started and stopped more than once
@@ -146,8 +146,8 @@ class OverlayDaemon(object):
         Start this OverlayDaemon, and all of its configured overlays.
         """
 
-        if self.shutdown == True:
-            raise Exception("OverlayDaemon permanently shutdown, cannot start again")
+        if self.shut_down == True:
+            raise Exception("OverlayDaemon permanently shut down, cannot start again")
 
         if self.stopped == False:
             return
@@ -355,14 +355,14 @@ class OverlayDaemon(object):
 
     def shutdown(self):
         """
-        Permanently shutdown this OverlayDaemon.
+        Permanently shut down this OverlayDaemon.
         Only use if the program is exiting.
         """
 
-        if self.shutdown == True:
+        if self.shut_down == True:
             return
 
-        self.shutdown = True
+        self.shut_down = True
 
         logging.info("Shutting down daemon...")
 
@@ -1632,7 +1632,7 @@ def close_overlays(signum, frame):
 
 def reload_overlays(signum, frame):
     """
-    Shut down the OverlayDaemon, reload the configuration, and restart it.
+    Stop the OverlayDaemon, reload the configuration, and restart it.
     """
 
     logging.info("Restarting daemon...")
