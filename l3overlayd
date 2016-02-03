@@ -1730,7 +1730,6 @@ if __name__ == "__main__":
         for overlay_path in args.overlay_conf:
             overlay_paths.append(overlay_path)
 
-
     # Launch a new OverlayDaemon, which takes in all of the configured data and
     # starts/stops the overlays.
     daemon = OverlayDaemon(
