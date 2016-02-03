@@ -1401,8 +1401,7 @@ class Overlay(object):
         # Already removed because it is entirely contained in BIRD.
         # self.stop_static_bgps()
         self.stop_static_veths()
-        # Already removed because it is entirely contained in the network namespace.
-        # self.stop_static_tunnels()
+        self.stop_static_tunnels()
         self.stop_static_vlans()
         self.stop_mesh_tunnels()
         self.stop_namespace()
@@ -1443,6 +1442,25 @@ class Overlay(object):
         )
 
         logging.debug("finished destruction of mesh tunnels")
+
+
+    def stop_static_tunnels(self):
+        """
+        Destroy the static tunnels.
+        """
+
+        for tunnel in self.static_tunnels:
+            name = tunnel['name']
+            tunnel_name = tunnel['interface']
+
+            logging.debug("starting destruction of static tunnel %s" % name)
+
+            self.interface_remove(
+                name=tunnel_name,
+                ipdb=self.ipdb,
+            )
+
+            logging.debug("finished destruction of static tunnel %s" % name)
 
 
     def stop_static_vlans(self):
