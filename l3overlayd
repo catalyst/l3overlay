@@ -1560,6 +1560,33 @@ def get_path(filename, paths):
     return filepath
 
 
+def pid_exists(pid):
+    """
+    Checks for the existence of a PID on the running system.
+    """
+
+    if pid <= 0:
+        raise ValueError("invalid PID: %i" % pid)
+
+    try:
+        os.kill(pid, 0)
+    except OSError as e:
+        # ESRCH = No such process
+        if e.errno == errno.ESRCH:
+            return False
+        # EPERM = Permission denied
+        # A process clearly exists if we don't have access to it.
+        elif e.errno == errno.EPERM:
+            return True
+        # EINVAL = Invalid signal
+        # Something went wrong.
+        else:
+            raise
+    # No exception - process exists
+    else:
+        return True
+
+
 def close(signum, frame):
     """
     Shut down all overlays and IPsec tunnels before exiting.
@@ -1585,6 +1612,8 @@ if __name__ == "__main__":
     overlay_conf_dir = get_path("overlays", paths)
 
     fwbuilder_script_dir = get_path("fwbuilder_scripts", paths)
+
+    pid_file = os.path.join(lib_dir, "l3overlayd.pid")
 
     # Parse optional arguments, and return the final values which will be used
     # in l3overlayd configuration.
@@ -1625,6 +1654,23 @@ if __name__ == "__main__":
 
     args = argparser.parse_args()
 
+    # Look for an existing l3overlayd PID file lock. If there is one and the
+    # PID actually exists, shut down this instance and warn the user. If there
+    # is a PID file and it doesn't contain a valid process, remove the PID lock
+    # and start anyway.
+    if os.path.exists(pid_file):
+        f = open(pid_file, 'r')
+        pid_file_data = f.read().strip()
+        f.close()
+
+        if len(pid_file_data) > 0 and re.match("[0-9][0-9]*", pid_file_data):
+            pid_file_pid = int(pid_file_data)
+
+            if pid_exists(pid_file_pid):
+                raise RuntimeError("valid PID lock file found with PID %i, to start a new l3overlayd instance, kill the running l3overlayd instance with this PID" % pid_file_pid)
+        else:
+            os.remove(pid_file)
+
     # Find all available overlay configuration files, and build those overlays.
     overlay_paths = []
 
@@ -1649,6 +1695,14 @@ if __name__ == "__main__":
 
     # Start the shutdown routine when receiving the SIGTERM signal.
     signal.signal(signal.SIGTERM, close)
+
+    # Save the PID of this daemon to a file. This serves as a lock for
+    # l3overlayd, and allows it to be monitored by external processes.
+    f = open(pid_file, 'w')
+    f.write("%i\n" % os.getpid())
+    f.close()
+
+    os.chmod(pid_file, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH)
 
     # The daemon is now started. Wait until we receive a signal.
     signal.pause()
