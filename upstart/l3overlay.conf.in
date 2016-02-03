@@ -6,7 +6,7 @@ author "Callum Dickinson <callum.dickinson@catalyst.net.nz>"
 start on runlevel [2345]
 stop on runlevel [016]
 
-script
-exec __L3OVERLAYD__
-end script
+respawn
+kill timeout 30
 
+exec __L3OVERLAYD__
