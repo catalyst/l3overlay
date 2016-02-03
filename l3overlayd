@@ -477,6 +477,10 @@ class Overlay(object):
         if len(self.nodes) != len(set(self.nodes)):
             raise Exception("node list contains a duplicate")
 
+        # Initial operating state of the overlay.
+        self.stopped = False
+
+        # Start the overlay.
         self.start()
 
 
@@ -816,6 +820,9 @@ class Overlay(object):
 
         if self.enabled == False:
             return
+
+        if self.stopped == True:
+            raise Exception("cannot restart an Overlay after it has been stopped, create the Overlay object instead")
 
         self.start_namespace()
         self.start_mesh_tunnels()
@@ -1394,6 +1401,9 @@ class Overlay(object):
 
         if self.enabled == False:
             return
+
+        # Ensure this Overlay object cannot be restarted.
+        self.stopped = True
 
         # Already removed because it is entirely contained in the network namespace.
         # self.stop_firewall()
