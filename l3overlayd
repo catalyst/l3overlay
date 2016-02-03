@@ -554,8 +554,6 @@ class Overlay(object):
         and returns it. Throws an exception if it can't find it.
         """
 
-        print(str(ipdb.by_name.keys()))
-
         if name in ipdb.by_name.keys():
             interface = ipdb.interfaces[name]
         else:
