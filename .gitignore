@@ -1,12 +1,15 @@
+# l3overlayd build data
+.data_root
+/upstart/l3overlay.conf
+
+###############
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 
 # C extensions
 *.so
-
-# Makefile data
-.data_root
 
 # Distribution / packaging
 .Python

@@ -36,10 +36,6 @@ endif
 
 ##############################
 
-SETUP_PY = setup.py
-
-##############################
-
 # At this point, l3overlayd only supports Python >= 3.4.
 PYTHON  = python3
 
@@ -48,8 +44,24 @@ RMDIR   = rm -rf
 
 ##############################
 
-all: bdist_wheel
-	@echo "To install l3overlay, run 'make install'."
+SETUP_PY = setup.py
+
+##############################
+
+# Enable this to build and install the Upstart configuration.
+# Can be defined in the command line.
+# WITH_UPSTART = 1
+
+##############################
+
+all:
+	@echo "Targets:"
+	@echo "  sdist - build Python source distribution"
+	@echo "  bdist_wheel - build Python binary wheel distribution"
+	@echo "  install - build and install to local system"
+	@echo "  uninstall - uninstall from local system"
+	@echo "  clean - clean build files"
+	@echo "See 'Makefile' for more details."
 
 sdist:
 	$(PYTHON) $(SETUP_PY) sdist
@@ -58,14 +70,19 @@ bdist_wheel:
 	$(PYTHON) $(SETUP_PY) bdist_wheel
 
 install:
+	@echo $(SBIN_DIR) > .sbin_dir
 	@echo $(DATA_ROOT) > .data_root
+	@echo $(WITH_UPSTART) > .with_upstart
 	$(PYTHON) $(SETUP_PY) install --install-scripts=$(SBIN_DIR) $(INSTALL_PREFIX)
 
 uninstall:
 	$(PYTHON) -m pip uninstall -y l3overlay
 
 clean:
+	$(RM) .sbin_dir
 	$(RM) .data_root
+	$(RM) .with_upstart
+	$(RM) upstart/l3overlay.conf
 	$(RMDIR) build
 	$(RMDIR) dist
 	$(RMDIR) l3overlay.egg-info
