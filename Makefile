@@ -63,16 +63,18 @@ all:
 	@echo "  clean - clean build files"
 	@echo "See 'Makefile' for more details."
 
-sdist:
-	$(PYTHON) $(SETUP_PY) sdist
-
-bdist_wheel:
-	$(PYTHON) $(SETUP_PY) bdist_wheel
-
-install:
+build_vars:
 	@echo $(SBIN_DIR) > .sbin_dir
 	@echo $(DATA_ROOT) > .data_root
 	@echo $(WITH_UPSTART) > .with_upstart
+
+sdist: build_vars
+	$(PYTHON) $(SETUP_PY) sdist
+
+bdist_wheel: build_vars
+	$(PYTHON) $(SETUP_PY) bdist_wheel
+
+install: build_vars
 	$(PYTHON) $(SETUP_PY) install --install-scripts=$(SBIN_DIR) $(INSTALL_PREFIX)
 
 uninstall:
@@ -87,4 +89,4 @@ clean:
 	$(RMDIR) dist
 	$(RMDIR) l3overlay.egg-info
 
-.PHONY: all sdist bdist_wheel install uninstall clean
+.PHONY: all build_vars sdist bdist_wheel install uninstall clean
