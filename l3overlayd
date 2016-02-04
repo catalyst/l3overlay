@@ -1686,10 +1686,23 @@ def reload_overlays(signum, frame):
 if __name__ == "__main__":
     # Define the search paths. Search for configuration files in the
     # following locations, in this order:
-    # * . (the location of the script)
-    # * ../etc/l3overlay (again, relative to the location of the script)
-    # * /etc/l3overlay
-    paths = [my_path(), os.path.join(my_path(), "..", "etc", "l3overlay"), os.path.join(root_path(), "etc", "l3overlay")]
+    # 1. (current working directory)
+    # 2. (current working directory)/etc/l3overlay
+    # 3. (current working directory)/../etc/l3overlay
+    # 4. (executable directory)
+    # 5. (executable directory)/etc/l3overlay
+    # 6. (executable directory)/../etc/l3overlay
+    # 7. /etc/l3overlay
+    paths = [
+        os.getcwd(),
+        os.path.join(os.getcwd(), "etc", "l3overlay"),
+        os.path.join(os.getcwd(), "..", "etc", "l3overlay"),
+        my_path(),
+        os.path.join(my_path(), "etc", "l3overlay"),
+        os.path.join(my_path(), "..", "etc", "l3overlay"),
+        os.path.join(root_path(), "etc", "l3overlay"),
+    ]
+
     lib_dir = os.path.join(root_path(), "var", "lib", "l3overlay")
 
     # Use the path list to search for these files and directories.

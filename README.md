@@ -40,6 +40,21 @@ l3overlay can be installed to the recommended location by simply using:
 
 By default, this will install the `l3overlayd` executable into `/usr/local/sbin`, and it will make a configuration hierarchy in `/usr/local/etc/l3overlay`.
 
+`l3overlayd` looks for files in the following directories, in the order shown:
+
+1. `(current working directory)`
+2. `(current working directory)/etc/l3overlay`
+3. `(current working directory)/../etc/l3overlay`
+4. `(executable directory)`
+5. `(executable directory)/etc/l3overlay`
+6. `(executable directory)/../etc/l3overlay`
+7. `/etc/l3overlay`
+
+Any configuration files or directories mentioned in this document should be placed in any of the directories mentioned above. For instance, assuming `/etc/l3overlay` is the chosen directory, the global configuration and a test overlay configuration would be placed in the following filepaths:
+
+* `/etc/l3overlay/global.conf`
+* `/etc/l3overlay/overlays/test.conf`
+
 Minimal configuration
 ----------------------
 
@@ -67,7 +82,7 @@ The minimum configuration needed to get a working overlay set up would look some
 Global configuration
 --------------------
 
-l3overlay's global configuration is to be defined in `global.conf`. l3overlay searches for this file in the `l3overlayd` executable directory, then `../etc/l3overlay` relative to the `l3overlay` executable directory, then `/etc/l3overlay`, in that order. It uses the INI format, with all configuration options coming under the `[global]` section.
+l3overlay's global configuration is to be defined in `global.conf`.
 
 If an IPsec PSK is stored in the global configuration, the permissions should be set such that the user running `l3overlayd` is the only user with read permission to the global configuration.
 
@@ -93,7 +108,7 @@ The hex string used as the pre-shared key (PSK) for authentication of the IPsec 
 Overlay configuration
 ---------------------
 
-Each overlay to be set up gets its own configuration file, to be loacted in the `overlays` directory. This directory gets searched for in the `l3overlayd` executable directory, then `../etc/l3overlay` relative to the `l3overlay` executable directory, then `/etc/l3overlay`, in that order. A variety of configuration sections are available, depending on what is to be configured in the overlay.
+Each overlay to be set up gets its own configuration file, to be located in the `overlays` directory.
 
 ### [overlay]
 
@@ -127,7 +142,7 @@ The subnet range which can be divided into `/31` subnets, and then used to addre
 * Type: **filename** / **filepath**
 * Required: no
 
-The location to the fwbuilder script used to build the firewall settings inside the overlay. This can be either an absolute filepath to the script, or simply a filename relative to the `fwbuilder_scripts` directory. This folder is searched for in the `l3overlayd` executable directory, then `../etc/l3overlay` relative to the `l3overlay` executable directory, then `/etc/l3overlay`, in that order.
+The location to the fwbuilder script used to build the firewall settings inside the overlay. This can be either an absolute filepath to the script, or simply a filename relative to the `fwbuilder_scripts` directory.
 
 #### this-node
 * Type: **name**
