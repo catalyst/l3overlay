@@ -43,6 +43,10 @@ endif
 # At this point, l3overlayd only supports Python >= 3.4.
 PYTHON  = python3
 
+# An alternative to this if the default doesn't work:
+# PIP     = $(PYTHON) -m pip
+PIP     = pip3
+
 RM      = rm -f
 RMDIR   = rm -rf
 
@@ -82,7 +86,7 @@ install: build_vars
 	$(PYTHON) $(SETUP_PY) install --install-scripts=$(SBIN_DIR) $(INSTALL_PREFIX)
 
 uninstall:
-	$(PYTHON) -m pip uninstall -y l3overlay
+	$(PIP) uninstall -y l3overlay
 
 clean:
 	$(RM) .sbin_dir
