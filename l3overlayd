@@ -194,7 +194,7 @@ class OverlayDaemon(object):
         Configure and start the strongSwan IPsec tunnel daemon, if enabled.
         """
 
-        ipsec_config_dir = "%setc" % root_path()
+        ipsec_config_dir = os.path.join(root_path(), "etc")
         ipsec_config_file = os.path.join(ipsec_config_dir, "ipsec.conf")
         ipsec_secrets_file = os.path.join(self.lib_dir, "ipsec.secrets")
         ipsec_secrets_stub_file = os.path.join(ipsec_config_dir, "ipsec.secrets")
@@ -329,7 +329,7 @@ class OverlayDaemon(object):
         if self.use_ipsec == False:
             return
 
-        ipsec_config_dir = "%setc" % root_path()
+        ipsec_config_dir = os.path.join(root_path(), "etc")
 
         logging.debug("stopping ipsec")
 
