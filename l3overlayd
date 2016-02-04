@@ -1510,10 +1510,12 @@ class Overlay(object):
             name = veth['name']
 
             logging.debug("starting destruction of static veth %s" % name)
+
             self.interface_remove(
                 name=veth['outer_interface'],
                 ipdb=self.root_ipdb,
             )
+
             logging.debug("finished destruction of static veth %s" % name)
 
 
