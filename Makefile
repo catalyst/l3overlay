@@ -22,14 +22,18 @@
 PREFIX     = /usr/local
 SBIN_DIR   = $(PREFIX)/sbin
 
-# Prefix the data file locations (/etc/l3overlay/...) with this filepath,
-# if enabled.
+# Prefix the data file locations (/etc/l3overlay/...) with this filepath.
+#   $ make DATA_ROOT=/opt/l3overlay
+# Disable with:
+#   $ make NO_DATA_ROOT=1
 ifndef NO_DATA_ROOT
 DATA_ROOT = $(PREFIX)
 endif
 
 # Used to install l3overlayd to a non-standard Python installation
-# (for example, a virtualenv).
+# (for example, a virtualenv). If so, point this to the root path for the Python
+# installation:
+#   $ make INSTALL_PREFIX=/opt/virtualenv
 ifdef INSTALL_PREFIX
 override INSTALL_PREFIX := --prefix=$(INSTALL_PREFIX)
 endif

@@ -34,11 +34,13 @@ If you intend to use IPsec encapsulation, and are using a security system like A
 Installation
 ------------
 
-l3overlay can be installed to the recommended location by simply using:
+l3overlay can be installed to the default location by simply using:
 
     sudo make install
 
 By default, this will install the `l3overlayd` executable into `/usr/local/sbin`, and it will make a configuration hierarchy in `/usr/local/etc/l3overlay`.
+
+See the `Makefile` for more details on how to change the installation locations.
 
 `l3overlayd` looks for files in the following directories, in the order shown:
 
