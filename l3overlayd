@@ -1423,10 +1423,20 @@ class Overlay(object):
         """
 
         logging.debug("removing namespace %s" % self.netns_name)
+
+        logging.debug("releasing the IPDB for namespace %s" % self.netns_name)
         self.ipdb.release()
+
+        logging.debug("closing the netns for namespace %s" % self.netns_name)
         self.netns.close()
+
+        logging.debug("removing the netns for namespace %s" % self.netns_name)
         netns.remove(self.netns_name)
+
+        logging.debug("removing the netns root tree for namespace %s" % self.netns_name)
         shutil.rmtree(self.netns_root)
+
+        logging.debug("removed namespace %s" % self.netns_name)
 
 
     def stop_mesh_tunnels(self):
