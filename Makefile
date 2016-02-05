@@ -18,22 +18,42 @@
 
 ##############################
 
+#
+# Makefile arguments
+# ------------------
+#
+# Any of the parameters in this Makefile can be overridden on the command line.
+# Some variables are designed to be used like this, to provide optional
+# parameters.
+#
+# Use them like so:
+#   $ make install <ARGUMENT>=<VALUE>
+#
+# Optional arguments:
+#
+# * NO_DATA_ROOT - define this to disable prepending the PREFIX to the
+#                  configuration installation disrectory
+#
+# * INSTALL_PREFIX - configure l3overlayd to use a non-system Python
+#                    installation such as a virtualenv, specified by the root
+#                    directory of the installation
+#
+# * WITH_INIT_D - define this to build and install a /etc/init.d script for
+#                 l3overlay
+#
+# * WITH_UPSTART - define this to build and install a Upstart configuration for
+#                  l3overlay
+#
+
+##############################
 # Install locations for the executable and data files.
 PREFIX     = /usr/local
 SBIN_DIR   = $(PREFIX)/sbin
 
-# Prefix the data file locations (/etc/l3overlay/...) with this filepath.
-#   $ make DATA_ROOT=/opt/l3overlay
-# Disable with:
-#   $ make NO_DATA_ROOT=1
 ifndef NO_DATA_ROOT
 DATA_ROOT = $(PREFIX)
 endif
 
-# Used to install l3overlayd to a non-standard Python installation
-# (for example, a virtualenv). If so, point this to the root path for the Python
-# installation:
-#   $ make INSTALL_PREFIX=/opt/virtualenv
 ifdef INSTALL_PREFIX
 override INSTALL_PREFIX := --prefix=$(INSTALL_PREFIX)
 endif
@@ -92,6 +112,7 @@ uninstall:
 clean:
 	$(RM) .sbin_dir
 	$(RM) .data_root
+	$(RM) .with_init_d
 	$(RM) .with_upstart
 	$(RM) upstart/l3overlay.conf
 	$(RMDIR) build
