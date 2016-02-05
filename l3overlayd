@@ -78,13 +78,16 @@ class OverlayDaemon(object):
         """
 
         # Load the global configuration file.
-        config = configparser.ConfigParser()
-        config.read(self.global_conf)
+        if os.path.exists(self.global_conf):
+            config = configparser.ConfigParser()
+            config.read(self.global_conf)
 
-        self.config_env = Environment(
-            trim_blocks=True,
-            loader=FileSystemLoader(template_dir),
-        )
+            self.config_env = Environment(
+                trim_blocks=True,
+                loader=FileSystemLoader(template_dir),
+            )
+        else:
+            config = {'global': {}}
 
         # Logging level.
         self.logging_level = config['global']['logging-level'] if 'logging-level' in config['global'] else logging.INFO

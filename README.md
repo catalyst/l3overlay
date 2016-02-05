@@ -57,10 +57,10 @@ Any configuration files or directories mentioned in this document should be plac
 * `/etc/l3overlay/global.conf`
 * `/etc/l3overlay/overlays/test.conf`
 
-Minimal configuration
+Example configuration
 ----------------------
 
-The minimum configuration needed to get a working overlay set up would look something like this. More settings are available for the overlays to set up connections to be exposed to the overlay from the nodes, available in the *Global configuration* and *Overlay configuration* sections below.
+An example configuration needed to get a working overlay set up may look something like this. More settings are available for the overlays to set up connections to be exposed to the overlay from the nodes, available in the *Global configuration* and *Overlay configuration* sections below.
 
 ### global.conf
 
@@ -84,9 +84,15 @@ The minimum configuration needed to get a working overlay set up would look some
 Global configuration
 --------------------
 
-l3overlay's global configuration is to be defined in `global.conf`.
+Global configuration values for l3overlay are to be defined in `global.conf`.
+
+This file is optional, since all of the configuration options defined here are not strictly required.
 
 If an IPsec PSK is stored in the global configuration, the permissions should be set such that the user running `l3overlayd` is the only user with read permission to the global configuration.
+
+### [global]
+
+All `global.conf` configuration values come under the `[global]` section.
 
 #### logging-level
 * Type: **enum**
