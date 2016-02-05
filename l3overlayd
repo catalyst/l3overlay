@@ -98,6 +98,13 @@ class OverlayDaemon(object):
         else:
             self.use_ipsec = False
 
+        # Determine whether or not to save ipsec.conf as the global IPsec
+        # configuration or as an additional configuration file.s
+        if 'use-ipsec' in config['global']:
+            self.ipsec_d = get_boolean(config['global']['ipsec-d']) if config['global']['ipsec-d'] else False
+        else:
+            self.ipsec_d = False
+
         # IPsec PSK, to be configured onto all tunnels.
         self.ipsec_psk = get_hex_string(config['global']['ipsec-psk'], min=6, max=64) if self.use_ipsec == True else None
 
@@ -197,10 +204,17 @@ class OverlayDaemon(object):
         Configure and start the strongSwan IPsec tunnel daemon, if enabled.
         """
 
-        ipsec_config_dir = os.path.join(root_path(), "etc")
-        ipsec_config_file = os.path.join(ipsec_config_dir, "ipsec.conf")
+        if self.ipsec_d:
+            ipsec_config_dir = os.path.join(root_path(), "etc", "ipsec.d")
+            ipsec_config_file = os.path.join(ipsec_config_dir, "l3overlay.conf")
+        else:
+            ipsec_config_dir = os.path.join(root_path(), "etc")
+            ipsec_config_file = os.path.join(ipsec_config_dir, "ipsec.conf")
+
+        ipsec_secrets_stub_dir = os.path.join(root_path(), "etc")
+        ipsec_secrets_stub_file = os.path.join(ipsec_secrets_stub_dir, "ipsec.secrets")
+
         ipsec_secrets_file = os.path.join(self.lib_dir, "ipsec.secrets")
-        ipsec_secrets_stub_file = os.path.join(ipsec_config_dir, "ipsec.secrets")
 
         # Create the IPsec config directory.
         if not os.path.exists(ipsec_config_dir):
@@ -216,21 +230,27 @@ class OverlayDaemon(object):
 
         f = open(ipsec_config_file, 'w')
         f.write(self.ipsec_config_template.render(
+            file=ipsec_config_file,
             mesh_tunnels=self.mesh_tunnels,
         ))
         f.close()
 
-        # Save the IPsec secret files, and make sure they are not
-        # world-readable.
-        logging.debug("saving ipsec secrets to disk")
-
         # Save the stub for the ipsec.secrets file at /etc/ipsec.secrets,
         # which includes the real one.
+        if not os.path.exists(ipsec_config_dir):
+            logging.debug("creating ipsec secrets stub directory")
+            os.makedirs(ipsec_config_dir)
+        else:
+            logging.debug("no need to create ipsec secrets stub directory")
+
+        logging.debug("saving ipsec secrets stub file to disk")
         f = open(ipsec_secrets_stub_file, 'w')
         f.write("include %s\n" % ipsec_secrets_file)
         f.close()
 
         # Save the REAL ipsec.secrets.
+        logging.debug("saving ipsec secrets file to disk")
+
         addresses = []
 
         for local, remote in self.mesh_tunnels:

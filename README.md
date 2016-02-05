@@ -107,6 +107,14 @@ Specifies the logging output level that l3overlay should use. The default value 
 
 Specifies whether or not IPsec should be used to encrypt the overlay mesh tunnels. The default value is `false`.
 
+#### ipsec-d
+* Type: **boolean**
+* Required: no
+
+If true, installs the IPsec configuration as `l3overlay.conf` under the `/etc/ipsec.d` directory. If false, installs the IPsec configuration directly as `ipsec.conf`.
+
+The default value is `false`.
+
 #### ipsec-psk
 * Type: **hex**, 6-64 digits
 * Required: **yes**, **IF** `use-ipsec` is `true`
