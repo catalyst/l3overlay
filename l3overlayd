@@ -1666,10 +1666,13 @@ def pid_exists(pid):
 
 def close_overlays(signum, frame):
     """
-    Shut down all overlays and IPsec tunnels before exiting.
+    Shut down all overlays and IPsec tunnels and clean up and temporary files
+    before exiting.
     """
 
     daemon.shutdown()
+    os.remove(pid_file)
+
     sys.exit(0)
 
 
@@ -1707,6 +1710,7 @@ if __name__ == "__main__":
     ]
 
     lib_dir = os.path.join(root_path(), "var", "lib", "l3overlay")
+    run_dir = os.path.join(root_path(), "var", "run")
 
     # Use the path list to search for these files and directories.
     template_dir = get_path("templates", paths)
@@ -1716,7 +1720,7 @@ if __name__ == "__main__":
 
     fwbuilder_script_dir = get_path("fwbuilder_scripts", paths)
 
-    pid_file = os.path.join(lib_dir, "l3overlayd.pid")
+    pid_file = os.path.join(run_dir, "l3overlay.pid")
 
     # Parse optional arguments, and return the final values which will be used
     # in l3overlayd configuration.
