@@ -76,12 +76,6 @@ SETUP_PY = setup.py
 
 ##############################
 
-# Enable this to build and install the Upstart configuration.
-# Can be defined in the command line.
-# WITH_UPSTART = 1
-
-##############################
-
 all:
 	@echo "Targets:"
 	@echo "  sdist - build Python source distribution"
