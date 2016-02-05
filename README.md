@@ -111,9 +111,11 @@ Specifies whether or not IPsec should be used to encrypt the overlay mesh tunnel
 * Type: **boolean**
 * Required: no
 
-If true, installs the IPsec configuration as `l3overlay.conf` under the `/etc/ipsec.d` directory. If false, installs the IPsec configuration directly as `ipsec.conf`.
+If true, installs the IPsec configuration as `l3overlay.conf` under the `/etc/ipsec.d` directory. If false, installs the IPsec configuration directly as `/etc/ipsec.conf`.
 
 The default value is `false`.
+
+Note that if this option is set to `true`, then `l3overlayd` will **NOT** manage `/etc/ipsec.conf`, as it is assumed that the user will want to configure IPsec themselves. A suitable `/etc/ipsec.conf` **MUST** be provided, which will include the l3overlay IPsec configuration file located at `/etc/ipsec.d/l3overlay.conf`.
 
 #### ipsec-psk
 * Type: **hex**, 6-64 digits

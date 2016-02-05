@@ -101,7 +101,7 @@ class OverlayDaemon(object):
         # Determine whether or not to save ipsec.conf as the global IPsec
         # configuration or as an additional configuration file.s
         if 'use-ipsec' in config['global']:
-            self.ipsec_d = get_boolean(config['global']['ipsec-d']) if config['global']['ipsec-d'] else False
+            self.ipsec_d = get_boolean(config['global']['ipsec-d']) if 'ipsec-d' in config['global'] else False
         else:
             self.ipsec_d = False
 
@@ -204,7 +204,7 @@ class OverlayDaemon(object):
         Configure and start the strongSwan IPsec tunnel daemon, if enabled.
         """
 
-        if self.ipsec_d:
+        if self.ipsec_d == True:
             ipsec_config_dir = os.path.join(root_path(), "etc", "ipsec.d")
             ipsec_config_file = os.path.join(ipsec_config_dir, "l3overlay.conf")
         else:
@@ -215,6 +215,16 @@ class OverlayDaemon(object):
         ipsec_secrets_stub_file = os.path.join(ipsec_secrets_stub_dir, "ipsec.secrets")
 
         ipsec_secrets_file = os.path.join(self.lib_dir, "ipsec.secrets")
+
+        # Save the IPsec configuration.
+        logging.debug("saving ipsec configuration to disk")
+
+        f = open(ipsec_config_file, 'w')
+        f.write(self.ipsec_config_template.render(
+            file=ipsec_config_file,
+            mesh_tunnels=self.mesh_tunnels,
+        ))
+        f.close()
 
         # Create the IPsec config directory.
         if not os.path.exists(ipsec_config_dir):
