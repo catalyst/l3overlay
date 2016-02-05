@@ -59,6 +59,7 @@ with open(path.join(here, 'README.md'), encoding='UTF-8') as f:
 # Get l3overlay-specific build data.
 sbin_dir = get_build_var("sbin_dir")
 data_root = get_build_var("data_root")
+with_init_d = get_build_var("with_init_d")
 with_upstart = get_build_var("with_upstart")
 
 data_files = [
@@ -74,6 +75,11 @@ data_files = [
 
 scripts = ['l3overlayd']
 
+# Sanity check for Upstart config vs init.d script. These are mutually
+# exclusive!
+if with_upstart and with_init_d:
+    raise Exception("can only define one of 'WITH_UPSTART' or 'WITH_INIT_D'")
+
 # Generate the Upstart config file for l3overlayd, if Upstart is to be used.
 # Add it to the list of data files to be installed.
 if with_upstart:
@@ -82,6 +88,15 @@ if with_upstart:
             g.write(re.sub("__L3OVERLAYD__", path.join(sbin_dir, scripts[0]), f.read()))
 
     data_files.append(("/etc/init", ['upstart/l3overlay.conf']))
+
+# Generate the init.d script for l3overlayd, if init.d is to be used.
+# Add it to the list of data files to be installed.
+if with_init_d:
+    with open('init.d/l3overlay.in', encoding='UTF-8') as f:
+        with open('init.d/l3overlay', mode='w', encoding='UTF-8') as g:
+            g.write(re.sub("__L3OVERLAYD__", path.join(sbin_dir, scripts[0]), f.read()))
+
+    data_files.append(("/etc/init.d", ['init.d/l3overlay']))
 
 # Setup the package.
 setup(

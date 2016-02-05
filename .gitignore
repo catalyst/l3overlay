@@ -1,7 +1,9 @@
 # l3overlayd build data
-.sbin_dir
-.data_root
-.with_upstart
+/.sbin_dir
+/.data_root
+/.with_init_d
+/.with_upstart
+/init.d/l3overlay
 /upstart/l3overlay.conf
 
 ###############

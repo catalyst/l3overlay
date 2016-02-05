@@ -74,6 +74,7 @@ all:
 build_vars:
 	@echo $(SBIN_DIR) > .sbin_dir
 	@echo $(DATA_ROOT) > .data_root
+	@echo $(WITH_INIT_D) > .with_init_d
 	@echo $(WITH_UPSTART) > .with_upstart
 
 sdist: build_vars
