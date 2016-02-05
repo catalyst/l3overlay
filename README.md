@@ -73,7 +73,7 @@ An example configuration needed to get a working overlay set up may look somethi
 
     [overlay]
     name=example
-    asn=1024
+    asn=64666
     linknet-pool=198.51.100.0/24
     this-node=example-1
     node-0=example-1 192.0.2.1
