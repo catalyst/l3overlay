@@ -26,7 +26,10 @@ https://github.com/pypa/sampleproject
 from setuptools import setup, find_packages
 # To use a consistent encoding
 from codecs import open
+# File functions
+from os import chmod
 from os import path
+import stat
 # Regular expression functionality
 import re
 
@@ -95,6 +98,11 @@ if with_init_d:
     with open('init.d/l3overlay.in', encoding='UTF-8') as f:
         with open('init.d/l3overlay', mode='w', encoding='UTF-8') as g:
             g.write(re.sub("__L3OVERLAYD__", path.join(sbin_dir, scripts[0]), f.read()))
+
+    chmod(
+        'init.d/l3overlay',
+        stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH
+    )
 
     data_files.append(("/etc/init.d", ['init.d/l3overlay']))
 
