@@ -107,21 +107,21 @@ Specifies the logging output level that l3overlay should use. The default value 
 
 Specifies whether or not IPsec should be used to encrypt the overlay mesh tunnels. The default value is `false`.
 
-#### ipsec-d
-* Type: **boolean**
-* Required: no
-
-If true, installs the IPsec configuration as `l3overlay.conf` under the `/etc/ipsec.d` directory. If false, installs the IPsec configuration directly as `/etc/ipsec.conf`.
-
-The default value is `false`.
-
-Note that if this option is set to `true`, then `l3overlayd` will **NOT** manage `/etc/ipsec.conf`, as it is assumed that the user will want to configure IPsec themselves. A suitable `/etc/ipsec.conf` **MUST** be provided, which will include the l3overlay IPsec configuration file located at `/etc/ipsec.d/l3overlay.conf`.
-
 #### ipsec-psk
 * Type: **hex**, 6-64 digits
 * Required: **yes**, **IF** `use-ipsec` is `true`
 
 The hex string used as the pre-shared key (PSK) for authentication of the IPsec tunnels encapsulating the overlay. The PSK must be at least 6 digits long, and has a maximum length of 64 digits.
+
+#### ipsec-d
+* Type: **boolean**
+* Required: no
+
+If `true`, installs the IPsec configuration as `l3overlay.conf` under the `/etc/ipsec.d` directory. If `false`, installs the IPsec configuration directly as `/etc/ipsec.conf`.
+
+The default value is `false`.
+
+Note that if this option is set to `true`, then `l3overlayd` will **NOT** manage `/etc/ipsec.conf`, as it is assumed that the user will want to configure IPsec themselves. A suitable `/etc/ipsec.conf` **MUST** be provided, which will include the l3overlay IPsec configuration file located at `/etc/ipsec.d/l3overlay.conf`.
 
 Overlay configuration
 ---------------------
@@ -131,12 +131,6 @@ Each overlay to be set up gets its own configuration file, to be located in the 
 ### [overlay]
 
 Configuration settings for the overlay, and the mesh tunnels which make the communication channels for the overlay.
-
-#### enabled
-* Type: **boolean**
-* Required: no
-
-Specifies whether or not this overlay should be configured. The default value is `true`.
 
 #### name
 * Type: **name**
@@ -156,12 +150,6 @@ The BGP autonomous system (AS) number the overlay will configure the mesh tunnel
 
 The subnet range which can be divided into `/31` subnets, and then used to address the mesh tunnels in the overlay.
 
-#### fwbuilder-script
-* Type: **filename** / **filepath**
-* Required: no
-
-The location to the fwbuilder script used to build the firewall settings inside the overlay. This can be either an absolute filepath to the script, or simply a filename relative to the `fwbuilder_scripts` directory.
-
 #### this-node
 * Type: **name**
 * Required: **yes**
@@ -175,6 +163,18 @@ The name of the node to configure the overlay for. The name specified here **MUS
 The list of nodes in the mesh, with the Internet-accessible IPv4 address used to build the overlay. A working overlay should have at least two nodes specified here.
 
 The order of the nodes (`node-0`, `node-1`, ...) does not matter significantly, unless new nodes are to be added to the list. New nodes may **ONLY** be appended to the end of the list. This is because if new nodes are added at any other position in the list, it will cause the addresses assigned to mesh tunnel links to change, and l3overlay does not handle this intelligently (it does not ensure the other sides of the tunnel links are changed as well).
+
+#### enabled
+* Type: **boolean**
+* Required: no
+
+Specifies whether or not this overlay should be configured. The default value is `true`.
+
+#### fwbuilder-script
+* Type: **filename** / **filepath**
+* Required: no
+
+The location to the fwbuilder script used to build the firewall settings inside the overlay. This can be either an absolute filepath to the script, or simply a filename relative to the `fwbuilder_scripts` directory.
 
 ### [static-vlan:*{name}*]
 
@@ -243,18 +243,6 @@ The subnet mask for the GRE tunnel interface address, in dotted decimal form.
 
 This section is used to define a static BGP protocol in the BIRD routing daemon, used for distributing routes in the overlay. This is made to be used in conjunction with static GRE tunnels, to distribute routes across it.
 
-#### description
-* Type: **string**
-* Required: no
-
-An optional description of the BGP protocol, displayed with the use of `show protocol all` in the BIRD client.
-
-#### local
-* Type: **ipv4 address**
-* Required: no
-
-The local IPv4 address used to make the BGP connection with the neighbor. Optional.
-
 #### local-asn
 * Type: **integer**
 * Required: **yes**
@@ -272,6 +260,18 @@ The neighbor BGP node's IPv4 address.
 * Required: **yes**
 
 The BGP autonomous system (AS) number used to identify the AS the neighbor node is part of.
+
+#### description
+* Type: **string**
+* Required: no
+
+An optional description of the BGP protocol, displayed with the use of `show protocol all` in the BIRD client.
+
+#### local
+* Type: **ipv4 address**
+* Required: no
+
+The local IPv4 address used to make the BGP connection with the neighbor. Optional.
 
 #### import-prefix[-*{int}*]
 * Type: **bird prefix**
