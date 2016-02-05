@@ -1720,7 +1720,7 @@ if __name__ == "__main__":
 
     fwbuilder_script_dir = get_path("fwbuilder_scripts", paths)
 
-    pid_file = os.path.join(run_dir, "l3overlay.pid")
+    pid_file = os.path.join(run_dir, "l3overlayd.pid")
 
     # Parse optional arguments, and return the final values which will be used
     # in l3overlayd configuration.
