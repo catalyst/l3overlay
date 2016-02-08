@@ -740,7 +740,7 @@ class Overlay(object):
                     interface.gre_okey != okey or
                     interface.gre_iflags != iflags or
                     interface.gre_oflags != oflags):
-                raise Exception("existing interface with name %s with incorrect attributes, delete the existing interface manually and reload l3overlayd" % kind)
+                raise Exception("existing interface with name %s with incorrect attributes, delete the existing interface manually and reload l3overlayd" % name)
             else:
                 logging.debug("no need to create %s tunnel %s" % (kind, name))
                 return interface
