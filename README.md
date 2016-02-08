@@ -55,7 +55,7 @@ See the `Makefile` for more details on how to change the installation locations.
 Any configuration files or directories mentioned in this document should be placed in any of the directories mentioned above. For instance, assuming `/etc/l3overlay` is the chosen directory, the global configuration and a test overlay configuration would be placed in the following filepaths:
 
 * `/etc/l3overlay/global.conf`
-* `/etc/l3overlay/overlays/test.conf`
+* `/etc/l3overlay/overlays/example.conf`
 
 Example configuration
 ----------------------
