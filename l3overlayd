@@ -1743,6 +1743,7 @@ if __name__ == "__main__":
     ]
 
     lib_dir = os.path.join(root_path(), "var", "lib", "l3overlay")
+    log_dir = os.path.join(root_path(), "var", "log")
     run_dir = os.path.join(root_path(), "var", "run")
 
     # Use the path list to search for these files and directories.
@@ -1753,6 +1754,7 @@ if __name__ == "__main__":
 
     fwbuilder_script_dir = get_path("fwbuilder_scripts", paths)
 
+    log_file = os.path.join(log_dir, "l3overlay.log")
     pid_file = os.path.join(run_dir, "l3overlayd.pid")
 
     # Parse optional arguments, and return the final values which will be used
@@ -1793,6 +1795,10 @@ if __name__ == "__main__":
     )
 
     args = argparser.parse_args()
+
+    # Add a FileHandler to the logging system, to push output to
+    # a file.
+    logging.getLogger().addHandler(logging.FileHandler(log_file))
 
     # Look for an existing l3overlayd PID file lock. If there is one and the
     # PID actually exists, shut down this instance and warn the user. If there
