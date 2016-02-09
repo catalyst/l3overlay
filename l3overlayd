@@ -383,8 +383,13 @@ class OverlayDaemon(object):
             logging.error("error detected in process call:\n%s" % e.output.decode('UTF-8'))
             raise
 
-        os.remove(os.path.join(ipsec_config_dir, "ipsec.conf"))
+        if self.ipsec_d == True:
+            os.remove(os.path.join(root_path(), "etc", "ipsec.d", "l3overlay.conf"))
+        else:
+            os.remove(os.path.join(ipsec_config_dir, "ipsec.conf"))
+
         os.remove(os.path.join(ipsec_config_dir, "ipsec.secrets"))
+        os.remove(os.path.join(self.lib_dir, "ipsec.secrets"))
 
         logging.debug("finished stopping ipsec")
 
