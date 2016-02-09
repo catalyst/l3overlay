@@ -42,13 +42,16 @@ from pyroute2 import NetNS
 
 class OverlayDaemon(object):
 
-    def __init__(self, template_dir, lib_dir, global_conf, fwbuilder_script_dir, overlay_paths):
+    def __init__(self, template_dir, lib_dir, log_file, global_conf, fwbuilder_script_dir, overlay_paths):
 
         # Directory which stores configuration templates.
         self.template_dir = template_dir
 
         # Directory for l3overlayd state information.
         self.lib_dir = lib_dir
+
+        # Daemon log file.
+        self.log_file = log_file
 
         # Filepath for the global configuration file.
         self.global_conf = global_conf
@@ -167,7 +170,16 @@ class OverlayDaemon(object):
         # Load the runtime configuration data.
         self.config_load()
 
-        logging.basicConfig(level=self.logging_level)
+        # Configure the logging system.
+        logging.basicConfig(
+            level=self.logging_level,
+            handlers=[
+                logging.FileHandler(self.log_file),
+                logging.StreamHandler(),
+            ],
+        )
+
+        # This is the point where building the OverlayDaemon starts.
         logging.info("Starting daemon...")
 
         # Create the runtime directories.
@@ -1801,10 +1813,6 @@ if __name__ == "__main__":
 
     args = argparser.parse_args()
 
-    # Add a FileHandler to the logging system, to push output to
-    # a file.
-    logging.getLogger().addHandler(logging.FileHandler(log_file))
-
     # Look for an existing l3overlayd PID file lock. If there is one and the
     # PID actually exists, shut down this instance and warn the user. If there
     # is a PID file and it doesn't contain a valid process, remove the PID lock
@@ -1839,6 +1847,7 @@ if __name__ == "__main__":
     daemon = OverlayDaemon(
         template_dir=template_dir,
         lib_dir=lib_dir,
+        log_file=log_file,
         global_conf=args.global_conf,
         fwbuilder_script_dir=args.fwbuilder_script_dir,
         overlay_paths=overlay_paths,
