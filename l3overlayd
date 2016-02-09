@@ -204,6 +204,9 @@ class OverlayDaemon(object):
         Configure and start the strongSwan IPsec tunnel daemon, if enabled.
         """
 
+        if self.use_ipsec == False:
+            return
+
         if self.ipsec_d == True:
             ipsec_config_dir = os.path.join(root_path(), "etc", "ipsec.d")
             ipsec_config_file = os.path.join(ipsec_config_dir, "l3overlay.conf")
