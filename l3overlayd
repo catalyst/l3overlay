@@ -1361,15 +1361,26 @@ class Overlay(object):
         # tell it to reload its configuration.
         if pid_exists(pid_file=bird_pid_file):
             try:
-                sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-                sock.connect(bird_socket_file)
-                sock.send(bytes("configure \"%s\"\n" % bird_config_file, 'UTF-8'))
-
                 logging.debug("reloading the bird routing daemon")
 
-                response = ''
+                logging.debug("connecting to the bird routing daemon")
+
+                sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                sock.connect(bird_socket_file)
 
                 datagram = sock.recv(1024)
+                response = ''
+                response = datagram.decode('UTF-8')
+
+                if not re.match("0001 BIRD [0-9.]* ready.\n", response):
+                    raise Exception("unable to connect to bird. output:\n%s" % response)
+
+                logging.debug("sending 'configure' to the bird routing daemon")
+
+                sock.send(bytes("configure \"%s\"\n" % bird_config_file, 'UTF-8'))
+
+                datagram = sock.recv(1024)
+                response = ''
                 response = datagram.decode('UTF-8')
 
                 if "0002-Reading configuration from %s" % bird_config_file not in response or ("0003 Reconfigured" not in response and "0004 Reconfiguration in progress" not in response):
