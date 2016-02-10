@@ -1564,7 +1564,7 @@ class Overlay(object):
         logging.debug("stopped the bird routing daemon")
 
 
-class Util:
+class Util(object):
 
 
     #
@@ -1735,7 +1735,7 @@ class Util:
 
 
     @staticmethod
-    def Util.directory_create(path, mode=None):
+    def directory_create(path, mode=None):
         """
         Make the directory tree defined in the given file path, including all
         intermediate directories. If the path already exists and is a 
@@ -1754,7 +1754,7 @@ class Util:
     #
 
     @staticmethod
-    def Util.pid_exists(pid=None, pid_file=None):
+    def pid_exists(pid=None, pid_file=None):
         """
         Checks for the existence of a PID on the running system.
 
