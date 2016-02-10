@@ -30,6 +30,7 @@ import socket
 import stat
 import subprocess
 import sys
+import time
 
 from distutils.spawn import find_executable
 
@@ -203,13 +204,13 @@ class OverlayDaemon(object):
 
         # Set the umask so that any files that this OverlayDaemon creates, will
         # only be readable and writable by itself.
-        os.umask(stat.S_IRWXG | stat.S_IRWXO)
+        os.umask(
+            stat.S_IRGRP | stat.S_IWGRP | stat.S_IXGRP |
+            stat.S_IROTH | stat.S_IWOTH | stat.S_IXOTH
+        )
 
         # Create the libdir.
-        if os.path.exists(self.lib_dir):
-            shutil.rmtree(self.lib_dir)
-
-        os.makedirs(self.lib_dir)
+        directory_create(self.lib_dir)
 
     def start_ipsec(self):
         """
@@ -242,11 +243,8 @@ class OverlayDaemon(object):
         f.close()
 
         # Create the IPsec config directory.
-        if not os.path.exists(ipsec_config_dir):
-            logging.debug("creating ipsec configuration directory")
-            os.makedirs(ipsec_config_dir)
-        else:
-            logging.debug("no need to create ipsec configuration directory")
+        logging.debug("creating ipsec configuration directory")
+        directory_create(ipsec_config_dir)
 
         logging.debug("starting configuration of ipsec")
 
@@ -262,11 +260,8 @@ class OverlayDaemon(object):
 
         # Save the stub for the ipsec.secrets file at /etc/ipsec.secrets,
         # which includes the real one.
-        if not os.path.exists(ipsec_config_dir):
-            logging.debug("creating ipsec secrets stub directory")
-            os.makedirs(ipsec_config_dir)
-        else:
-            logging.debug("no need to create ipsec secrets stub directory")
+        logging.debug("creating ipsec secrets stub directory")
+        directory_create(ipsec_config_dir)
 
         logging.debug("saving ipsec secrets stub file to disk")
         f = open(ipsec_secrets_stub_file, 'w')
@@ -905,7 +900,7 @@ class Overlay(object):
         self.ipdb = IPDB(nl=self.netns)
 
         # Create the network namespace root directory.
-        os.makedirs(self.netns_root)
+        directory_create(self.netns_root)
 
 
     def start_mesh_tunnels(self):
@@ -1340,18 +1335,13 @@ class Overlay(object):
         bird_pid_file = os.path.join(bird_socket_dir, "bird.pid")
 
         # Create the required BIRD directories.
-        if not os.path.exists(bird_config_dir):
-            logging.debug("creating bird configuration directory")
-            os.makedirs(bird_config_dir)
-        else:
-            logging.debug("no need to create bird configuration directory")
+        logging.debug("creating bird configuration directory")
+        directory_create(bird_config_dir)
 
-        if not os.path.exists(bird_socket_dir):
-            logging.debug("creating bird socket directory")
-            os.makedirs(bird_socket_dir)
-        else:
-            logging.debug("no need to create bird socket directory")
+        logging.debug("creating bird socket directory")
+        directory_create(bird_socket_dir)
 
+        # Actual configuration time.
         logging.debug("starting configuration of the bird routing daemon")
 
         # Add required parameters to the BIRD configuration.
@@ -1369,7 +1359,7 @@ class Overlay(object):
 
         # If there is a BIRD daemon already running, connect to its socket and
         # tell it to reload its configuration.
-        if os.path.exists(bird_socket_file):
+        if pid_exists(pid_file=bird_pid_file):
             try:
                 sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
                 sock.connect(bird_socket_file)
@@ -1391,7 +1381,7 @@ class Overlay(object):
             except socket.error as e:
                 if e.errno != errno.ECONNREFUSED:
                     raise
-               
+
         # If not, then start a new BIRD daemon. 
         logging.debug("starting the bird routing daemon")
 
@@ -1687,13 +1677,53 @@ def get_path(filename, paths):
     return filepath
 
 
-def pid_exists(pid):
+def directory_create(path, mode=None):
+    """
+    Make the directory tree defined in the given file path, including all
+    intermediate directories. If the path already exists and is a directory,
+    does nothing.
+    """
+    if not os.path.exists(path):
+        os.makedirs(path, mode)
+    elif not os.path.isdir(path):
+        raise Exception("file path at %s already exists, but is not a directory" % path)
+
+
+def pid_exists(pid=None, pid_file=None):
     """
     Checks for the existence of a PID on the running system.
+
+    Can either use a PID number directly, or take in a PID file and check that.
+    If the PID file is not valid or the PID contained inside does not exist,
+    this method deletes that PID file.
     """
 
+    if pid and pid_file:
+        raise ValueError("pid and pid_file are mutually exclusive arguments")
+
+    if pid_file is not None:
+        if os.path.exists(pid_file):
+            f = open(pid_file, 'r')
+            pid_file_data = f.read().strip()
+            f.close()
+
+            if len(pid_file_data) > 0 and re.match("[0-9][0-9]*", pid_file_data):
+                pid = int(pid_file_data)
+            else:
+                # Invalid PID file. Remove it.
+                os.remove(pid_file)
+                return False
+        else:
+           # PID file doesn't exist.
+           return False
+    elif pid is None:
+        raise ValueError("must specify one of pid or pid_file as an argument")
+
     if pid <= 0:
-        raise ValueError("invalid PID: %i" % pid)
+        if pid_file is not None:
+            raise ValueError("invalid PID: %i from file: %s" % (pid, pid_file))
+        else:
+            raise ValueError("invalid PID: %i" % pid)
 
     try:
         os.kill(pid, 0)
@@ -1817,18 +1847,8 @@ if __name__ == "__main__":
     # PID actually exists, shut down this instance and warn the user. If there
     # is a PID file and it doesn't contain a valid process, remove the PID lock
     # and start anyway.
-    if os.path.exists(pid_file):
-        f = open(pid_file, 'r')
-        pid_file_data = f.read().strip()
-        f.close()
-
-        if len(pid_file_data) > 0 and re.match("[0-9][0-9]*", pid_file_data):
-            pid_file_pid = int(pid_file_data)
-
-            if pid_exists(pid_file_pid):
-                raise RuntimeError("valid PID lock file found with PID %i, to start a new l3overlayd instance, kill the running l3overlayd instance with this PID" % pid_file_pid)
-        else:
-            os.remove(pid_file)
+    if pid_exists(pid_file=pid_file):
+        raise RuntimeError("valid PID lock file at %s, to start a new l3overlayd instance, kill the running l3overlayd instance with the PID contained in this file" % pid_file)
 
     # Find all available overlay configuration files, and build those overlays.
     overlay_paths = []
