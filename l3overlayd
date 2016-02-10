@@ -1695,7 +1695,10 @@ def directory_create(path, mode=None):
     does nothing.
     """
     if not os.path.exists(path):
-        os.makedirs(path, mode)
+        if mode is not None:
+            os.makedirs(path, mode)
+        else:
+            os.makedirs(path)
     elif not os.path.isdir(path):
         raise Exception("file path at %s already exists, but is not a directory" % path)
 
