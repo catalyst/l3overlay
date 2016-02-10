@@ -30,7 +30,6 @@ import socket
 import stat
 import subprocess
 import sys
-import time
 
 from distutils.spawn import find_executable
 
@@ -98,19 +97,19 @@ class OverlayDaemon(object):
 
         # Check whether or not to use IPsec.
         if 'use-ipsec' in config['global']:
-            self.use_ipsec = get_boolean(config['global']['use-ipsec'])
+            self.use_ipsec = Util.boolean_get(config['global']['use-ipsec'])
         else:
             self.use_ipsec = False
 
         # Determine whether or not to save ipsec.conf as the global IPsec
         # configuration or as an additional configuration file.s
         if 'use-ipsec' in config['global']:
-            self.ipsec_d = get_boolean(config['global']['ipsec-d']) if 'ipsec-d' in config['global'] else False
+            self.ipsec_d = Util.boolean_get(config['global']['ipsec-d']) if 'ipsec-d' in config['global'] else False
         else:
             self.ipsec_d = False
 
         # IPsec PSK, to be configured onto all tunnels.
-        self.ipsec_psk = get_hex_string(config['global']['ipsec-psk'], min=6, max=64) if self.use_ipsec == True else None
+        self.ipsec_psk = Util.hex_get_string(config['global']['ipsec-psk'], min=6, max=64) if self.use_ipsec == True else None
 
         #
         # Find external files needed in overlay configuration.
@@ -210,7 +209,7 @@ class OverlayDaemon(object):
         )
 
         # Create the libdir.
-        directory_create(self.lib_dir)
+        Util.directory_create(self.lib_dir)
 
     def start_ipsec(self):
         """
@@ -221,13 +220,13 @@ class OverlayDaemon(object):
             return
 
         if self.ipsec_d == True:
-            ipsec_config_dir = os.path.join(root_path(), "etc", "ipsec.d")
+            ipsec_config_dir = os.path.join(Util.path_root(), "etc", "ipsec.d")
             ipsec_config_file = os.path.join(ipsec_config_dir, "l3overlay.conf")
         else:
-            ipsec_config_dir = os.path.join(root_path(), "etc")
+            ipsec_config_dir = os.path.join(Util.path_root(), "etc")
             ipsec_config_file = os.path.join(ipsec_config_dir, "ipsec.conf")
 
-        ipsec_secrets_stub_dir = os.path.join(root_path(), "etc")
+        ipsec_secrets_stub_dir = os.path.join(Util.path_root(), "etc")
         ipsec_secrets_stub_file = os.path.join(ipsec_secrets_stub_dir, "ipsec.secrets")
 
         ipsec_secrets_file = os.path.join(self.lib_dir, "ipsec.secrets")
@@ -244,7 +243,7 @@ class OverlayDaemon(object):
 
         # Create the IPsec config directory.
         logging.debug("creating ipsec configuration directory")
-        directory_create(ipsec_config_dir)
+        Util.directory_create(ipsec_config_dir)
 
         logging.debug("starting configuration of ipsec")
 
@@ -261,7 +260,7 @@ class OverlayDaemon(object):
         # Save the stub for the ipsec.secrets file at /etc/ipsec.secrets,
         # which includes the real one.
         logging.debug("creating ipsec secrets stub directory")
-        directory_create(ipsec_config_dir)
+        Util.directory_create(ipsec_config_dir)
 
         logging.debug("saving ipsec secrets stub file to disk")
         f = open(ipsec_secrets_stub_file, 'w')
@@ -372,7 +371,7 @@ class OverlayDaemon(object):
         if self.use_ipsec == False:
             return
 
-        ipsec_config_dir = os.path.join(root_path(), "etc")
+        ipsec_config_dir = os.path.join(Util.path_root(), "etc")
 
         logging.debug("stopping ipsec")
 
@@ -391,7 +390,7 @@ class OverlayDaemon(object):
             raise
 
         if self.ipsec_d == True:
-            os.remove(os.path.join(root_path(), "etc", "ipsec.d", "l3overlay.conf"))
+            os.remove(os.path.join(Util.path_root(), "etc", "ipsec.d", "l3overlay.conf"))
         else:
             os.remove(os.path.join(ipsec_config_dir, "ipsec.conf"))
 
@@ -423,38 +422,6 @@ class OverlayDaemon(object):
 class Overlay(object):
 
 
-    @staticmethod
-    def remote_address(local_address):
-        """
-        For a given local_address (either an integer or an IPv4Address), return the other end of a /31 linknet.
-        """
-
-        return ipaddress.ip_address(int(local_address) ^ 1)
-
-
-    @staticmethod
-    def netmask_dd_to_cidr(netmask):
-        """
-        Convert a netmask in dotted decimal form to the CIDR form
-        (netmask prefix).
-        """
-
-        i = 0
-        integer = 0
-        segments = netmask.split('.')
-
-        for index, segment in enumerate(segments):
-            integer += (int(segment) << (24 - (8 * index)))
-
-        for b in bin(integer)[2:]:
-            if b == '1':
-                i += 1
-            else:
-                break
-
-        return i
-
-
     def __init__(self, daemon, configuration_path):
         # Relevant global configuration.
         self.lib_dir = daemon.lib_dir
@@ -470,7 +437,7 @@ class Overlay(object):
 
         # Check whether this overlay is enabled or not.
         if 'enabled' in self.config['overlay']:
-            self.enabled = get_boolean(self.config['overlay']['enabled'])
+            self.enabled = Util.boolean_get(self.config['overlay']['enabled'])
         else:
             self.enabled = True
 
@@ -484,10 +451,10 @@ class Overlay(object):
         self.nodes = [nodes_dict[key] for key in sorted(nodes_dict.keys())]
 
         # Get the node dictionary for this node from the list of nodes.
-        self.this_node = next((node for node in self.nodes if node[0] == get_name(self.config['overlay']['this-node'])), None)
+        self.this_node = next((node for node in self.nodes if node[0] == Util.name_get(self.config['overlay']['this-node'])), None)
 
         # The name of the overlay. Also the name of the network namespace.
-        self.name = get_name(self.config['overlay']['name'])
+        self.name = Util.name_get(self.config['overlay']['name'])
         self.netns_name = self.name
 
         # Used to configure the overlay's BGP routing system AS number. 
@@ -900,7 +867,7 @@ class Overlay(object):
         self.ipdb = IPDB(nl=self.netns)
 
         # Create the network namespace root directory.
-        directory_create(self.netns_root)
+        Util.directory_create(self.netns_root)
 
 
     def start_mesh_tunnels(self):
@@ -950,9 +917,9 @@ class Overlay(object):
 
             for node, address in self.nodes:
                 if node == link[0]:
-                    physical_local = ipaddress.ip_address(address)
+                    physical_local = Util.ip_get(address)
                 elif node == link[1]:
-                    physical_remote = ipaddress.ip_address(address)
+                    physical_remote = Util.ip_get(address)
 
                 if physical_local is not None and physical_remote is not None:
                     break
@@ -961,7 +928,7 @@ class Overlay(object):
             netns_veth_address_local = linknet_pool_address_base + index
             netns_veth_address_local_tuple = (str(netns_veth_address_local), 31)
 
-            netns_veth_address_remote = self.remote_address(netns_veth_address_local)
+            netns_veth_address_remote = Util.ip_remote(netns_veth_address_local)
 
             # Make sure the number of assigned subnets does not overflow
             # the linknet pool.
@@ -1065,10 +1032,10 @@ class Overlay(object):
 
         for section in self.config.sections():
             if section.startswith('static-vlan'):
-                name = get_name(section.lstrip('static-vlan:'))
+                name = Util.name_get(section.lstrip('static-vlan:'))
                 id = int(self.config[section]['id'])
-                physical_interface = get_name(self.config[section]['physical-interface'])
-                netmask = self.config[section]['netmask']
+                physical_interface = Util.name_get(self.config[section]['physical-interface'])
+                netmask = Util.netmask_get(self.config[section]['netmask'])
                 address = self.config[section]['address']
 
                 vlan_name = self.interface_name(name=name, suffix='vl', limit=13)
@@ -1076,7 +1043,7 @@ class Overlay(object):
                 netns_veth_name = "%sv1" % vlan_name
                 bridge_name = "%sbr" % vlan_name
 
-                address_tuple = (address, self.netmask_dd_to_cidr(netmask))
+                address_tuple = (address, netmask)
 
                 # Find the physical interface in the IPDB.
                 physical_if = self.interface_get(
@@ -1169,16 +1136,16 @@ class Overlay(object):
 
         for section in self.config.sections():
             if section.startswith('static-tunnel'):
-                name = get_name(section.lstrip('static-tunnel:'))
+                name = Util.name_get(section.lstrip('static-tunnel:'))
                 mode = self.config[section]['mode']
                 local = self.config[section]['local']
                 remote = self.config[section]['remote']
-                netmask = self.config[section]['netmask']
+                netmask = Util.netmask_get(self.config[section]['netmask'])
                 address = self.config[section]['address']
 
                 tunnel_name = self.interface_name(name)
 
-                address_tuple = (address, self.netmask_dd_to_cidr(netmask))
+                address_tuple = (address, netmask)
 
                 logging.debug("starting creation of static tunnel %s" % name)
 
@@ -1222,18 +1189,16 @@ class Overlay(object):
 
         for section in self.config.sections():
             if section.startswith('static-veth'):
-                name = get_name(section.lstrip('static-veth:'))
-                netmask = self.config[section]['netmask']
+                name = Util.name_get(section.lstrip('static-veth:'))
+                netmask = Util.netmask_get(self.config[section]['netmask'])
                 inner_address = self.config[section]['inner-address']
                 outer_address = self.config[section]['outer-address']
-
-                netmask_cidr = self.netmask_dd_to_cidr(netmask)
 
                 outer_name = self.interface_name(name + 'v')
                 inner_name = self.interface_name(name + 'v')
 
-                outer_address_tuple = (outer_address, netmask_cidr)
-                inner_address_tuple = (inner_address, netmask_cidr)
+                outer_address_tuple = (outer_address, netmask)
+                inner_address_tuple = (inner_address, netmask)
 
                 logging.debug("starting creation of static veth %s" % name)
 
@@ -1292,7 +1257,7 @@ class Overlay(object):
         for section in self.config.sections():
             if section.startswith('static-bgp'):
                 bgp = {}
-                name = get_name(section.lstrip('static-bgp:'))
+                name = Util.name_get(section.lstrip('static-bgp:'))
 
                 logging.debug("adding static bgp %s to bird configuration" % name)
 
@@ -1336,10 +1301,10 @@ class Overlay(object):
 
         # Create the required BIRD directories.
         logging.debug("creating bird configuration directory")
-        directory_create(bird_config_dir)
+        Util.directory_create(bird_config_dir)
 
         logging.debug("creating bird socket directory")
-        directory_create(bird_socket_dir)
+        Util.directory_create(bird_socket_dir)
 
         # Actual configuration time.
         logging.debug("starting configuration of the bird routing daemon")
@@ -1359,7 +1324,7 @@ class Overlay(object):
 
         # If there is a BIRD daemon already running, connect to its socket and
         # tell it to reload its configuration.
-        if pid_exists(pid_file=bird_pid_file):
+        if Util.pid_exists(pid_file=bird_pid_file):
             try:
                 logging.debug("reloading the bird routing daemon")
 
@@ -1599,163 +1564,249 @@ class Overlay(object):
         logging.debug("stopped the bird routing daemon")
 
 
-def get_boolean(value):
-    """
-    Get a boolean value from a string. Raise an exception if the string
-    is not a valid boolean.
-    """
-
-    lower_value = value.lower()
-
-    if lower_value != "true" and lower_value != "false":
-        raise Exception("invalid value for boolean: %s" % lower_value)
-
-    return True if lower_value == "true" else False
+class Util:
 
 
-def get_name(value):
-    """
-    Check that a string is a valid name, and return it. A name is a string
-    that is just one word, without whitespace. Raise an exception if the string
-    is not a valid name.
-    """
+    #
+    ## Argument/parameter processing.
+    #
 
-    name = value.strip()
+    @staticmethod
+    def ip_get(value):
+        """
+        Get an IP address from a string. Raises a ValueError if the string
+        is not a valid IP address. Supports both IPv4 and IPv6.
+        """
 
-    if len(name) == 0:
-        raise Exception("empty string not a valid name")
-
-    if not re.fullmatch("[^\s][^\s]*", value):
-        raise Exception("given string not a valid name (contains whitespace): %s" % name)
-
-    return name
+        return ipaddress.ip_address(value)
 
 
-def get_hex_string(value, min=None, max=None):
-    """
-    Check that a string is a valid hexadecimal integer, optionally checking if
-    it is within a minimum and maximum length. Returns the string if the
-    conditions are satisfied, raises an exception otherwise.
-    """
+    @staticmethod
+    def ip_remote(local):
+        """
+        For a given local_address (either an integer or an IPv4Address), return the other end of a /31 linknet.
+        """
 
-    length = len(value)
-
-    if length == 0:
-        raise Exception("empty string not a valid hexadecimal integer")
-
-    if min is not None and length < min:
-        raise Exception("hexadecimal integer too short, minimum %i digits required: %s" % (min, value))
-
-    if max is not None and length > max:
-        raise Exception("hexadecimal integer too long, maximum %i digits required: %s" % (max, value))
-
-    if not re.fullmatch("[0-9A-Fa-f][0-9A-Fa-f]*", value):
-        raise Exception("given string not a valid hexadecimal integer: %s" % value)
-
-    return value
+        return ipaddress.ip_address(int(local) ^ 1)
 
 
-def my_path():
-    """
-    Return the directory containing this script.
-    """
+    @staticmethod
+    def netmask_get(value):
+        """
+        Get a subnet mask from a string. Raises a ValueError if the string
+        is not a valid subnet mask. Supports both CIDR and dotted decimal form.
+        """
 
-    return os.path.dirname(os.path.realpath(sys.argv[0]))
+        if re.match("\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3}", value):
+            return Util.netmask_dd_to_cidr(value)
 
+        cidr = int(value)
 
-def root_path():
-    """
-    Return the operating system root directory. System independent.
-    """
+        if cidr > 128 or cidr < 0:
+            raise ValueError("valid CIDR netmask %i, must be within range 0 < x < 128" % cidr)
 
-    return os.path.abspath(os.sep)
-
-
-def get_path(filename, paths):
-    """
-    Returns the first instance of a valid filepath, made from the given 
-    filename joined with each element from the list of paths. If it doesn't
-    find a match, returns the final filepath combination from the list.
-
-    Works with both files and directories, but does not distinguish them.
-    """
-
-    for path in paths:
-        filepath = os.path.join(path, filename)
-        if (os.path.exists(filepath)):
-            return filepath
-
-    return filepath
+        return cidr
 
 
-def directory_create(path, mode=None):
-    """
-    Make the directory tree defined in the given file path, including all
-    intermediate directories. If the path already exists and is a directory,
-    does nothing.
-    """
-    if not os.path.exists(path):
-        if mode is not None:
-            os.makedirs(path, mode)
-        else:
-            os.makedirs(path)
-    elif not os.path.isdir(path):
-        raise Exception("file path at %s already exists, but is not a directory" % path)
+    @staticmethod
+    def netmask_dd_to_cidr(netmask):
+        """
+        Convert a netmask in dotted decimal form to the CIDR form
+        (netmask prefix).
+        """
 
+        i = 0
+        integer = 0
+        segments = netmask.split('.')
 
-def pid_exists(pid=None, pid_file=None):
-    """
-    Checks for the existence of a PID on the running system.
+        for index, segment in enumerate(segments):
+            seg = int(segment)
 
-    Can either use a PID number directly, or take in a PID file and check that.
-    If the PID file is not valid or the PID contained inside does not exist,
-    this method deletes that PID file.
-    """
+            if seg > 255 or seg < 0:
+                raise ValueError("invalid dotted decimal netmask %s" % netmask)
 
-    if pid and pid_file:
-        raise ValueError("pid and pid_file are mutually exclusive arguments")
+            integer += (seg << (24 - (8 * index)))
 
-    if pid_file is not None:
-        if os.path.exists(pid_file):
-            f = open(pid_file, 'r')
-            pid_file_data = f.read().strip()
-            f.close()
-
-            if len(pid_file_data) > 0 and re.match("[0-9][0-9]*", pid_file_data):
-                pid = int(pid_file_data)
+        for b in bin(integer)[2:]:
+            if b == '1':
+                i += 1
             else:
-                # Invalid PID file. Remove it.
-                os.remove(pid_file)
-                return False
-        else:
-           # PID file doesn't exist.
-           return False
-    elif pid is None:
-        raise ValueError("must specify one of pid or pid_file as an argument")
+                break
 
-    if pid <= 0:
+        return i
+
+
+    @staticmethod
+    def boolean_get(value):
+        """
+        Get a boolean value from a string. Raise an exception if the string
+        is not a valid boolean.
+        """
+
+        lower_value = value.lower()
+
+        if lower_value != "true" and lower_value != "false":
+            raise Exception("invalid value for boolean: %s" % lower_value)
+
+        return True if lower_value == "true" else False
+
+
+    @staticmethod
+    def name_get(value):
+        """
+        Check that a string is a valid name, and return it. A name is a string
+        that is just one word, without whitespace. Raise an exception if the 
+        string is not a valid name.
+        """
+
+        name = value.strip()
+
+        if len(name) == 0:
+            raise Exception("empty string not a valid name")
+
+        if not re.fullmatch("[^\s][^\s]*", value):
+            raise Exception("given string not a valid name (contains whitespace): %s" % name)
+
+        return name
+
+
+    @staticmethod
+    def hex_get_string(value, min=None, max=None):
+        """
+        Check that a string is a valid hexadecimal integer, optionally checking if
+        it is within a minimum and maximum length. Returns the string if the
+        conditions are satisfied, raises an exception otherwise.
+        """
+
+        length = len(value)
+
+        if length == 0:
+            raise Exception("empty string not a valid hexadecimal integer")
+
+        if min is not None and length < min:
+            raise Exception("hexadecimal integer too short, minimum %i digits required: %s" % (min, value))
+
+        if max is not None and length > max:
+            raise Exception("hexadecimal integer too long, maximum %i digits required: %s" % (max, value))
+
+        if not re.fullmatch("[0-9A-Fa-f][0-9A-Fa-f]*", value):
+            raise Exception("given string not a valid hexadecimal integer: %s" % value)
+
+        return value
+
+    #
+    ## File system helper methods.
+    #
+
+    @staticmethod
+    def path_my_dir():
+        """
+        Return the directory containing this script.
+        """
+
+        return os.path.dirname(os.path.realpath(sys.argv[0]))
+
+
+    @staticmethod
+    def path_root():
+        """
+        Return the operating system root directory. System independent.
+        """
+
+        return os.path.abspath(os.sep)
+
+
+    @staticmethod
+    def path_search(filename, paths):
+        """
+        Returns the first instance of a valid filepath, made from the given 
+        filename joined with each element from the list of paths. If it doesn't
+        find a match, returns the final filepath combination from the list.
+
+        Works with both files and directories, but does not distinguish them.
+        """
+
+        for path in paths:
+            filepath = os.path.join(path, filename)
+            if (os.path.exists(filepath)):
+                return filepath
+
+        return filepath
+
+
+    @staticmethod
+    def Util.directory_create(path, mode=None):
+        """
+        Make the directory tree defined in the given file path, including all
+        intermediate directories. If the path already exists and is a 
+        directory, does nothing.
+        """
+        if not os.path.exists(path):
+            if mode is not None:
+                os.makedirs(path, mode)
+            else:
+                os.makedirs(path)
+        elif not os.path.isdir(path):
+            raise Exception("file path at %s already exists, but is not a directory" % path)
+
+    #
+    ## Checking helper methods.
+    #
+
+    @staticmethod
+    def Util.pid_exists(pid=None, pid_file=None):
+        """
+        Checks for the existence of a PID on the running system.
+
+        Can either use a PID number directly, or take in a PID file and check
+        that. If the PID file is not valid or the PID contained inside does 
+        not exist, this method deletes that PID file.
+        """
+
+        if pid and pid_file:
+            raise ValueError("pid and pid_file are mutually exclusive arguments")
+
         if pid_file is not None:
-            raise ValueError("invalid PID: %i from file: %s" % (pid, pid_file))
-        else:
-            raise ValueError("invalid PID: %i" % pid)
+            if os.path.exists(pid_file):
+                f = open(pid_file, 'r')
+                pid_file_data = f.read().strip()
+                f.close()
 
-    try:
-        os.kill(pid, 0)
-    except OSError as e:
-        # ESRCH = No such process
-        if e.errno == errno.ESRCH:
-            return False
-        # EPERM = Permission denied
-        # A process clearly exists if we don't have access to it.
-        elif e.errno == errno.EPERM:
-            return True
-        # EINVAL = Invalid signal
-        # Something went wrong.
+                if len(pid_file_data) > 0 and re.match("[0-9][0-9]*", pid_file_data):
+                    pid = int(pid_file_data)
+                else:
+                    # Invalid PID file. Remove it.
+                    os.remove(pid_file)
+                    return False
+            else:
+               # PID file doesn't exist.
+               return False
+        elif pid is None:
+            raise ValueError("must specify one of pid or pid_file")
+
+        if pid <= 0:
+            if pid_file is not None:
+                raise ValueError("invalid PID: %i from file: %s" % (pid, pid_file))
+            else:
+                raise ValueError("invalid PID: %i" % pid)
+
+        try:
+            os.kill(pid, 0)
+        except OSError as e:
+            # ESRCH = No such process
+            if e.errno == errno.ESRCH:
+                return False
+            # EPERM = Permission denied
+            # A process clearly exists if we don't have access to it.
+            elif e.errno == errno.EPERM:
+                return True
+            # EINVAL = Invalid signal
+            # Something went wrong.
+            else:
+                raise
+        # No exception - process exists
         else:
-            raise
-    # No exception - process exists
-    else:
-        return True
+            return True
 
 
 def close_overlays(signum, frame):
@@ -1797,23 +1848,23 @@ if __name__ == "__main__":
         os.getcwd(),
         os.path.join(os.getcwd(), "etc", "l3overlay"),
         os.path.join(os.getcwd(), "..", "etc", "l3overlay"),
-        my_path(),
-        os.path.join(my_path(), "etc", "l3overlay"),
-        os.path.join(my_path(), "..", "etc", "l3overlay"),
-        os.path.join(root_path(), "etc", "l3overlay"),
+        Util.path_my_dir(),
+        os.path.join(Util.path_my_dir(), "etc", "l3overlay"),
+        os.path.join(Util.path_my_dir(), "..", "etc", "l3overlay"),
+        os.path.join(Util.path_root(), "etc", "l3overlay"),
     ]
 
-    lib_dir = os.path.join(root_path(), "var", "lib", "l3overlay")
-    log_dir = os.path.join(root_path(), "var", "log")
-    run_dir = os.path.join(root_path(), "var", "run")
+    lib_dir = os.path.join(Util.path_root(), "var", "lib", "l3overlay")
+    log_dir = os.path.join(Util.path_root(), "var", "log")
+    run_dir = os.path.join(Util.path_root(), "var", "run")
 
     # Use the path list to search for these files and directories.
-    template_dir = get_path("templates", paths)
+    template_dir = Util.path_search("templates", paths)
 
-    global_conf = get_path("global.conf", paths)
-    overlay_conf_dir = get_path("overlays", paths)
+    global_conf = Util.path_search("global.conf", paths)
+    overlay_conf_dir = Util.path_search("overlays", paths)
 
-    fwbuilder_script_dir = get_path("fwbuilder_scripts", paths)
+    fwbuilder_script_dir = Util.path_search("fwbuilder_scripts", paths)
 
     log_file = os.path.join(log_dir, "l3overlay.log")
     pid_file = os.path.join(run_dir, "l3overlayd.pid")
@@ -1861,7 +1912,7 @@ if __name__ == "__main__":
     # PID actually exists, shut down this instance and warn the user. If there
     # is a PID file and it doesn't contain a valid process, remove the PID lock
     # and start anyway.
-    if pid_exists(pid_file=pid_file):
+    if Util.pid_exists(pid_file=pid_file):
         raise RuntimeError("valid PID lock file at %s, to start a new l3overlayd instance, kill the running l3overlayd instance with the PID contained in this file" % pid_file)
 
     # Find all available overlay configuration files, and build those overlays.
