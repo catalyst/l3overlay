@@ -75,7 +75,7 @@ class OverlayDaemon(object):
         self.start()
 
 
-    def config_load(self):
+    def start_config(self):
         """
         Load the runtime configuration for this OverlayDaemon.
         """
@@ -101,15 +101,22 @@ class OverlayDaemon(object):
         else:
             self.use_ipsec = False
 
+        # IPsec PSK, to be configured onto all tunnels.
+        self.ipsec_psk = Util.hex_get_string(config['global']['ipsec-psk'], min=6, max=64) if self.use_ipsec == True else None
+
         # Determine whether or not to save ipsec.conf as the global IPsec
-        # configuration or as an additional configuration file.s
+        # configuration or as an additional configuration file.
         if 'use-ipsec' in config['global']:
             self.ipsec_d = Util.boolean_get(config['global']['ipsec-d']) if 'ipsec-d' in config['global'] else False
         else:
             self.ipsec_d = False
 
-        # IPsec PSK, to be configured onto all tunnels.
-        self.ipsec_psk = Util.hex_get_string(config['global']['ipsec-psk'], min=6, max=64) if self.use_ipsec == True else None
+        # Determine whether or not to generate an /etc/ipsec.secrets stub file,
+        # to include the real l3overlay IPsec secrets file.
+        if 'use-ipsec' in config['global']:
+            self.ipsec_secrets_stub = Util.boolean_get(config['global']['ipsec-secrets-stub']) if 'ipsec-secrets-stub' in config['global'] else True
+        else:
+            self.ipsec_secrets_stub = False
 
         #
         # Find external files needed in overlay configuration.
@@ -144,14 +151,33 @@ class OverlayDaemon(object):
         # List of overlays.
         self.overlays = []
 
+        # IPsec directories and files.
+        if self.use_ipsec == True:
+            if self.ipsec_d == True:
+                self.ipsec_config_dir = os.path.join(Util.path_root(), "etc", "ipsec.d")
+                self.ipsec_config_file = os.path.join(ipsec_config_dir, "l3overlay.conf")
+            else:
+                self.ipsec_config_dir = os.path.join(Util.path_root(), "etc")
+                self.ipsec_config_file = os.path.join(ipsec_config_dir, "ipsec.conf")
 
-    def ipsec_config_add(self, key, value):
+            self.ipsec_secrets_dir = os.path.join(Util.path_root(), "etc")
+
+            self.ipsec_secrets_stub_file = os.path.join(ipsec_secrets_dir, "ipsec.secrets")
+            self.ipsec_secrets_file = os.path.join(ipsec_secrets_dir, "ipsec.l3overlay.secrets")
+
+
+    def start_logging(self):
         """
-        Add a variable to render to the IPsec configuration template.
+        Configure the logging system.
         """
 
-        logging.debug("adding variable %s to ipsec configuration" % key)
-        self.ipsec_config[key] = value
+        logging.basicConfig(
+            level=self.logging_level,
+            handlers=[
+                logging.FileHandler(self.log_file),
+                logging.StreamHandler(),
+            ],
+        )
 
 
     def start(self):
@@ -168,16 +194,10 @@ class OverlayDaemon(object):
         self.stopped = False
 
         # Load the runtime configuration data.
-        self.config_load()
+        self.start_config()
 
         # Configure the logging system.
-        logging.basicConfig(
-            level=self.logging_level,
-            handlers=[
-                logging.FileHandler(self.log_file),
-                logging.StreamHandler(),
-            ],
-        )
+        self.start_logging()
 
         # This is the point where building the OverlayDaemon starts.
         logging.info("Starting daemon...")
@@ -208,8 +228,9 @@ class OverlayDaemon(object):
             stat.S_IROTH | stat.S_IWOTH | stat.S_IXOTH
         )
 
-        # Create the libdir.
+        # Create directories.
         Util.directory_create(self.lib_dir)
+
 
     def start_ipsec(self):
         """
@@ -219,53 +240,34 @@ class OverlayDaemon(object):
         if self.use_ipsec == False:
             return
 
-        if self.ipsec_d == True:
-            ipsec_config_dir = os.path.join(Util.path_root(), "etc", "ipsec.d")
-            ipsec_config_file = os.path.join(ipsec_config_dir, "l3overlay.conf")
-        else:
-            ipsec_config_dir = os.path.join(Util.path_root(), "etc")
-            ipsec_config_file = os.path.join(ipsec_config_dir, "ipsec.conf")
-
-        ipsec_secrets_stub_dir = os.path.join(Util.path_root(), "etc")
-        ipsec_secrets_stub_file = os.path.join(ipsec_secrets_stub_dir, "ipsec.secrets")
-
-        ipsec_secrets_file = os.path.join(self.lib_dir, "ipsec.secrets")
-
-        # Save the IPsec configuration.
-        logging.debug("saving ipsec configuration to disk")
-
-        f = open(ipsec_config_file, 'w')
-        f.write(self.ipsec_config_template.render(
-            file=ipsec_config_file,
-            mesh_tunnels=self.mesh_tunnels,
-        ))
-        f.close()
-
         # Create the IPsec config directory.
         logging.debug("creating ipsec configuration directory")
-        Util.directory_create(ipsec_config_dir)
+        Util.directory_create(self.ipsec_config_dir)
 
+        # Start doing everything needed to start IPsec.
         logging.debug("starting configuration of ipsec")
 
         # Save the IPsec configuration.
         logging.debug("saving ipsec configuration to disk")
 
-        f = open(ipsec_config_file, 'w')
+        f = open(self.ipsec_config_file, 'w')
         f.write(self.ipsec_config_template.render(
-            file=ipsec_config_file,
+            file=self.ipsec_config_file,
             mesh_tunnels=self.mesh_tunnels,
         ))
         f.close()
 
-        # Save the stub for the ipsec.secrets file at /etc/ipsec.secrets,
-        # which includes the real one.
-        logging.debug("creating ipsec secrets stub directory")
-        Util.directory_create(ipsec_config_dir)
+        # Create the directory where the IPsec secrets are stored.
+        logging.debug("creating ipsec secrets directory")
+        Util.directory_create(self.ipsec_secrets_dir)
 
-        logging.debug("saving ipsec secrets stub file to disk")
-        f = open(ipsec_secrets_stub_file, 'w')
-        f.write("include %s\n" % ipsec_secrets_file)
-        f.close()
+        # This file includes the REAL IPsec secrets file which gets created
+        # by l3overlay. Only gets created if ipsec_secrets_stub is true.
+        if self.ipsec_secrets_stub == True:
+            logging.debug("saving ipsec secrets stub file to disk")
+            f = open(self.ipsec_secrets_stub_file, 'w')
+            f.write("include %s\n" % self.ipsec_secrets_file)
+            f.close()
 
         # Save the REAL ipsec.secrets.
         logging.debug("saving ipsec secrets file to disk")
@@ -279,7 +281,7 @@ class OverlayDaemon(object):
             if remote not in addresses:
                 addresses.append(remote)
 
-        f = open(ipsec_secrets_file, 'w')
+        f = open(self.ipsec_secrets_file, 'w')
         f.write(self.ipsec_secrets_template.render(
             addresses=addresses,
             secret=self.ipsec_psk,
@@ -371,8 +373,6 @@ class OverlayDaemon(object):
         if self.use_ipsec == False:
             return
 
-        ipsec_config_dir = os.path.join(Util.path_root(), "etc")
-
         logging.debug("stopping ipsec")
 
         try:
@@ -381,6 +381,7 @@ class OverlayDaemon(object):
             if ipsec is None:
                 raise Exception("cannot find ipsec executable path")
 
+            logging.debug("calling 'ipsec stop'")
             subprocess.check_output(
                 [ipsec, "stop"],
                 stderr=subprocess.STDOUT,
@@ -389,13 +390,15 @@ class OverlayDaemon(object):
             logging.error("error detected in process call:\n%s" % e.output.decode('UTF-8'))
             raise
 
-        if self.ipsec_d == True:
-            os.remove(os.path.join(Util.path_root(), "etc", "ipsec.d", "l3overlay.conf"))
-        else:
-            os.remove(os.path.join(ipsec_config_dir, "ipsec.conf"))
+        logging.debug("removing ipsec configuration")
+        os.remove(self.ipsec_config_file)
 
-        os.remove(os.path.join(ipsec_config_dir, "ipsec.secrets"))
-        os.remove(os.path.join(self.lib_dir, "ipsec.secrets"))
+        if self.ipsec_secrets_stub == True:
+            logging.debug("removing ipsec secrets stub file")
+            os.remove(self.ipsec_secrets_stub_file)
+
+        logging.debug("removing ipsec secrets file")
+        os.remove(self.ipsec_secrets_file)
 
         logging.debug("finished stopping ipsec")
 
@@ -417,6 +420,15 @@ class OverlayDaemon(object):
         daemon.ipdb.release()
 
         logging.info("Shut down.")
+
+
+    def ipsec_config_add(self, key, value):
+        """
+        Add a variable to render to the IPsec configuration template.
+        """
+
+        logging.debug("adding variable %s to ipsec configuration" % key)
+        self.ipsec_config[key] = value
 
 
 class Overlay(object):

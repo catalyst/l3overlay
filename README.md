@@ -27,11 +27,6 @@ If you intend to use the static VLAN functionality in the overlay, the following
 
     8021q
 
-If you intend to use IPsec encapsulation, and are using a security system like AppArmor or SELinux, ensure that strongSwan IPsec's `charon` daemon has read access to the l3overlay IPsec secrets file, which is always written to `/var/lib/l3overlay/ipsec.secrets`. With AppArmor in Ubuntu, this can be done with these commands:
-
-    echo "  /var/lib/l3overlay/ipsec.secrets r," >> /etc/apparmor.d/local/usr.lib.ipsec.charon
-    apparmor_parser -r /etc/apparmor.d/usr.lib.ipsec.charon
-
 Installation
 ------------
 
@@ -123,6 +118,12 @@ If `true`, installs the IPsec configuration as `l3overlay.conf` under the `/etc/
 The default value is `false`.
 
 Note that if this option is set to `true`, then `l3overlayd` will **NOT** manage `/etc/ipsec.conf`, as it is assumed that the user will want to configure IPsec themselves. A suitable `/etc/ipsec.conf` **MUST** be provided, which will include the l3overlay IPsec configuration file located at `/etc/ipsec.d/l3overlay.conf`.
+
+#### ipsec-secrets-stub
+* Type: **boolean**
+* Required: no
+
+Determines whether or not to install a stub IPsec secrets file to `/etc/ipsec.secrets`, to make IPsec include the real l3overlay IPsec secrets file located at `/etc/ipsec.l3overlay.secrets`. The default value is `true`.
 
 Overlay configuration
 ---------------------
