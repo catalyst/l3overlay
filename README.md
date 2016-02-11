@@ -109,21 +109,17 @@ Specifies whether or not IPsec should be used to encrypt the overlay mesh tunnel
 
 The hex string used as the pre-shared key (PSK) for authentication of the IPsec tunnels encapsulating the overlay. The PSK must be at least 6 digits long, and has a maximum length of 64 digits.
 
-#### ipsec-d
+#### ipsec-manage
 * Type: **boolean**
 * Required: no
 
-If `true`, installs the IPsec configuration as `l3overlay.conf` under the `/etc/ipsec.d` directory. If `false`, installs the IPsec configuration directly as `/etc/ipsec.conf`.
+The default value is `true`. Read the description for this configuration option carefully, as it completely changes the way l3overlay handles IPsec.
 
-The default value is `false`.
+If `true`, l3overlay will assume that it is to manage the IPsec daemon. When it does this, it will install the IPsec configuration to `/etc/ipsec.conf`, and it will also take control of the `/etc/ipsec.secrets` file, making it a stub file which links to the l3overlay IPsec secrets located in `/etc/ipsec.l3overlay.secrets`. Also, it will start the IPsec daemon when `l3overlayd` starts, and shut it down with `l3overlayd` when it shuts down.
 
-Note that if this option is set to `true`, then `l3overlayd` will **NOT** manage `/etc/ipsec.conf`, as it is assumed that the user will want to configure IPsec themselves. A suitable `/etc/ipsec.conf` **MUST** be provided, which will include the l3overlay IPsec configuration file located at `/etc/ipsec.d/l3overlay.conf`.
+If `false`, l3overlay will assume that IPsec is being managed elsewhere. In this mode, it will install the IPsec configuration to `l3overlay.conf` under the `/etc/ipsec.d` directory, and stub file will not be installed to `/etc/ipsec.secrets`, instead relying an existing one to include `/etc/ipsec.l3overlay.secrets`. When starting IPsec, `l3overlayd` will start the IPsec daemon if it is not running, but it will only make sure that its tunnels are started and stopped when `l3overlayd` is being started and stopped, respectively.
 
-#### ipsec-secrets-stub
-* Type: **boolean**
-* Required: no
-
-Determines whether or not to install a stub IPsec secrets file to `/etc/ipsec.secrets`, to make IPsec include the real l3overlay IPsec secrets file located at `/etc/ipsec.l3overlay.secrets`. The default value is `true`.
+Note that if this option is set to `false`, then `l3overlayd` will **NOT** manage IPsec, as it is assumed that the user will want to configure IPsec themselves. A suitable `/etc/ipsec.conf` and `/etc/ipsec.secrets` file **MUST** be provided, which will include the l3overlay IPsec configuration files described above.
 
 Overlay configuration
 ---------------------

@@ -104,19 +104,12 @@ class OverlayDaemon(object):
         # IPsec PSK, to be configured onto all tunnels.
         self.ipsec_psk = Util.hex_get_string(config['global']['ipsec-psk'], min=6, max=64) if self.use_ipsec == True else None
 
-        # Determine whether or not to save ipsec.conf as the global IPsec
-        # configuration or as an additional configuration file.
+        # Determine whether or not to take over control of IPsec. Read the
+        # README for more information on how this option works.
         if 'use-ipsec' in config['global']:
-            self.ipsec_d = Util.boolean_get(config['global']['ipsec-d']) if 'ipsec-d' in config['global'] else False
+            self.ipsec_manage = Util.boolean_get(config['global']['ipsec-manage']) if 'ipsec-manage' in config['global'] else True
         else:
-            self.ipsec_d = False
-
-        # Determine whether or not to generate an /etc/ipsec.secrets stub file,
-        # to include the real l3overlay IPsec secrets file.
-        if 'use-ipsec' in config['global']:
-            self.ipsec_secrets_stub = Util.boolean_get(config['global']['ipsec-secrets-stub']) if 'ipsec-secrets-stub' in config['global'] else True
-        else:
-            self.ipsec_secrets_stub = False
+            self.ipsec_manage = False
 
         #
         # Find external files needed in overlay configuration.
@@ -153,12 +146,12 @@ class OverlayDaemon(object):
 
         # IPsec directories and files.
         if self.use_ipsec == True:
-            if self.ipsec_d == True:
-                self.ipsec_config_dir = os.path.join(Util.path_root(), "etc", "ipsec.d")
-                self.ipsec_config_file = os.path.join(self.ipsec_config_dir, "l3overlay.conf")
-            else:
+            if self.ipsec_manage == True:
                 self.ipsec_config_dir = os.path.join(Util.path_root(), "etc")
                 self.ipsec_config_file = os.path.join(self.ipsec_config_dir, "ipsec.conf")
+            else:
+                self.ipsec_config_dir = os.path.join(Util.path_root(), "etc", "ipsec.d")
+                self.ipsec_config_file = os.path.join(self.ipsec_config_dir, "l3overlay.conf")
 
             self.ipsec_secrets_dir = os.path.join(Util.path_root(), "etc")
 
@@ -262,8 +255,8 @@ class OverlayDaemon(object):
         Util.directory_create(self.ipsec_secrets_dir)
 
         # This file includes the REAL IPsec secrets file which gets created
-        # by l3overlay. Only gets created if ipsec_secrets_stub is true.
-        if self.ipsec_secrets_stub == True:
+        # by l3overlay. Only gets created if ipsec_manage is true.
+        if self.ipsec_manage == True:
             logging.debug("saving ipsec secrets stub file to disk")
             f = open(self.ipsec_secrets_stub_file, 'w')
             f.write("include %s\n" % self.ipsec_secrets_file)
@@ -375,30 +368,53 @@ class OverlayDaemon(object):
 
         logging.debug("stopping ipsec")
 
+        logging.debug("removing ipsec configuration")
+        os.remove(self.ipsec_config_file)
+
+        if self.ipsec_manage == True:
+            logging.debug("removing ipsec secrets stub file")
+            os.remove(self.ipsec_secrets_stub_file)
+
+        logging.debug("removing ipsec secrets file")
+        os.remove(self.ipsec_secrets_file)
+
         try:
             ipsec = find_executable("ipsec")
 
             if ipsec is None:
                 raise Exception("cannot find ipsec executable path")
 
-            logging.debug("calling 'ipsec stop'")
-            subprocess.check_output(
-                [ipsec, "stop"],
-                stderr=subprocess.STDOUT,
-            )
+            if self.ipsec_manage == True:
+                # When we manage IPsec, it is safe to stop it completely.
+                logging.debug("calling 'ipsec stop'")
+                subprocess.check_output(
+                    [ipsec, "stop"],
+                    stderr=subprocess.STDOUT,
+                )
+            else:
+                # When we don't, just make sure all of our connections are
+                # shut down, and reload the configuration.
+                for local, remote in self.mesh_tunnels:
+                    logging.debug("shutting down ipsec tunnel %s-%s" % (str(local), str(remote)))
+                    subprocess.check_output(
+                        [ipsec, "down", "%s-%s" % (str(local), str(remote))],
+                        stderr=subprocess.STDOUT,
+                    )
+
+                logging.debug("calling 'ipsec rereadsecrets'")
+                subprocess.check_output(
+                    [ipsec, "rereadsecrets"],
+                    stderr=subprocess.STDOUT,
+                )
+
+                logging.debug("calling 'ipsec reload'")
+                subprocess.check_output(
+                    [ipsec, "reload"],
+                    stderr=subprocess.STDOUT,
+                )
         except subprocess.CalledProcessError as e:
             logging.error("error detected in process call:\n%s" % e.output.decode('UTF-8'))
             raise
-
-        logging.debug("removing ipsec configuration")
-        os.remove(self.ipsec_config_file)
-
-        if self.ipsec_secrets_stub == True:
-            logging.debug("removing ipsec secrets stub file")
-            os.remove(self.ipsec_secrets_stub_file)
-
-        logging.debug("removing ipsec secrets file")
-        os.remove(self.ipsec_secrets_file)
 
         logging.debug("finished stopping ipsec")
 
