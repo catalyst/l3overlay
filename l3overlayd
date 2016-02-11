@@ -155,15 +155,15 @@ class OverlayDaemon(object):
         if self.use_ipsec == True:
             if self.ipsec_d == True:
                 self.ipsec_config_dir = os.path.join(Util.path_root(), "etc", "ipsec.d")
-                self.ipsec_config_file = os.path.join(ipsec_config_dir, "l3overlay.conf")
+                self.ipsec_config_file = os.path.join(self.ipsec_config_dir, "l3overlay.conf")
             else:
                 self.ipsec_config_dir = os.path.join(Util.path_root(), "etc")
-                self.ipsec_config_file = os.path.join(ipsec_config_dir, "ipsec.conf")
+                self.ipsec_config_file = os.path.join(self.ipsec_config_dir, "ipsec.conf")
 
             self.ipsec_secrets_dir = os.path.join(Util.path_root(), "etc")
 
-            self.ipsec_secrets_stub_file = os.path.join(ipsec_secrets_dir, "ipsec.secrets")
-            self.ipsec_secrets_file = os.path.join(ipsec_secrets_dir, "ipsec.l3overlay.secrets")
+            self.ipsec_secrets_stub_file = os.path.join(self.ipsec_secrets_dir, "ipsec.secrets")
+            self.ipsec_secrets_file = os.path.join(self.ipsec_secrets_dir, "ipsec.l3overlay.secrets")
 
 
     def start_logging(self):
