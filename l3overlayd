@@ -42,6 +42,7 @@ from pyroute2 import NetNS
 
 class OverlayDaemon(object):
 
+
     def __init__(self, template_dir, lib_dir, log_file, global_conf, fwbuilder_script_dir, overlay_paths):
 
         # Directory which stores configuration templates.
@@ -560,14 +561,6 @@ class Overlay(object):
         return links
 
 
-    def local_link_address(self, link):
-        """
-        Find the local address to give to a particular link.
-        """
-
-        return self.linknet_pool[0] + self.links().index(link)
-
-
     def interface_name(self, name, suffix=None, limit=15):
         """
         Creates a valid, unique (in this overlay daemon) interface name based
@@ -597,7 +590,7 @@ class Overlay(object):
 
     def interface_get(self, name, ipdb):
         """
-        Tries to find an interface with the given name in the chosen ipdb
+        Tries to find an interface with the given name in the chosen IPDB
         and returns it. Throws an exception if it can't find it.
         """
 
@@ -612,12 +605,13 @@ class Overlay(object):
         return interface
 
 
-    def interface_add_ip(self, interface, ip_tuple, ipdb):
+    def interface_add_ip(self, interface, address, netmask, ipdb):
         """
-        Add the given IP address to the interface in the chosen ipdb.
-        The IP tuple should be formatted like this: ('192.168.0.1', 24)
+        Add the given IP address (either a string, IPv4Address or IPv6Address)
+        with its netmask to the interface in the chosen IPDB.
         """
 
+        ip_tuple = (str(address), netmask)
         ip_string = "%s/%i" % ip_tuple
 
         if ip_tuple in interface.ipaddr:
@@ -635,7 +629,8 @@ class Overlay(object):
         Remove an interface, or any interface matching a given regular
         expression.
 
-        The required arguments are an ipdb object, and one of an interface object, an interface name, or a matching regular expression.
+        The required arguments are an ipdb object, and one of an interface
+        object, an interface name, or a matching regular expression.
         """
 
         if interface is not None:
@@ -681,8 +676,8 @@ class Overlay(object):
 
     def bridge_create(self, name, ipdb):
         """
-        Create a bridge interface with the given name in a chosen ipdb.
-        Returns the interface entry from the ipdb.
+        Create a bridge interface with the given name in a chosen IPDB.
+        Returns the interface entry from the IPDB.
         """
 
         if name not in ipdb.by_name.keys():
@@ -760,8 +755,9 @@ class Overlay(object):
         interface = ipdb.create(
             ifname=name,
             kind=kind,
-            gre_local=local,
-            gre_remote=remote,
+            # Cast for compatibility with IPv4Address/IPv6Address.
+            gre_local=str(local),
+            gre_remote=str(remote),
             gre_ttl=ttl,
             gre_ikey=ikey,
             gre_okey=okey,
@@ -775,7 +771,7 @@ class Overlay(object):
 
     def veth_create(self, name, peer, ipdb):
         """
-        Create a veth pair with the given names in the chosen ipdb, and
+        Create a veth pair with the given names in the chosen IPDB, and
         returns the root interface. The peer must be retrieved separately.
         """
 
@@ -803,7 +799,7 @@ class Overlay(object):
     def vlan_create(self, name, link, id, ipdb):
         """
         Create a IEEE 802.1Q VLAN interface with the given name, physical link
-        and ID in the chosen ipdb, and return the interface.
+        and ID in the chosen IPDB, and return the interface.
         """
 
         if name in ipdb.by_name.keys():
@@ -954,9 +950,8 @@ class Overlay(object):
 
             # Interface addresses for the mesh tunnel.
             netns_veth_address_local = linknet_pool_address_base + index
-            netns_veth_address_local_tuple = (str(netns_veth_address_local), 31)
-
             netns_veth_address_remote = Util.ip_remote(netns_veth_address_local)
+            netns_veth_address_netmask = 31
 
             # Make sure the number of assigned subnets does not overflow
             # the linknet pool.
@@ -969,8 +964,8 @@ class Overlay(object):
             gretap_if = self.gre_create(
                 name=gretap_name,
                 kind='gretap',
-                local=str(physical_local),
-                remote=str(physical_remote),
+                local=physical_local,
+                remote=physical_remote,
                 key=self.gre_key(physical_local, physical_remote),
                 ipdb=self.root_ipdb,
             )
@@ -1014,7 +1009,8 @@ class Overlay(object):
             # be addressed from either side of the mesh tunnel.
             self.interface_add_ip(
                 interface=netns_veth_if,
-                ip_tuple=netns_veth_address_local_tuple,
+                address=netns_veth_address_local,
+                netmask=netns_veth_address_netmask,
                 ipdb=self.ipdb,
             )
 
@@ -1063,15 +1059,13 @@ class Overlay(object):
                 name = Util.name_get(section.lstrip('static-vlan:'))
                 id = int(self.config[section]['id'])
                 physical_interface = Util.name_get(self.config[section]['physical-interface'])
+                address = Util.ip_get(self.config[section]['address'])
                 netmask = Util.netmask_get(self.config[section]['netmask'])
-                address = self.config[section]['address']
 
                 vlan_name = self.interface_name(name=name, suffix='vl', limit=13)
                 root_veth_name = "%sv0" % vlan_name
                 netns_veth_name = "%sv1" % vlan_name
                 bridge_name = "%sbr" % vlan_name
-
-                address_tuple = (address, netmask)
 
                 # Find the physical interface in the IPDB.
                 physical_if = self.interface_get(
@@ -1106,7 +1100,8 @@ class Overlay(object):
                 # interface.
                 self.interface_add_ip(
                     interface=netns_veth_if,
-                    ip_tuple=address_tuple,
+                    address=address,
+                    netmask=netmask,
                     ipdb=self.ipdb,
                 )
 
@@ -1166,14 +1161,12 @@ class Overlay(object):
             if section.startswith('static-tunnel'):
                 name = Util.name_get(section.lstrip('static-tunnel:'))
                 mode = self.config[section]['mode']
-                local = self.config[section]['local']
-                remote = self.config[section]['remote']
+                local = Util.ip_get(self.config[section]['local'])
+                remote = Util.ip_get(self.config[section]['remote'])
+                address = Util.ip_get(self.config[section]['address'])
                 netmask = Util.netmask_get(self.config[section]['netmask'])
-                address = self.config[section]['address']
 
                 tunnel_name = self.interface_name(name)
-
-                address_tuple = (address, netmask)
 
                 logging.debug("starting creation of static tunnel %s" % name)
 
@@ -1188,7 +1181,8 @@ class Overlay(object):
 
                 self.interface_add_ip(
                     interface=tunnel_if,
-                    ip_tuple=address_tuple,
+                    address=address,
+                    netmask=netmask,
                     ipdb=self.ipdb,
                 )
 
@@ -1218,15 +1212,12 @@ class Overlay(object):
         for section in self.config.sections():
             if section.startswith('static-veth'):
                 name = Util.name_get(section.lstrip('static-veth:'))
+                inner_address = Util.ip_get(self.config[section]['inner-address'])
+                outer_address = Util.ip_get(self.config[section]['outer-address'])
                 netmask = Util.netmask_get(self.config[section]['netmask'])
-                inner_address = self.config[section]['inner-address']
-                outer_address = self.config[section]['outer-address']
 
                 outer_name = self.interface_name(name + 'v')
                 inner_name = self.interface_name(name + 'v')
-
-                outer_address_tuple = (outer_address, netmask)
-                inner_address_tuple = (inner_address, netmask)
 
                 logging.debug("starting creation of static veth %s" % name)
 
@@ -1248,13 +1239,15 @@ class Overlay(object):
 
                 self.interface_add_ip(
                     interface=outer_if,
-                    ip_tuple=outer_address_tuple,
+                    address=outer_address,
+                    netmask=netmask,
                     ipdb=self.root_ipdb,
                 )
 
                 self.interface_add_ip(
                     interface=inner_if,
-                    ip_tuple=inner_address_tuple,
+                    address=inner_address,
+                    netmask=netmask,
                     ipdb=self.ipdb,
                 )
 
@@ -1291,14 +1284,14 @@ class Overlay(object):
 
                 bgp['name'] = name
                 bgp['local_asn'] = int(self.config[section]['local-asn'])
-                bgp['neighbor'] = self.config[section]['neighbor']
+                bgp['neighbor'] = str(Util.ip_get(self.config[section]['neighbor']))
                 bgp['neighbor_asn'] = int(self.config[section]['neighbor-asn'])
 
                 if 'description' in self.config[section]:
                     bgp['description'] = self.config[section]['description']
 
                 if 'local' in self.config[section]:
-                    bgp['local'] = self.config[section]['local']
+                    bgp['local'] = str(Util.ip_get(self.config[section]['local']))
 
                 # The import prefixes is a list of IP address subnets to filter
                 # the BGP protocol's import function against.
