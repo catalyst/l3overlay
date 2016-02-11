@@ -392,15 +392,8 @@ class OverlayDaemon(object):
                     stderr=subprocess.STDOUT,
                 )
             else:
-                # When we don't, just make sure all of our connections are
-                # shut down, and reload the configuration.
-                for local, remote in self.mesh_tunnels:
-                    logging.debug("shutting down ipsec tunnel %s-%s" % (str(local), str(remote)))
-                    subprocess.check_output(
-                        [ipsec, "down", "%s-%s" % (str(local), str(remote))],
-                        stderr=subprocess.STDOUT,
-                    )
-
+                # When we don't, reload the configuration without the tunnels
+                # configured, and shut down all of the tunnels.
                 logging.debug("calling 'ipsec rereadsecrets'")
                 subprocess.check_output(
                     [ipsec, "rereadsecrets"],
@@ -412,6 +405,13 @@ class OverlayDaemon(object):
                     [ipsec, "reload"],
                     stderr=subprocess.STDOUT,
                 )
+
+                for local, remote in self.mesh_tunnels:
+                    logging.debug("shutting down ipsec tunnel %s-%s" % (str(local), str(remote)))
+                    subprocess.check_output(
+                        [ipsec, "down", "%s-%s" % (str(local), str(remote))],
+                        stderr=subprocess.STDOUT,
+                    )
         except subprocess.CalledProcessError as e:
             logging.error("error detected in process call:\n%s" % e.output.decode('UTF-8'))
             raise
