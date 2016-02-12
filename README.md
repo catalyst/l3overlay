@@ -1,7 +1,7 @@
 l3overlay
 =========
 
-l3overlay is a tool used to build a MPLS-like VRF network between nodes/firewalls across the Internet. It uses a combination of network namespaces, gretap tunnels (with optional IPsec encapsulation for security) to create an "overlay" over the node's Internet connection.
+l3overlay is a tool used to build a MPLS-like VRF network between nodes/firewalls across the Internet. It uses a combination of network namespaces and gretap tunnels (with optional IPsec encapsulation for security) to create an "overlay" over the participating nodes' Internet connections.
 
 Prerequisites
 -------------
