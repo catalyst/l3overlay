@@ -1283,15 +1283,15 @@ class Overlay(object):
                 logging.debug("adding static bgp %s to bird configuration" % name)
 
                 bgp['name'] = name
-                bgp['local_asn'] = int(self.config[section]['local-asn'])
                 bgp['neighbor'] = str(Util.ip_get(self.config[section]['neighbor']))
-                bgp['neighbor_asn'] = int(self.config[section]['neighbor-asn'])
+                if 'local' in self.config[section]:
+                    bgp['local'] = str(Util.ip_get(self.config[section]['local']))
+
+                bgp['local_asn'] = int(self.config[section]['local-asn']) if 'local-asn' in self.config[section] else self.asn
+                bgp['neighbor_asn'] = int(self.config[section]['neighbor-asn']) if 'neighbor-asn' in self.config[section] else self.asn
 
                 if 'description' in self.config[section]:
                     bgp['description'] = self.config[section]['description']
-
-                if 'local' in self.config[section]:
-                    bgp['local'] = str(Util.ip_get(self.config[section]['local']))
 
                 # The import prefixes is a list of IP address subnets to filter
                 # the BGP protocol's import function against.

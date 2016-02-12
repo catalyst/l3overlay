@@ -241,35 +241,35 @@ The subnet mask for the GRE tunnel interface address, in dotted decimal form.
 
 This section is used to define a static BGP protocol in the BIRD routing daemon, used for distributing routes in the overlay. This is made to be used in conjunction with static GRE tunnels, to distribute routes across it.
 
-#### local-asn
-* Type: **integer**
-* Required: **yes**
-
-The BGP autonomous system (AS) number used to identify the AS the local node is part of.
-
 #### neighbor
 * Type: **ipv4 address**
 * Required: **yes**
 
 The neighbor BGP node's IPv4 address.
 
+#### local
+* Type: **ipv4 address**
+* Required: no
+
+The local IPv4 address used to make the BGP connection with the neighbor. Optional.
+
+#### local-asn
+* Type: **integer**
+* Required: no
+
+The BGP autonomous system (AS) number used to identify the AS the local node is part of. The default value is the ASN number set for the overlay (the `asn` value in the `[overlay]` section).
+
 #### neighbor-asn
 * Type: **integer**
-* Required: **yes**
+* Required: no
 
-The BGP autonomous system (AS) number used to identify the AS the neighbor node is part of.
+The BGP autonomous system (AS) number used to identify the AS the neighbor node is part of.  The default value is the ASN number set for the overlay (the `asn` value in the `[overlay]` section).
 
 #### description
 * Type: **string**
 * Required: no
 
 An optional description of the BGP protocol, displayed with the use of `show protocol all` in the BIRD client.
-
-#### local
-* Type: **ipv4 address**
-* Required: no
-
-The local IPv4 address used to make the BGP connection with the neighbor. Optional.
 
 #### import-prefix[-*{int}*]
 * Type: **bird prefix**
