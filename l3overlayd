@@ -277,6 +277,7 @@ class OverlayDaemon(object):
 
         f = open(self.ipsec_secrets_file, 'w')
         f.write(self.ipsec_secrets_template.render(
+            file=self.ipsec_secrets_file,
             addresses=addresses,
             secret=self.ipsec_psk,
         ))
@@ -490,7 +491,7 @@ class Overlay(object):
         self.asn = int(self.config['overlay']['asn'])
 
         # Used for determining the available /31 subnets for the mesh tunnels.
-        self.linknet_pool = ipaddress.ip_network(self.config['overlay']['linknet-pool'])
+        self.linknet_pool = Util.ip_network_get(self.config['overlay']['linknet-pool'])
 
         # Get the (absolute or relative) path to the fwbuilder script to
         # configure the firewall in this overlay.
@@ -498,6 +499,7 @@ class Overlay(object):
 
         # Used to generate the configuration for the BIRD routing daemon.
         self.bird_config = {}
+        self.bird6_config = {}
         self.bird_config_template = daemon.bird_config_template
 
         # Used by Overlay.interface_name().
@@ -852,6 +854,15 @@ class Overlay(object):
         self.bird_config[key] = value
 
 
+    def bird6_config_add(self, key, value):
+        """
+        Add a variable to render to the BIRD6 configuration template.
+        """
+
+        logging.debug("adding variable %s to bird6 configuration" % key)
+        self.bird6_config[key] = value
+
+
     def start(self):
         """
         Start the overlay.
@@ -906,9 +917,8 @@ class Overlay(object):
         #
         # The range of addresses these /31 subnets are assigned from is defined
         # by the linknet_pool overlay configuration variable.
-        linknet_pool_network = ipaddress.ip_network(self.linknet_pool)
-        linknet_pool_address_base = linknet_pool_network.network_address
-        linknet_pool_address_end = linknet_pool_network.broadcast_address
+        linknet_pool_address_base = self.linknet_pool.network_address
+        linknet_pool_address_end = self.linknet_pool.broadcast_address
 
         # The list of mesh tunnels to add to the BIRD configuration, with their
         # IPsec encapsulations.
@@ -941,22 +951,22 @@ class Overlay(object):
 
             for node, address in self.nodes:
                 if node == link[0]:
-                    physical_local = Util.ip_get(address)
+                    physical_local = Util.ip_address_get(address)
                 elif node == link[1]:
-                    physical_remote = Util.ip_get(address)
+                    physical_remote = Util.ip_address_get(address)
 
                 if physical_local is not None and physical_remote is not None:
                     break
 
             # Interface addresses for the mesh tunnel.
             netns_veth_address_local = linknet_pool_address_base + index
-            netns_veth_address_remote = Util.ip_remote(netns_veth_address_local)
+            netns_veth_address_remote = Util.ip_address_remote(netns_veth_address_local)
             netns_veth_address_netmask = 31
 
             # Make sure the number of assigned subnets does not overflow
             # the linknet pool.
             if netns_veth_address_local > linknet_pool_address_end or netns_veth_address_remote > linknet_pool_address_end:
-                raise Exception("overflowed linknet pool %s with link %s" % (self.linknet_pool, str(link)))
+                raise Exception("overflowed linknet pool %s with link %s" % (str(self.linknet_pool), str(link)))
 
             logging.debug("starting creation of mesh tunnel %s" % gretap_name)
 
@@ -1042,7 +1052,10 @@ class Overlay(object):
 
             logging.debug("finished creation of mesh tunnel %s" % gretap_name)
 
-        self.bird_config_add(key='gretaps', value=gretaps)
+        if Util.ip_network_is_v6(self.linknet_pool):
+            self.bird6_config_add(key='gretaps', value=gretaps)
+        else:
+            self.bird_config_add(key='gretaps', value=gretaps)
 
 
     def start_static_vlans(self):
@@ -1051,15 +1064,18 @@ class Overlay(object):
         network namespace.
         """
 
-        # The list of static VLANs to add to the BIRD configuration.
+        # The list of static VLANs configured.
         self.static_vlans = []
+
+        static_vlans_bgp = []
+        static_vlans_bgp6 = []
 
         for section in self.config.sections():
             if section.startswith('static-vlan'):
                 name = Util.name_get(section.lstrip('static-vlan:'))
                 id = int(self.config[section]['id'])
                 physical_interface = Util.name_get(self.config[section]['physical-interface'])
-                address = Util.ip_get(self.config[section]['address'])
+                address = Util.ip_address_get(self.config[section]['address'])
                 netmask = Util.netmask_get(self.config[section]['netmask'])
 
                 vlan_name = self.interface_name(name=name, suffix='vl', limit=13)
@@ -1136,17 +1152,29 @@ class Overlay(object):
                 # Add the veth interface connected to the VLAN to the list of 
                 # routed interfaces.
                 logging.debug("adding bgp route for static vlan %s" % name)
-                self.static_vlans.append({
+
+                static_vlan = {
                     'name': name,
                     'interface': netns_veth_name,
                     'vlan_interface': vlan_name,
                     'root_interface': root_veth_name,
                     'bridge_interface': bridge_name,
-                })
+                }
+
+                self.static_vlans.append(static_vlan)
+'
+                if Util.ip_address_is_v6(address):
+                    static_vlans_bgp6.append(static_vlan)
+                else:
+                    static_vlans_bgp.append(static_vlan)
 
                 logging.debug("finished creation of static vlan %s" % name)
 
-        self.bird_config_add(key='vlans', value=self.static_vlans)
+        if static_vlans_bgp:
+            self.bird_config_add(key='vlans', value=static_vlans_bgp)
+
+        if static_vlans_bgp6:
+            self.bird6_config_add(key='vlans', value=static_vlans_bgp6)
 
 
     def start_static_tunnels(self):
@@ -1154,16 +1182,19 @@ class Overlay(object):
         Create a static GRE or gretap tunnel in the network namespace.
         """
 
-        # The list of static tunnels to add to the BIRD configuration.
+        # The list of static tunnels configured.
         self.static_tunnels = []
+
+        static_tunnels_bgp = []
+        static_tunnels_bgp6 = []
 
         for section in self.config.sections():
             if section.startswith('static-tunnel'):
                 name = Util.name_get(section.lstrip('static-tunnel:'))
                 mode = self.config[section]['mode']
-                local = Util.ip_get(self.config[section]['local'])
-                remote = Util.ip_get(self.config[section]['remote'])
-                address = Util.ip_get(self.config[section]['address'])
+                local = Util.ip_address_get(self.config[section]['local'])
+                remote = Util.ip_address_get(self.config[section]['remote'])
+                address = Util.ip_address_get(self.config[section]['address'])
                 netmask = Util.netmask_get(self.config[section]['netmask'])
 
                 tunnel_name = self.interface_name(name)
@@ -1190,14 +1221,26 @@ class Overlay(object):
 
                 # Add the tunnel to the list of routed interfaces.
                 logging.debug("adding bgp route for static tunnel %s" % name)
-                self.static_tunnels.append({
+
+                static_tunnel = {
                     'name': name,
                     'interface': tunnel_name,
-                })
+                }
+
+                self.static_tunnels.append(static_tunnel)
+
+                if Util.ip_address_is_v6(address):
+                    static_tunnels_bgp6.append(static_tunnel)
+                else:
+                    static_tunnels_bgp.append(static_tunnel)
 
                 logging.debug("finished creation of static tunnel %s" % name)
 
-        self.bird_config_add(key='tunnels', value=self.static_tunnels)
+        if static_tunnels_bgp:
+            self.bird_config_add(key='tunnels', value=static_tunnels_bgp)
+
+        if static_tunnels_bgp6:
+            self.bird6_config_add(key='tunnels', value=static_tunnels_bgp6)
 
 
     def start_static_veths(self):
@@ -1206,14 +1249,17 @@ class Overlay(object):
         namespace.
         """
 
-        # The list of static veths to add to the BIRD configuration.
+        # The list of static veths configured.
         self.static_veths = []
+
+        static_veths_bgp = []
+        static_veths_bgp6 = []
 
         for section in self.config.sections():
             if section.startswith('static-veth'):
                 name = Util.name_get(section.lstrip('static-veth:'))
-                inner_address = Util.ip_get(self.config[section]['inner-address'])
-                outer_address = Util.ip_get(self.config[section]['outer-address'])
+                inner_address = Util.ip_address_get(self.config[section]['inner-address'])
+                outer_address = Util.ip_address_get(self.config[section]['outer-address'])
                 netmask = Util.netmask_get(self.config[section]['netmask'])
 
                 outer_name = self.interface_name(name + 'v')
@@ -1256,15 +1302,27 @@ class Overlay(object):
 
                 # Add the inner interface to the list of routed interfaces.
                 logging.debug("adding bgp route for static veth %s" % name)
-                self.static_veths.append({
+
+                static_veth = {
                     'name': name,
                     'interface': inner_name,
                     'outer_interface': outer_name,
-                })
+                }
+
+                self.static_veths.append(static_veth)
+
+                if Util.ip_address_is_v6(inner_address):
+                    static_veths_bgp6.append(static_veth)
+                else:
+                    static_veths_bgp.append(static_veth)
 
                 logging.debug("finished creation of static veth %s" % name)
 
-        self.bird_config_add(key='veths', value=self.static_veths)
+        if static_veths_bgp:
+            self.bird_config_add(key='veths', value=static_veths_bgp)
+
+        if static_veths_bgp6:
+            self.bird6_config_add(key='veths', value=static_veths_bgp6)
 
 
     def start_static_bgps(self):
@@ -1274,24 +1332,33 @@ class Overlay(object):
 
         # The list of static BGP protocols to add to the BIRD configuration.
         bgps = []
+        bgps6 = []
 
         for section in self.config.sections():
             if section.startswith('static-bgp'):
                 bgp = {}
+
                 name = Util.name_get(section.lstrip('static-bgp:'))
+                neighbor = Util.ip_address_get(self.config[section]['neighbor'])
+                local = Util.ip_address_get(self.config[section]['local']) if 'local' in self.config[section] else None
+
+                local_asn = int(self.config[section]['local-asn']) if 'local-asn' in self.config[section] else self.asn
+                neighbor_asn = int(self.config[section]['neighbor-asn']) if 'neighbor-asn' in self.config[section] else self.asn
+
+                description = self.config[section]['description'] if 'description' in self.config[section] else None
 
                 logging.debug("adding static bgp %s to bird configuration" % name)
 
                 bgp['name'] = name
-                bgp['neighbor'] = str(Util.ip_get(self.config[section]['neighbor']))
-                if 'local' in self.config[section]:
-                    bgp['local'] = str(Util.ip_get(self.config[section]['local']))
+                bgp['neighbor'] = str(neighbor)
+                if local is not None:
+                    bgp['local'] = str(local)
 
-                bgp['local_asn'] = int(self.config[section]['local-asn']) if 'local-asn' in self.config[section] else self.asn
-                bgp['neighbor_asn'] = int(self.config[section]['neighbor-asn']) if 'neighbor-asn' in self.config[section] else self.asn
+                bgp['local_asn'] = local_asn
+                bgp['neighbor_asn'] = neighbor_asn
 
-                if 'description' in self.config[section]:
-                    bgp['description'] = self.config[section]['description']
+                if description is not None:
+                    bgp['description'] = description
 
                 # The import prefixes is a list of IP address subnets to filter
                 # the BGP protocol's import function against.
@@ -1303,46 +1370,21 @@ class Overlay(object):
                 if len(import_prefixes) > 0:
                     bgp['import_prefixes'] = import_prefixes
 
-                bgps.append(bgp)
+                # Add the static BGP to either the BIRD or BIRD6 configuration,
+                # depending on whether IPv6 is used at all or not.
+                if Util.ip_address_is_v6(neighbor) or (local is not None and Util.ip_address_is_v6(local)):
+                    bgps6.append(bgp)
+                else:
+                    bgps.append(bgp)
 
-        self.bird_config_add(key='bgps', value=bgps)
+        if bgps:
+            self.bird_config_add(key='bgps', value=bgps)
+
+        if bgps6:
+            self.bird_config_add(key='bgps', value=bgps6)
 
 
-    def start_bird(self):
-        """
-        Configure and start the BIRD routing daemon.
-        """
-
-        bird_config_dir = os.path.join(self.netns_root, "etc", "bird")
-        bird_config_file = os.path.join(bird_config_dir, "bird.conf")
-
-        bird_socket_dir = os.path.join(self.netns_root, "run", "bird")
-        bird_socket_file = os.path.join(bird_socket_dir, "bird.ctl")
-        bird_pid_file = os.path.join(bird_socket_dir, "bird.pid")
-
-        # Create the required BIRD directories.
-        logging.debug("creating bird configuration directory")
-        Util.directory_create(bird_config_dir)
-
-        logging.debug("creating bird socket directory")
-        Util.directory_create(bird_socket_dir)
-
-        # Actual configuration time.
-        logging.debug("starting configuration of the bird routing daemon")
-
-        # Add required parameters to the BIRD configuration.
-        self.bird_config_add(key='netns', value=self.netns_name)
-        self.bird_config_add(key='asn', value=self.asn)
-
-        # Save the BIRD configuration.
-        logging.debug("saving bird configuration to disk")
-
-        f = open(bird_config_file, 'w')
-        f.write(self.bird_config_template.render(self.bird_config))
-        f.close()
-
-        logging.debug("finished configuration of the bird routing daemon")
-
+    def start_bird_daemon(self, bird):
         # If there is a BIRD daemon already running, connect to its socket and
         # tell it to reload its configuration.
         if Util.pid_exists(pid_file=bird_pid_file):
@@ -1384,13 +1426,9 @@ class Overlay(object):
 
         try:
             ip = find_executable("ip")
-            bird = find_executable("bird")
 
             if ip is None:
                 raise Exception("cannot find ip (iproute2) executable path")
-
-            if bird is None:
-                raise Exception("cannot find bird executable path")
 
             subprocess.check_output([
                 ip, "netns", "exec", self.netns_name,
@@ -1402,6 +1440,82 @@ class Overlay(object):
         except subprocess.CalledProcessError as e:
             logging.error("error detected in process call:\n%s" % e.output.decode('UTF-8'))
             raise
+
+
+    def start_bird(self):
+        """
+        Configure and start the BIRD routing daemon.
+        """
+
+        logging.debug("starting the bird routing daemon")
+
+        # BIRD file paths.
+        bird_config_dir = os.path.join(self.netns_root, "etc", "bird")
+        bird_config_file = os.path.join(bird_config_dir, "bird.conf")
+
+        bird_socket_dir = os.path.join(self.netns_root, "run", "bird")
+        bird_socket_file = os.path.join(bird_socket_dir, "bird.ctl")
+        bird_pid_file = os.path.join(bird_socket_dir, "bird.pid")
+
+        bird6_config_dir = os.path.join(self.netns_root, "etc", "bird")
+        bird6_config_file = os.path.join(bird_config_dir, "bird6.conf")
+
+        bird6_socket_dir = os.path.join(self.netns_root, "run", "bird")
+        bird6_socket_file = os.path.join(bird_socket_dir, "bird6.ctl")
+        bird6_pid_file = os.path.join(bird_socket_dir, "bird6.pid")
+
+        # Create the required BIRD directories.
+        logging.debug("creating bird configuration directory")
+        Util.directory_create(bird_config_dir)
+
+        logging.debug("creating bird socket directory")
+        Util.directory_create(bird_socket_dir)
+
+        # Actual configuration time.
+        logging.debug("starting configuration of the bird routing daemon")
+
+        # Add required parameters to the BIRD configuration.
+        if self.bird_config:
+            self.bird_config_add(key='file', value=self.bird_config_file)
+            self.bird_config_add(key='netns', value=self.netns_name)
+            self.bird_config_add(key='asn', value=self.asn)
+
+        if self.bird6_config:
+            self.bird6_config_add(key='file', value=self.bird6_config_file)
+            self.bird6_config_add(key='netns', value=self.netns_name)
+            self.bird6_config_add(key='asn', value=self.asn)
+
+        # Save the BIRD configuration.
+        if self.bird_config:
+            logging.debug("saving bird configuration to disk")
+            f = open(bird_config_file, 'w')
+            f.write(self.bird_config_template.render(self.bird_config))
+            f.close()
+
+        if self.bird6_config:
+            logging.debug("saving bird6 configuration to disk")
+            f = open(bird6_config_file, 'w')
+            f.write(self.bird_config_template.render(self.bird6_config))
+            f.close()
+
+        logging.debug("finished configuration of the bird routing daemon")
+
+        # Start the BIRD routing daemon for both IPv4 and IPv6.
+        if self.bird_config:
+            bird = find_executable("bird")
+
+            if bird is None:
+                raise Exception("cannot find bird executable path")
+
+            self.start_bird_daemon(bird)
+
+        if self.bird6_config:
+            bird6 = find_executable("bird6")
+
+            if bird6 is None:
+                raise Exception("cannot find bird6 executable path")
+
+            self.start_bird_daemon(bird6)
 
         logging.debug("finished starting the bird routing daemon")
 
@@ -1593,7 +1707,33 @@ class Util(object):
     #
 
     @staticmethod
-    def ip_get(value):
+    def ip_network_get(value):
+        """
+        Get an IP network from a string. Raises a ValueError if the string
+        is not a valid IP network. Supports both IPv4 and IPv6.
+        """
+
+        return ipaddress.ip_network(value)
+
+
+    @staticmethod
+    def ip_network_is_v6(value):
+        """
+        Returns true if the given IP network is an IPv6 network.
+        Supports an integer, string, IPv4Network or IPv6Network.
+        Raises a ValueError if the given value is not a valid IP network.
+        """
+
+        if isinstance(value, ipaddress.IPv6Network):
+            return True
+        elif isinstance(address, ipaddress.IPv4Network):
+            return False
+
+        return isinstance(ipaddress.ip_network(value), ipaddress.IPv6Network)
+
+
+    @staticmethod
+    def ip_address_get(value):
         """
         Get an IP address from a string. Raises a ValueError if the string
         is not a valid IP address. Supports both IPv4 and IPv6.
@@ -1603,12 +1743,28 @@ class Util(object):
 
 
     @staticmethod
-    def ip_remote(local):
+    def ip_address_remote(local):
         """
         For a given local_address (either an integer or an IPv4Address), return the other end of a /31 linknet.
         """
 
         return ipaddress.ip_address(int(local) ^ 1)
+
+
+    @staticmethod
+    def ip_address_is_v6(value):
+        """
+        Returns true if the given IP address is an IPv6 address.
+        Supports an integer, string, IPv4Address or IPv6Address.
+        Raises a ValueError if the given value is not a valid IP address.
+        """
+
+        if isinstance(value, ipaddress.IPv6Address):
+            return True
+        elif isinstance(address, ipaddress.IPv4Address):
+            return False
+
+        return isinstance(ipaddress.ip_address(value), ipaddress.IPv6Address)
 
 
     @staticmethod

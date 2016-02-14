@@ -108,6 +108,7 @@ clean:
 	$(RM) .data_root
 	$(RM) .with_init_d
 	$(RM) .with_upstart
+	$(RM) init.d/l3overlay.in
 	$(RM) upstart/l3overlay.conf
 	$(RMDIR) build
 	$(RMDIR) dist
