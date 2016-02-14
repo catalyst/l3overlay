@@ -197,10 +197,10 @@ The physical interface assigned to the static VLAN interface.
 The IPv4 address assigned to the static VLAN interface.
 
 #### netmask
-* Type: **subnet mask**, dotted decimal
+* Type: **subnet mask**
 * Required: **yes**
 
-The subnet mask for the VLAN interface address, in dotted decimal form.
+The subnet mask for the VLAN interface address.
 
 ### [static-tunnel:*{name}*]
 
@@ -232,10 +232,10 @@ The remote endpoint IPv4 address assigned to the GRE tunnel.
 The IPv4 address assigned to the GRE tunnel interface.
 
 #### netmask
-* Type: **subnet mask**, dotted decimal
+* Type: **subnet mask**
 * Required: **yes**
 
-The subnet mask for the GRE tunnel interface address, in dotted decimal form.
+The subnet mask for the GRE tunnel interface address.
 
 ### [static-bgp:*{name}*]
 
@@ -296,7 +296,7 @@ The IPv4 address assigned to the inner (overlay) interface.
 The IPv4 address assigned to the outer (overlay) interface.
 
 #### netmask
-* Type: **subnet mask**, dotted decimal
+* Type: **subnet mask**
 * Required: **yes**
 
-The subnet mask for both the inner and outer addresses, in dotted decimal form.
+The subnet mask for both the inner and outer addresses.
