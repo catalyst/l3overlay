@@ -1476,12 +1476,12 @@ class Overlay(object):
 
         # Add required parameters to the BIRD configuration.
         if self.bird_config:
-            self.bird_config_add(key='file', value=self.bird_config_file)
+            self.bird_config_add(key='file', value=bird_config_file)
             self.bird_config_add(key='netns', value=self.netns_name)
             self.bird_config_add(key='asn', value=self.asn)
 
         if self.bird6_config:
-            self.bird6_config_add(key='file', value=self.bird6_config_file)
+            self.bird6_config_add(key='file', value=bird6_config_file)
             self.bird6_config_add(key='netns', value=self.netns_name)
             self.bird6_config_add(key='asn', value=self.asn)
 
