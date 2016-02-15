@@ -683,7 +683,7 @@ class Overlay(object):
 
                     ipdb.commit()
         else:
-            raise Exception("invalid arguments for interface_remove: interface=%s, name=%s, expr=%s, ipdb=" % (interface.ifname if interface is not None else "None", str(name), str(expr), str(ipdb))
+            raise Exception("invalid arguments for interface_remove: interface=%s, name=%s, expr=%s, ipdb=" % (interface.ifname if interface is not None else "None", str(name), str(expr), str(ipdb)))
 
 
     def interface_up(self, interface):
