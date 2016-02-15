@@ -143,10 +143,10 @@ The name the overlay will be referred to. Also used to name the network namespac
 The BGP autonomous system (AS) number the overlay will configure the mesh tunnel routing system with.
 
 #### linknet-pool
-* Type: **subnet**
+* Type: **ip network**
 * Required: **yes**
 
-The subnet range which can be divided into `/31` subnets, and then used to address the mesh tunnels in the overlay.
+The IP network range which can be divided into two-node subnets (`/31` for IPv4, `/127` for IPv6), and then used to address the mesh tunnels in the overlay.
 
 #### this-node
 * Type: **name**
@@ -155,10 +155,10 @@ The subnet range which can be divided into `/31` subnets, and then used to addre
 The name of the node to configure the overlay for. The name specified here **MUST** be located in the list of nodes, described below.
 
 #### node-*{int}*
-* Type: {**name**} {**ipv4 address**}
+* Type: {**name**} {**ip address**}
 * Required: **yes**, at least **TWO**
 
-The list of nodes in the mesh, with the Internet-accessible IPv4 address used to build the overlay. A working overlay should have at least two nodes specified here.
+The list of nodes in the mesh, with the Internet-accessible IP address used to build the overlay. A working overlay should have at least two nodes specified here.
 
 The order of the nodes (`node-0`, `node-1`, ...) does not matter significantly, unless new nodes are to be added to the list. New nodes may **ONLY** be appended to the end of the list. This is because if new nodes are added at any other position in the list, it will cause the addresses assigned to mesh tunnel links to change, and l3overlay does not handle this intelligently (it does not ensure the other sides of the tunnel links are changed as well).
 
@@ -191,10 +191,10 @@ The IEEE 802.1Q VLAN ID tag for the static VLAN interface.
 The physical interface assigned to the static VLAN interface.
 
 #### address
-* Type: **ipv4 address**
+* Type: **ip address**
 * Required: **yes**
 
-The IPv4 address assigned to the static VLAN interface.
+The IP address assigned to the static VLAN interface.
 
 #### netmask
 * Type: **subnet mask**
@@ -204,7 +204,7 @@ The subnet mask for the VLAN interface address.
 
 ### [static-tunnel:*{name}*]
 
-This section is used to define a layer 2/3 GRE tunnel in the overlay. It can be connected to any IPv4 address available in the overlay.
+This section is used to define a layer 2/3 GRE tunnel in the overlay. It can be connected to any IP address available in the overlay.
 
 #### mode
 * Type: **enum**
@@ -214,22 +214,22 @@ This section is used to define a layer 2/3 GRE tunnel in the overlay. It can be 
 The mode in which the GRE tunnel will operate, layer 2 (`gretap`) or layer 3 (`gre`).
 
 #### local
-* Type: **ipv4 address**
+* Type: **ip address**
 * Required: **yes**
 
-The local endpoint IPv4 address assigned to the GRE tunnel.
+The local endpoint IP address assigned to the GRE tunnel.
 
 #### remote
-* Type: **ipv4 address**
+* Type: **ip address**
 * Required: **yes**
 
-The remote endpoint IPv4 address assigned to the GRE tunnel.
+The remote endpoint IP address assigned to the GRE tunnel.
 
 #### address
-* Type: **ipv4 address**
+* Type: **ip address**
 * Required: **yes**
 
-The IPv4 address assigned to the GRE tunnel interface.
+The IP address assigned to the GRE tunnel interface.
 
 #### netmask
 * Type: **subnet mask**
@@ -242,16 +242,16 @@ The subnet mask for the GRE tunnel interface address.
 This section is used to define a static BGP protocol in the BIRD routing daemon, used for distributing routes in the overlay. This is made to be used in conjunction with static GRE tunnels, to distribute routes across it.
 
 #### neighbor
-* Type: **ipv4 address**
+* Type: **ip address**
 * Required: **yes**
 
-The neighbor BGP node's IPv4 address.
+The neighbor BGP node's IP address.
 
 #### local
-* Type: **ipv4 address**
+* Type: **ip address**
 * Required: no
 
-The local IPv4 address used to make the BGP connection with the neighbor. Optional.
+The local IP address used to make the BGP connection with the neighbor. Optional.
 
 #### local-asn
 * Type: **integer**
@@ -284,16 +284,16 @@ See the [BIRD filter documentation](http://bird.network.cz/?get_doc&f=bird-5.htm
 This section is used to configure a static veth pair, with an outer interface in the root namespace, and an inner interface inside the overlay.
 
 #### inner-address
-* Type: **ipv4 address**
+* Type: **ip address**
 * Required: **yes**
 
-The IPv4 address assigned to the inner (overlay) interface.
+The IP address assigned to the inner (overlay) interface.
 
 #### outer-address
-* Type: **ipv4 address**
+* Type: **ip address**
 * Required: **yes**
 
-The IPv4 address assigned to the outer (overlay) interface.
+The IP address assigned to the outer (overlay) interface.
 
 #### netmask
 * Type: **subnet mask**
