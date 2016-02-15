@@ -30,6 +30,7 @@ import socket
 import stat
 import subprocess
 import sys
+import time
 
 from distutils.spawn import find_executable
 
@@ -649,7 +650,7 @@ class Overlay(object):
         ipdb.commit()
 
 
-    def interface_remove(self, interface=None, name=None, expr=None, ipdb=None):
+    def interface_remove(self, interface=None, name=None, expr=None, ipdb=None, delay=0.1):
         """
         Remove an interface, or any interface matching a given regular
         expression.
@@ -687,6 +688,14 @@ class Overlay(object):
                     ipdb.commit()
         else:
             raise Exception("invalid arguments for interface_remove: interface=%s, name=%s, expr=%s, ipdb=" % (interface.ifname if interface is not None else "None", str(name), str(expr), str(ipdb)))
+
+        # pyroute2 seems to take a little while to actually execute
+        # an interface removal. Put in an artificial delay in an attempt to
+        # avoid race conditions with removing interfaces and then reusing them.
+        #
+        # TODO: Figure out why pyroute2 does this, and fix it upstream. Remove
+        # this workaround once it is fixed.
+        time.sleep(delay)
 
 
     def interface_up(self, interface):
@@ -772,7 +781,8 @@ class Overlay(object):
                     interface.gre_okey != okey or
                     interface.gre_iflags != iflags or
                     interface.gre_oflags != oflags):
-                raise Exception("existing interface with name %s with incorrect attributes, delete the existing interface manually and reload l3overlayd" % name)
+                logging.debug("removing existing interface %s" % name)
+                self.interface_remove(interface=interface)
             else:
                 logging.debug("no need to create %s tunnel %s" % (kind, name))
                 return interface
@@ -806,7 +816,8 @@ class Overlay(object):
             interface = ipdb.interfaces[name]
 
             if interface.kind != 'veth':
-                raise Exception("existing interface with name %s and not kind veth, delete the existing interface manually and reload l3overlayd" % name)
+                logging.debug("removing existing interface %s" % name)
+                self.interface_remove(interface=interface)
             else:
                 logging.debug("no need to create veth pair %s and %s" % (name, peer))
                 return interface
@@ -835,7 +846,8 @@ class Overlay(object):
             if (interface.kind != 'vlan' or
                     ipdb.by_index[interface.link] != link or
                     interface.vlan_id != id):
-                raise Exception("existing interface with name %s with incorrect attributes, delete the existing interface manually and reload l3overlayd" % name)
+                logging.debug("removing existing interface %s" % name)
+                self.interface_remove(interface=interface)
             else:
                 logging.debug("no need to create vlan interface %s" % name)
                 return interface
