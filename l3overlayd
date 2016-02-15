@@ -838,7 +838,7 @@ class Overlay(object):
                 logging.debug("no need to create vlan interface %s" % name)
                 return interface
         else:
-            logging.debug("creating vlan interface %s" % name)
+            logging.debug("creating VLAN interface %s" % name)
 
         interface = ipdb.create(
             ifname=name,
