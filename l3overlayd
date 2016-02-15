@@ -651,17 +651,17 @@ class Overlay(object):
         Remove an interface, or any interface matching a given regular
         expression.
 
-        The required arguments are an ipdb object, and one of an interface
-        object, an interface name, or a matching regular expression.
+        The required arguments are one of an interface object, an interface
+        name, or a matching regular expression. In addition to this, an IPDB
+        object is required for an interface name or a regular expression, to
+        allow for the method to search for interface objects to remove.
         """
 
         if interface is not None:
             logging.debug("removing interface %s" % interface.ifname)
 
             interface.down()
-            interface.remove()
-
-            ipdb.commit()
+            interface.remove().commit()
         elif name is not None and ipdb is not None:
             if name in ipdb.by_name.keys():
                 logging.debug("removing interface %s" % name)
@@ -683,7 +683,7 @@ class Overlay(object):
 
                     ipdb.commit()
         else:
-            raise Exception("invalid arguments for interface_remove: interface=%s, name=%s, expr=%s" % (str(interface), str(name), str(expr)))
+            raise Exception("invalid arguments for interface_remove: interface=%s, name=%s, expr=%s, ipdb=" % (interface.ifname if interface is not None else "None", str(name), str(expr), str(ipdb))
 
 
     def interface_up(self, interface):
