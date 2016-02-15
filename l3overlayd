@@ -1711,8 +1711,8 @@ class Overlay(object):
 
         logging.debug("stopping the bird routing daemon")
 
-        pid = Util.pid_get(bird_pid_file)
-        pid6 = Util.pid_get(bird6_pid_file)
+        pid = Util.pid_get(pid_file=bird_pid_file)
+        pid6 = Util.pid_get(pid_file=bird6_pid_file)
 
         if pid is not None:
             os.kill(pid, signal.SIGTERM)
