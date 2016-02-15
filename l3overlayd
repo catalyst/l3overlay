@@ -2123,10 +2123,10 @@ if __name__ == "__main__":
     # PID actually exists, shut down this instance and warn the user. If there
     # is a PID file and it doesn't contain a valid process, remove the PID lock
     # and start anyway.
-    pid = Util.pid_get(pid_file=pid_file)
+    old_pid = Util.pid_get(pid_file=pid_file)
 
-    if pid is not None:
-        raise RuntimeError("valid PID lock file at %s, to start a new l3overlayd instance, kill the running l3overlayd instance with the PID %i" % (pid_file, pid))
+    if old_pid is not None:
+        raise RuntimeError("valid PID lock file at %s, to start a new l3overlayd instance, kill the running l3overlayd instance with the PID %i" % (pid_file, old_pid))
 
     # Find all available overlay configuration files, and build those overlays.
     overlay_paths = []
