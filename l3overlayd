@@ -1876,9 +1876,9 @@ class Util(object):
     @staticmethod
     def hex_get_string(value, min=None, max=None):
         """
-        Check that a string is a valid hexadecimal integer, optionally checking if
-        it is within a minimum and maximum length. Returns the string if the
-        conditions are satisfied, raises an exception otherwise.
+        Check that a string is a valid hexadecimal integer, optionally
+        checking if it is within a minimum and maximum length. Returns the 
+        string if the conditions are satisfied, raises an exception otherwise.
         """
 
         length = len(value)
@@ -1911,6 +1911,7 @@ class Util(object):
                 return e
 
         raise ValueError("given value %s is not a valid enum, must be one of %s" % (value, str(enum)))
+
 
     #
     ## File system helper methods.
