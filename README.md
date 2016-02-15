@@ -277,7 +277,7 @@ An optional description of the BGP protocol, displayed with the use of `show pro
 
 One or more BIRD filters used to filter the routes which get imported into the BGP protocol. The default is to import all routes.
 
-See the [BIRD filter documentation](http://bird.network.cz/?get_doc&f=bird-5.html) for more information.
+See the [BIRD filter documentation on data types](http://bird.network.cz/?get_doc&f=bird-5.html#ss5.2) for more information.
 
 ### [static-veth:*{name}*]
 
