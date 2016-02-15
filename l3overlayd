@@ -1162,7 +1162,7 @@ class Overlay(object):
                 }
 
                 self.static_vlans.append(static_vlan)
-'
+
                 if Util.ip_address_is_v6(address):
                     static_vlans_bgp6.append(static_vlan)
                 else:
