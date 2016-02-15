@@ -1814,8 +1814,7 @@ class Util(object):
     @staticmethod
     def netmask_dd_to_cidr(netmask):
         """
-        Convert a netmask in dotted decimal form to the CIDR form
-        (netmask prefix).
+        Convert a netmask in dotted decimal form to the CIDR form.
         """
 
         i = 0
@@ -1842,14 +1841,14 @@ class Util(object):
     @staticmethod
     def boolean_get(value):
         """
-        Get a boolean value from a string. Raise an exception if the string
+        Get a boolean value from a string. Raise a ValueError if the string
         is not a valid boolean.
         """
 
         lower_value = value.lower()
 
         if lower_value != "true" and lower_value != "false":
-            raise Exception("invalid value for boolean: %s" % lower_value)
+            raise ValueError("invalid value for boolean: %s" % lower_value)
 
         return True if lower_value == "true" else False
 
@@ -1858,17 +1857,17 @@ class Util(object):
     def name_get(value):
         """
         Check that a string is a valid name, and return it. A name is a string
-        that is just one word, without whitespace. Raise an exception if the 
+        that is just one word, without whitespace. Raise a ValueError if the 
         string is not a valid name.
         """
 
         name = value.strip()
 
         if len(name) == 0:
-            raise Exception("empty string not a valid name")
+            raise ValueError("empty string not a valid name")
 
         if not re.fullmatch("[^\s][^\s]*", value):
-            raise Exception("given string not a valid name (contains whitespace): %s" % name)
+            raise ValueError("given string not a valid name (contains whitespace): %s" % name)
 
         return name
 
@@ -1878,22 +1877,22 @@ class Util(object):
         """
         Check that a string is a valid hexadecimal integer, optionally
         checking if it is within a minimum and maximum length. Returns the 
-        string if the conditions are satisfied, raises an exception otherwise.
+        string if the conditions are satisfied, raises a ValueError otherwise.
         """
 
         length = len(value)
 
         if length == 0:
-            raise Exception("empty string not a valid hexadecimal integer")
+            raise ValueError("empty string not a valid hexadecimal integer")
 
         if min is not None and length < min:
-            raise Exception("hexadecimal integer too short, minimum %i digits required: %s" % (min, value))
+            raise ValueError("hexadecimal integer too short, minimum %i digits required: %s" % (min, value))
 
         if max is not None and length > max:
-            raise Exception("hexadecimal integer too long, maximum %i digits required: %s" % (max, value))
+            raise ValueError("hexadecimal integer too long, maximum %i digits required: %s" % (max, value))
 
         if not re.fullmatch("[0-9A-Fa-f][0-9A-Fa-f]*", value):
-            raise Exception("given string not a valid hexadecimal integer: %s" % value)
+            raise ValueError("given string not a valid hexadecimal integer: %s" % value)
 
         return value
 
