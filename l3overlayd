@@ -1743,7 +1743,7 @@ class Util(object):
 
         if isinstance(value, ipaddress.IPv6Network):
             return True
-        elif isinstance(address, ipaddress.IPv4Network):
+        elif isinstance(value, ipaddress.IPv4Network):
             return False
 
         return isinstance(ipaddress.ip_network(value), ipaddress.IPv6Network)
@@ -1780,7 +1780,7 @@ class Util(object):
 
         if isinstance(value, ipaddress.IPv6Address):
             return True
-        elif isinstance(address, ipaddress.IPv4Address):
+        elif isinstance(value, ipaddress.IPv4Address):
             return False
 
         return isinstance(ipaddress.ip_address(value), ipaddress.IPv6Address)
