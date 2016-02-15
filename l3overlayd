@@ -686,14 +686,13 @@ class Overlay(object):
             raise Exception("invalid arguments for interface_remove: interface=%s, name=%s, expr=%s" % (str(interface), str(name), str(expr)))
 
 
-    def interface_up(self, interface, ipdb):
+    def interface_up(self, interface):
         """
         Bring up the given interface.
         """
 
         logging.debug("bringing up interface %s" % interface.ifname)
-        interface.up()
-        ipdb.commit()
+        interface.up().commit()
 
 
     def bridge_create(self, name, ipdb):
@@ -1048,10 +1047,10 @@ class Overlay(object):
             )
 
             # Bring up all interfaces.
-            self.interface_up(gretap_if, ipdb=self.root_ipdb)
-            self.interface_up(root_veth_if, ipdb=self.root_ipdb)
-            self.interface_up(bridge_if, ipdb=self.root_ipdb)
-            self.interface_up(netns_veth_if, self.ipdb)
+            self.interface_up(gretap_if)
+            self.interface_up(root_veth_if)
+            self.interface_up(bridge_if)
+            self.interface_up(netns_veth_if)
 
             # Add the mesh tunnel to the list of routed interfaces.
             logging.debug("adding BGP route for mesh tunnel %s" % gretap_name)
@@ -1168,11 +1167,11 @@ class Overlay(object):
                 )
 
                 # Finally, we're done! Bring up the interfaces!
-                self.interface_up(physical_if, ipdb=self.root_ipdb)
-                self.interface_up(vlan_if, ipdb=self.root_ipdb)
-                self.interface_up(root_veth_if, ipdb=self.root_ipdb)
-                self.interface_up(netns_veth_if, self.ipdb)
-                self.interface_up(bridge_if, ipdb=self.root_ipdb)
+                self.interface_up(physical_if)
+                self.interface_up(vlan_if)
+                self.interface_up(root_veth_if)
+                self.interface_up(netns_veth_if)
+                self.interface_up(bridge_if)
 
                 # Add the veth interface connected to the VLAN to the list of 
                 # routed interfaces.
@@ -1242,7 +1241,7 @@ class Overlay(object):
                     ipdb=self.ipdb,
                 )
 
-                self.interface_up(tunnel_if, ipdb=self.ipdb)
+                self.interface_up(tunnel_if)
 
                 # Add the tunnel to the list of routed interfaces.
                 static_tunnel = {
@@ -1325,8 +1324,8 @@ class Overlay(object):
                     ipdb=self.ipdb,
                 )
 
-                self.interface_up(outer_if, ipdb=self.root_ipdb)
-                self.interface_up(inner_if, ipdb=self.ipdb)
+                self.interface_up(outer_if)
+                self.interface_up(inner_if)
 
                 # Add the inner interface to the list of routed interfaces.
                 static_veth = {
