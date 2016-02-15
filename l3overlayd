@@ -94,7 +94,13 @@ class OverlayDaemon(object):
             config = {'global': {}}
 
         # Logging level.
-        self.logging_level = config['global']['logging-level'] if 'logging-level' in config['global'] else logging.INFO
+        if 'logging-level' in config['global']:
+            self.logging_level = Util.enum_get(
+                config['global']['logging-level'],
+                [ 'NOSET', 'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL' ],
+            )
+        else: 
+            self.logging_level = logging.INFO
 
         # Check whether or not to use IPsec.
         if 'use-ipsec' in config['global']:
@@ -1192,7 +1198,7 @@ class Overlay(object):
         for section in self.config.sections():
             if section.startswith('static-tunnel'):
                 name = Util.name_get(section.lstrip('static-tunnel:'))
-                mode = self.config[section]['mode']
+                mode = Util.enum_get(self.config[section]['mode'], ['gre', 'gretap'])
                 local = Util.ip_address_get(self.config[section]['local'])
                 remote = Util.ip_address_get(self.config[section]['remote'])
                 address = Util.ip_address_get(self.config[section]['address'])
@@ -1890,6 +1896,21 @@ class Util(object):
             raise Exception("given string not a valid hexadecimal integer: %s" % value)
 
         return value
+
+
+    @staticmethod
+    def enum_get(value, enum):
+        """
+        Check that the given value string is in the list of enumeration string
+        values, and return the enumeration value the value string is
+        equivalent to. Raise a ValueError if it is not in the list.
+        """
+
+        for e in enum:
+            if value.lower() == e.lower():
+                return e
+
+        raise ValueError("given value %s is not a valid enum, must be one of %s" % (value, str(enum)))
 
     #
     ## File system helper methods.
