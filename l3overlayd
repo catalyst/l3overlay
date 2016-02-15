@@ -649,11 +649,12 @@ class Overlay(object):
         interface.add_ip(ip_string)
         ipdb.commit()
 
-    def interface_remove_interface(self, ipdb, interface, delay=0.001):
+    def interface_remove_interface(self, ipdb, interface, delay=0.001, timeout=1.0):
         """
         Remove an interface, and wait for it to show as removed in the IPDB.
         """
 
+        waited = 0
         name = interface.ifname
 
         logging.debug("removing interface %s" % name)
@@ -664,8 +665,14 @@ class Overlay(object):
         # pyroute2 seems to take a little while to actually execute
         # an interface removal. Wait for the IPDB to register that the
         # interface no longer exists.
-        while name in ipdb.by_name.keys():
+        #
+        # Stop waiting after a while, to prevent infinite loops.
+        while name in ipdb.by_name.keys() and waited < timeout:
             time.sleep(delay)
+            waited += delay
+
+        if name in ipdb.by_name.keys():
+            raise Exception("interface %s still exists in IPDB even after waiting" % name)
 
         logging.debug("finished removing interface %s" % name)
 
