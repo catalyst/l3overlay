@@ -1426,7 +1426,6 @@ class Overlay(object):
                 sock.connect(bird_socket_file)
 
                 datagram = sock.recv(1024)
-                response = ''
                 response = datagram.decode('UTF-8')
 
                 if not re.match("0001 BIRD [0-9.]* ready.\n", response):
@@ -1437,7 +1436,6 @@ class Overlay(object):
                 sock.send(bytes("configure \"%s\"\n" % bird_config_file, 'UTF-8'))
 
                 datagram = sock.recv(1024)
-                response = ''
                 response = datagram.decode('UTF-8')
 
                 if "0002-Reading configuration from %s" % bird_config_file not in response or ("0003 Reconfigured" not in response and "0004 Reconfiguration in progress" not in response):
