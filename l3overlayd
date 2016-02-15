@@ -371,6 +371,9 @@ class OverlayDaemon(object):
     def stop_directories(self):
         """
         Destroy the runtime directories.
+
+        This should be fine, because at this point, there should be no required
+        files in the runtime directories.
         """
 
         logging.info("removing %s" % self.lib_dir)
