@@ -649,8 +649,28 @@ class Overlay(object):
         interface.add_ip(ip_string)
         ipdb.commit()
 
+    def interface_remove_interface(self, ipdb, interface, delay=0.001):
+        """
+        Remove an interface, and wait for it to show as removed in the IPDB.
+        """
 
-    def interface_remove(self, interface=None, name=None, expr=None, ipdb=None, delay=0.1):
+        name = interface.ifname
+
+        logging.debug("removing interface %s" % name)
+
+        interface.down()
+        interface.remove().commit()
+
+        # pyroute2 seems to take a little while to actually execute
+        # an interface removal. Wait for the IPDB to register that the
+        # interface no longer exists.
+        while name in ipdb.by_name.keys():
+            time.sleep(delay)
+
+        logging.debug("finished removing interface %s" % name)
+
+
+    def interface_remove(self, ipdb, interface=None, name=None, expr=None):
         """
         Remove an interface, or any interface matching a given regular
         expression.
@@ -662,40 +682,16 @@ class Overlay(object):
         """
 
         if interface is not None:
-            logging.debug("removing interface %s" % interface.ifname)
-
-            interface.down()
-            interface.remove().commit()
-        elif name is not None and ipdb is not None:
+            self.interface_remove_interface(ipdb, interface)
+        elif name is not None:
             if name in ipdb.by_name.keys():
-                logging.debug("removing interface %s" % name)
-                interface = ipdb.interfaces[name]
-
-                interface.down()
-                interface.remove()
-
-                ipdb.commit()
-        elif expr is not None and ipdb is not None:
+                self.interface_remove_interface(ipdb, ipdb.interfaces[name])
+        elif expr is not None:
             for name in ipdb.by_name.keys():
                 if re.match(expr, name):
-                    logging.debug("removing interface %s" % name)
-
-                    interface = ipdb.interfaces[name]
-
-                    interface.down()
-                    interface.remove()
-
-                    ipdb.commit()
+                    self.interface_remove_interface(ipdb, ipdb.interfaces[name])
         else:
             raise Exception("invalid arguments for interface_remove: interface=%s, name=%s, expr=%s, ipdb=" % (interface.ifname if interface is not None else "None", str(name), str(expr), str(ipdb)))
-
-        # pyroute2 seems to take a little while to actually execute
-        # an interface removal. Put in an artificial delay in an attempt to
-        # avoid race conditions with removing interfaces and then reusing them.
-        #
-        # TODO: Figure out why pyroute2 does this, and fix it upstream. Remove
-        # this workaround once it is fixed.
-        time.sleep(delay)
 
 
     def interface_up(self, interface):
@@ -782,7 +778,7 @@ class Overlay(object):
                     interface.gre_iflags != iflags or
                     interface.gre_oflags != oflags):
                 logging.debug("removing existing interface %s" % name)
-                self.interface_remove(interface=interface)
+                self.interface_remove(ipdb, interface=interface)
             else:
                 logging.debug("no need to create %s tunnel %s" % (kind, name))
                 return interface
@@ -817,7 +813,7 @@ class Overlay(object):
 
             if interface.kind != 'veth':
                 logging.debug("removing existing interface %s" % name)
-                self.interface_remove(interface=interface)
+                self.interface_remove(ipdb, interface=interface)
             else:
                 logging.debug("no need to create veth pair %s and %s" % (name, peer))
                 return interface
@@ -847,7 +843,7 @@ class Overlay(object):
                     ipdb.by_index[interface.link] != link or
                     interface.vlan_id != id):
                 logging.debug("removing existing interface %s" % name)
-                self.interface_remove(interface=interface)
+                self.interface_remove(ipdb, interface=interface)
             else:
                 logging.debug("no need to create vlan interface %s" % name)
                 return interface
@@ -1658,18 +1654,18 @@ class Overlay(object):
         logging.debug("removing mesh tunnels")
 
         self.interface_remove(
+            self.root_ipdb,
             expr="^m%il[0-9][0-9]*br$" % self.asn,
-            ipdb=self.root_ipdb,
         )
 
         self.interface_remove(
+            self.root_ipdb,
             expr="^m%il[0-9][0-9]*v0$" % self.asn,
-            ipdb=self.root_ipdb,
         )
 
         self.interface_remove(
+            self.root_ipdb,
             expr="^m%il[0-9][0-9]*$" % self.asn,
-            ipdb=self.root_ipdb,
         )
 
         logging.debug("finished removing mesh tunnels")
@@ -1687,8 +1683,8 @@ class Overlay(object):
             logging.debug("removing static tunnel %s" % name)
 
             self.interface_remove(
+                self.ipdb,
                 name=tunnel_name,
-                ipdb=self.ipdb,
             )
 
             logging.debug("finished removing static tunnel %s" % name)
@@ -1705,18 +1701,18 @@ class Overlay(object):
             logging.debug("removing static VLAN %s" % name)
 
             self.interface_remove(
+                self.root_ipdb,
                 name=vlan['bridge_interface'],
-                ipdb=self.root_ipdb,
             )
 
             self.interface_remove(
+                self.root_ipdb,
                 name=vlan['root_interface'],
-                ipdb=self.root_ipdb,
             )
 
             self.interface_remove(
+                self.root_ipdb,
                 name=vlan['vlan_interface'],
-                ipdb=self.root_ipdb,
             )
 
             logging.debug("finished removing static VLAN %s" % name)
@@ -1733,8 +1729,8 @@ class Overlay(object):
             logging.debug("removing static veth %s" % name)
 
             self.interface_remove(
+                self.root_ipdb,
                 name=veth['outer_interface'],
-                ipdb=self.root_ipdb,
             )
 
             logging.debug("finished removing static veth %s" % name)
