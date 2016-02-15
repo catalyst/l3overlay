@@ -1921,7 +1921,7 @@ class Util(object):
     def bird_prefix_get(value):
         """
         Check that a string is a BIRD prefix, and return it. Raise a
-        ValueError if the string is not a valid name.
+        ValueError if the string is not a valid BIRD prefix.
 
         This method allows the use of prefix patterns that are allowed to be
         used in sets of prefixes in BIRD filters.
@@ -1950,6 +1950,14 @@ class Util(object):
         # The interesting part about BIRD prefixes, syntatically, is in the
         # netmask segment, which can not just be CIDR numbers, but can also be
         # special expressions, depending on the range of subnets required.
+        #
+        # This expression can take the following forms:
+        # 10.192.0.0/16+ - match all subprefixes of 10.192.0.0/16
+        # 10.192.0.0/16- - match all superprefixes of 10.192.0.0/16
+        # 10.192.0.0/16{20,24} - match all subprefixes of 10.192.0.0/16 which
+        #                        have a prefix length of between 20 to 24.
+        #
+        # This part checks that the syntax for those expressions is correct.
         expr = re.sub("^%i" % netmask, "", prefix[1])
 
         if expr:
@@ -1964,6 +1972,7 @@ class Util(object):
             else:
                 raise ValueError("given value %s is not a valid BIRD prefix, invalid expression segment" % value)
 
+        # All checks have passed. Return the value unmodified.
         return value
 
 
