@@ -740,8 +740,9 @@ class Overlay(object):
             interface = ipdb.interfaces[name]
 
             if (interface.kind != kind or
-                    interface.gre_local != local or
-                    interface.gre_remote != remote or
+                    # Cast for compatibility with IPv4Address/IPv6Address.
+                    interface.gre_local != str(local) or
+                    interface.gre_remote != str(remote) or
                     interface.gre_ttl != ttl or
                     interface.gre_ikey != ikey or
                     interface.gre_okey != okey or
