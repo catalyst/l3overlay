@@ -1083,7 +1083,7 @@ class Overlay(object):
                 id = int(self.config[section]['id'])
                 physical_interface = Util.name_get(self.config[section]['physical-interface'])
                 address = Util.ip_address_get(self.config[section]['address'])
-                netmask = Util.netmask_get(self.config[section]['netmask'])
+                netmask = Util.netmask_get(self.config[section]['netmask'], Util.ip_address_is_v6(address))
 
                 vlan_name = self.interface_name(name=name, suffix='vl', limit=13)
                 root_veth_name = "%sv0" % vlan_name
@@ -1202,7 +1202,7 @@ class Overlay(object):
                 local = Util.ip_address_get(self.config[section]['local'])
                 remote = Util.ip_address_get(self.config[section]['remote'])
                 address = Util.ip_address_get(self.config[section]['address'])
-                netmask = Util.netmask_get(self.config[section]['netmask'])
+                netmask = Util.netmask_get(self.config[section]['netmask'], Util.ip_address_is_v6(address))
 
                 tunnel_name = self.interface_name(name)
 
@@ -1267,7 +1267,7 @@ class Overlay(object):
                 name = Util.name_get(section.lstrip('static-veth:'))
                 inner_address = Util.ip_address_get(self.config[section]['inner-address'])
                 outer_address = Util.ip_address_get(self.config[section]['outer-address'])
-                netmask = Util.netmask_get(self.config[section]['netmask'])
+                netmask = Util.netmask_get(self.config[section]['netmask'], Util.ip_address_is_v6(inner_address))
 
                 outer_name = self.interface_name(name + 'v')
                 inner_name = self.interface_name(name + 'v')
@@ -1794,18 +1794,23 @@ class Util(object):
 
 
     @staticmethod
-    def netmask_get(value):
+    def netmask_get(value, use_ipv6=False):
         """
         Get a subnet mask from a string. Raises a ValueError if the string
         is not a valid subnet mask. Supports both CIDR and dotted decimal form.
         """
 
+        maxlen = 128 if use_ipv6 else 32
+
         if re.match("\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3}", value):
+            if use_ipv6:
+                raise ValueError("dotted decimal netmask invalid when use_ipv6 is true, use CIDR instead")
+
             return Util.netmask_dd_to_cidr(value)
 
         cidr = int(value)
 
-        if cidr > 128 or cidr < 0:
+        if cidr > maxlen or cidr < 0:
             raise ValueError("valid CIDR netmask %i, must be within range 0 < x < 128" % cidr)
 
         return cidr
@@ -1938,7 +1943,7 @@ class Util(object):
 
         # Check for a valid netmask in the netmask segment.
         try:
-            netmask = Util.netmask_get(rmatch("[0-9][0-9]*", prefix[1]))
+            netmask = Util.netmask_get(rmatch("[0-9][0-9]*", prefix[1]), Util.ip_address_is_v6(address))
         except ValueError:
             raise ValueError("given value %s is not a valid BIRD prefix, invalid netmask segment" % value)
 
@@ -1953,7 +1958,7 @@ class Util(object):
 
                 for n in netmask:
                     try:
-                        netmask = Util.netmask_get(n)
+                        netmask = Util.netmask_get(n, Util.ip_address_is_v6(address))
                     except ValueError:
                         raise ValueError("given value %s is not a valid BIRD prefix, invalid netmask %i in expression segment" % (value, n))
             else:
