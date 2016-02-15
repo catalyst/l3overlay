@@ -253,7 +253,7 @@ class OverlayDaemon(object):
         Util.directory_create(self.ipsec_config_dir)
 
         # Start doing everything needed to start IPsec.
-        logging.debug("starting configuration of ipsec")
+        logging.debug("configuring ipsec")
 
         # Save the IPsec configuration.
         logging.debug("saving ipsec configuration to disk")
@@ -297,7 +297,7 @@ class OverlayDaemon(object):
         ))
         f.close()
 
-        logging.debug("finished configuration of ipsec")
+        logging.debug("finished configuring ipsec")
 
         # Start IPsec, or, if it is already running, reload the configuration.
         try:
@@ -1640,7 +1640,7 @@ class Overlay(object):
         Destroy the root namespace components of the mesh tunnels.
         """
 
-        logging.debug("starting destruction of mesh tunnels")
+        logging.debug("removing mesh tunnels")
 
         self.interface_remove(
             expr="^m%il[0-9][0-9]*br$" % self.asn,
@@ -1657,7 +1657,7 @@ class Overlay(object):
             ipdb=self.root_ipdb,
         )
 
-        logging.debug("finished destruction of mesh tunnels")
+        logging.debug("finished removing mesh tunnels")
 
 
     def stop_static_tunnels(self):
