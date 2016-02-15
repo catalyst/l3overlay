@@ -281,7 +281,7 @@ See the [BIRD filter documentation on data types](http://bird.network.cz/?get_do
 
 ### [static-veth:*{name}*]
 
-This section is used to configure a static veth pair, with an outer interface in the root namespace, and an inner interface inside the overlay.
+This section is used to configure a static veth pair, with an outer interface in the root namespace, and an inner interface inside the overlay. Both the outer and inner interface must share the same type of IP address (for example, both must be either IPv4 or IPv6, not one and the other), as the two interface addresses must share the same subnet.
 
 #### inner-address
 * Type: **ip address**

@@ -1274,6 +1274,9 @@ class Overlay(object):
 
                 logging.debug("starting creation of static veth %s" % name)
 
+                if type(inner_address) == type(outer_address):
+                    raise ValueError("Inner address %s is not the same type of IP address as outer address %s" % (inner_address, outer_address))
+
                 outer_if = self.veth_create(
                     name=outer_name,
                     peer=inner_name,
