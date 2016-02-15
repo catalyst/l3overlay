@@ -654,7 +654,7 @@ class Overlay(object):
         Remove an interface, and wait for it to show as removed in the IPDB.
         """
 
-        waited = 0
+        waited = 0.0
         name = interface.ifname
 
         logging.debug("removing interface %s" % name)
