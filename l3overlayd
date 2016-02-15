@@ -961,7 +961,7 @@ class Overlay(object):
             # Interface addresses for the mesh tunnel.
             netns_veth_address_local = linknet_pool_address_base + index
             netns_veth_address_remote = Util.ip_address_remote(netns_veth_address_local)
-            netns_veth_address_netmask = 31
+            netns_veth_address_netmask = 127 if Util.ip_network_is_v6(self.linknet_pool) else 31
 
             # Make sure the number of assigned subnets does not overflow
             # the linknet pool.
@@ -1745,7 +1745,9 @@ class Util(object):
     @staticmethod
     def ip_address_remote(local):
         """
-        For a given local_address (either an integer or an IPv4Address), return the other end of a /31 linknet.
+        For a given local_address (either an integer, IPv4Address or
+        IPv6Address), return the other end of a two-node linknet
+        (/31 for IPv4, /127 for IPv6).
         """
 
         return ipaddress.ip_address(int(local) ^ 1)
