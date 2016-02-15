@@ -1384,7 +1384,7 @@ class Overlay(object):
             self.bird_config_add(key='bgps', value=bgps6)
 
 
-    def start_bird_daemon(self, bird):
+    def start_bird_daemon(self, bird, bird_config_file, bird_socket_file, bird_pid_file):
         # If there is a BIRD daemon already running, connect to its socket and
         # tell it to reload its configuration.
         if Util.pid_exists(pid_file=bird_pid_file):
@@ -1507,7 +1507,12 @@ class Overlay(object):
             if bird is None:
                 raise Exception("cannot find bird executable path")
 
-            self.start_bird_daemon(bird)
+            self.start_bird_daemon(
+                bird,
+                bird_config_file,
+                bird_socket_file,
+                bird_pid_file,
+            )
 
         if self.bird6_config:
             bird6 = find_executable("bird6")
@@ -1515,7 +1520,12 @@ class Overlay(object):
             if bird6 is None:
                 raise Exception("cannot find bird6 executable path")
 
-            self.start_bird_daemon(bird6)
+            self.start_bird_daemon(
+                bird6,
+                bird6_config_file,
+                bird6_socket_file,
+                bird6_pid_file,
+            )
 
         logging.debug("finished starting the bird routing daemon")
 
@@ -1689,12 +1699,19 @@ class Overlay(object):
         the network namespace root directory gets cleaned up.
         """
 
-        f = open(os.path.join(self.netns_root, "run", "bird", "bird.pid"))
-        pid = int(f.read())
+        bird_pid_file = os.path.join(self.netns_root, "run", "bird", "bird.pid")
+        bird6_pid_file = os.path.join(self.netns_root, "run", "bird", "bird6.pid")
 
         logging.debug("stopping the bird routing daemon")
 
-        os.kill(pid, signal.SIGTERM)
+        pid = Util.pid_get(bird_pid_file)
+        pid6 = Util.pid_get(bird6_pid_file)
+
+        if pid is not None:
+            os.kill(pid, signal.SIGTERM)
+
+        if pid6 is not None:
+            os.kill(pid6, signal.SIGTERM)
 
         logging.debug("stopped the bird routing daemon")
 
@@ -1933,9 +1950,10 @@ class Util(object):
     #
 
     @staticmethod
-    def pid_exists(pid=None, pid_file=None):
+    def pid_get(pid=None, pid_file=None):
         """
-        Checks for the existence of a PID on the running system.
+        Checks for the existence of a PID on the running system. If true,
+        returns the PID number. If false, returns None.
 
         Can either use a PID number directly, or take in a PID file and check
         that. If the PID file is not valid or the PID contained inside does 
@@ -1956,10 +1974,10 @@ class Util(object):
                 else:
                     # Invalid PID file. Remove it.
                     os.remove(pid_file)
-                    return False
+                    return None
             else:
                # PID file doesn't exist.
-               return False
+               return None
         elif pid is None:
             raise ValueError("must specify one of pid or pid_file")
 
@@ -1974,18 +1992,32 @@ class Util(object):
         except OSError as e:
             # ESRCH = No such process
             if e.errno == errno.ESRCH:
-                return False
+                return None
             # EPERM = Permission denied
             # A process clearly exists if we don't have access to it.
             elif e.errno == errno.EPERM:
-                return True
+                return pid
             # EINVAL = Invalid signal
             # Something went wrong.
             else:
                 raise
         # No exception - process exists
         else:
-            return True
+            return pid
+
+
+    @staticmethod
+    def pid_exists(pid=None, pid_file=None):
+        """
+        Checks for the existence of a PID on the running system.
+
+        This method is a wrapper method for Util.pid_get() for it to return
+        a boolean value if the returned PID number is not required. Therefore,
+        it follows the same behaviour as Util.pid_get() with respect to
+        raising exceptions and handling PID files.
+        """
+
+        return True if Util.pid_get(pid, pid_file) is not None else False
 
 
 def close_overlays(signum, frame):
@@ -2091,8 +2123,10 @@ if __name__ == "__main__":
     # PID actually exists, shut down this instance and warn the user. If there
     # is a PID file and it doesn't contain a valid process, remove the PID lock
     # and start anyway.
-    if Util.pid_exists(pid_file=pid_file):
-        raise RuntimeError("valid PID lock file at %s, to start a new l3overlayd instance, kill the running l3overlayd instance with the PID contained in this file" % pid_file)
+    pid = Util.pid_get(pid_file=pid_file)
+
+    if pid is not None:
+        raise RuntimeError("valid PID lock file at %s, to start a new l3overlayd instance, kill the running l3overlayd instance with the PID %i" % (pid_file, pid))
 
     # Find all available overlay configuration files, and build those overlays.
     overlay_paths = []
