@@ -2220,7 +2220,7 @@ class Util(object):
 
 def close_overlays(signum, frame):
     """
-    Shut down all overlays and IPsec tunnels and clean up and temporary files
+    Shut down all overlays and IPsec tunnels and clean up any temporary files
     before exiting.
     """
 
