@@ -1117,7 +1117,7 @@ class Overlay(object):
                 # Add the inner interface to the list of routed interfaces.
                 static_veth = {
                     'name': name,
-                    'interface': inner_name,
+                    'inner_interface': inner_name,
                     'outer_interface': outer_name,
                 }
 
