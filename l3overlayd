@@ -42,7 +42,9 @@ from pyroute2 import netns
 from pyroute2 import NetNS
 
 class OverlayDaemon(object):
-
+    """
+    Configures the overlay daemon, and manages all enabled overlays.
+    """
 
     def __init__(self, template_dir, lib_dir, log_file, global_conf, fwbuilder_script_dir, overlay_paths):
 
@@ -479,6 +481,14 @@ class OverlayDaemon(object):
 
 
 class Overlay(object):
+    """
+    Create and manage an overlay.
+    """
+
+
+    #
+    ## Constructor.
+    #
 
 
     def __init__(self, daemon, configuration_path):
@@ -559,6 +569,11 @@ class Overlay(object):
         self.start()
 
 
+    #
+    ## Overlay-wide and overlay daemon-wide helper methods..
+    #
+
+
     def links(self):
         """
         Bi-directionally enumerate all of the links in a mesh, with each link's reverse immediately following it.
@@ -619,133 +634,6 @@ class Overlay(object):
         return if_name
 
 
-    def interface_get(self, name, ipdb):
-        """
-        Tries to find an interface with the given name in the chosen IPDB
-        and returns it. Throws an exception if it can't find it.
-        """
-
-        if name in ipdb.by_name.keys():
-            return ipdb.interfaces[name]
-        else:
-            raise Exception("unable to find interface %s in IPDB" % name)
-
-
-    def interface_add_ip(self, interface, address, netmask, ipdb):
-        """
-        Add the given IP address (either a string, IPv4Address or IPv6Address)
-        with its netmask to the interface in the chosen IPDB.
-        """
-
-        ip_tuple = (str(address), netmask)
-        ip_string = "%s/%i" % ip_tuple
-
-        if ip_tuple in interface.ipaddr:
-            logging.debug("no need to add address %s to interface %s" % (ip_string, interface.ifname))
-            return
-
-        logging.debug("adding address %s to interface %s" % (ip_string, interface.ifname))
-
-        interface.add_ip(ip_string)
-        ipdb.commit()
-
-    def interface_remove_interface(self, ipdb, interface, delay=0.001, timeout=1.0):
-        """
-        Remove an interface, and wait for it to show as removed in the IPDB.
-        """
-
-        waited = 0.0
-        name = interface.ifname
-
-        logging.debug("removing interface %s" % name)
-
-        interface.down()
-        interface.remove().commit()
-
-        # pyroute2 seems to take a little while to actually execute
-        # an interface removal. Wait for the IPDB to register that the
-        # interface no longer exists.
-        #
-        # Stop waiting after a while, to prevent infinite loops.
-        while name in ipdb.by_name.keys() and waited < timeout:
-            time.sleep(delay)
-            waited += delay
-
-        if name in ipdb.by_name.keys():
-            raise Exception("interface %s still exists in IPDB even after waiting" % name)
-
-        logging.debug("finished removing interface %s" % name)
-
-
-    def interface_remove(self, ipdb, interface=None, name=None, expr=None):
-        """
-        Remove an interface, or any interface matching a given regular
-        expression.
-
-        The required arguments are the IPDB object the interface belongs to,
-        and one of an interface object, an interface name, or a matching
-        regular expression.
-        """
-
-        if interface is not None:
-            self.interface_remove_interface(ipdb, interface)
-        elif name is not None:
-            if name in ipdb.by_name.keys():
-                self.interface_remove_interface(ipdb, ipdb.interfaces[name])
-        elif expr is not None:
-            for name in ipdb.by_name.keys():
-                if re.match(expr, name):
-                    self.interface_remove_interface(ipdb, ipdb.interfaces[name])
-        else:
-            raise Exception("invalid arguments for interface_remove: interface=%s, name=%s, expr=%s, ipdb=" % (interface.ifname if interface is not None else "None", str(name), str(expr), str(ipdb)))
-
-
-    def interface_up(self, interface):
-        """
-        Bring up the given interface.
-        """
-
-        logging.debug("bringing up interface %s" % interface.ifname)
-        interface.up().commit()
-
-
-    def bridge_create(self, name, ipdb):
-        """
-        Create a bridge interface with the given name in a chosen IPDB.
-        Returns the interface entry from the IPDB.
-        """
-
-        if name not in ipdb.by_name.keys():
-            logging.debug("creating bridge interface %s" % name)
-
-            interface = ipdb.create(
-                ifname=name,
-                kind='bridge',
-            )
-
-            ipdb.commit()
-        else:
-            logging.debug("no need to create bridge interface %s" % name)
-            interface = ipdb.interfaces[name]
-
-        return interface
-
-
-    def bridge_add_port(self, bridge, interface, ipdb):
-        """
-        Add the given interface to the list of ports for a given bridge.
-        """
-
-        if interface.index not in bridge.ports:
-            logging.debug("adding interface %s to bridge %s" % (interface.ifname, bridge.ifname))
-
-            bridge.add_port(interface)
-
-            ipdb.commit()
-        else:
-            logging.debug("no need to add interface %s to bridge %s" % (interface.ifname, bridge.ifname))
-
-
     def gre_key(self, local, remote):
         """
         Generate a unique key value for the given (local, remote) address pair.
@@ -759,129 +647,6 @@ class Overlay(object):
                 key += 1
 
         return key
-
-
-    def gre_create(self, name, local, remote, ipdb, kind='gre', ttl=16, key=None, ikey=None, okey=None, iflags=32, oflags=32):
-        """
-        Create a gre/gretap interface with the given name in a chosen ipdb.
-        Returns the interface entry from the ipdb.
-        """
-
-        if key is not None:
-            ikey = key
-            okey = key
-
-        if name in ipdb.by_name.keys():
-            interface = ipdb.interfaces[name]
-
-            if (interface.kind != kind or
-                    # Cast for compatibility with IPv4Address/IPv6Address.
-                    interface.gre_local != str(local) or
-                    interface.gre_remote != str(remote) or
-                    interface.gre_ttl != ttl or
-                    interface.gre_ikey != ikey or
-                    interface.gre_okey != okey or
-                    interface.gre_iflags != iflags or
-                    interface.gre_oflags != oflags):
-                logging.debug("removing existing interface %s" % name)
-                self.interface_remove(ipdb, interface=interface)
-            else:
-                logging.debug("no need to create %s tunnel %s" % (kind, name))
-                return interface
-
-        logging.debug("creating %s tunnel %s" % (kind, name))
-
-        interface = ipdb.create(
-            ifname=name,
-            kind=kind,
-            # Cast for compatibility with IPv4Address/IPv6Address.
-            gre_local=str(local),
-            gre_remote=str(remote),
-            gre_ttl=ttl,
-            gre_ikey=ikey,
-            gre_okey=okey,
-            gre_iflags=iflags,
-            gre_oflags=oflags,
-        )
-
-        ipdb.commit()
-        return interface
-
-
-    def veth_create(self, name, peer, ipdb):
-        """
-        Create a veth pair with the given names in the chosen IPDB, and
-        returns the root interface. The peer must be retrieved separately.
-        """
-
-        if name in ipdb.by_name.keys():
-            interface = ipdb.interfaces[name]
-
-            if interface.kind != 'veth':
-                logging.debug("removing existing interface %s" % name)
-                self.interface_remove(ipdb, interface=interface)
-            else:
-                logging.debug("no need to create veth pair %s and %s" % (name, peer))
-                return interface
-
-        logging.debug("creating veth pair %s and %s" % (name, peer))
-
-        interface = ipdb.create(
-            ifname=name,
-            kind='veth',
-            peer=peer,
-        )
-
-        ipdb.commit()
-        return interface
-
-
-    def vlan_create(self, name, link, id, ipdb):
-        """
-        Create a IEEE 802.1Q VLAN interface with the given name, physical link
-        and ID in the chosen IPDB, and return the interface.
-        """
-
-        if name in ipdb.by_name.keys():
-            interface = ipdb.interfaces[name]
-
-            if (interface.kind != 'vlan' or
-                    ipdb.by_index[interface.link] != link or
-                    interface.vlan_id != id):
-                logging.debug("removing existing interface %s" % name)
-                self.interface_remove(ipdb, interface=interface)
-            else:
-                logging.debug("no need to create vlan interface %s" % name)
-                return interface
-        else:
-            logging.debug("creating VLAN interface %s" % name)
-
-        interface = ipdb.create(
-            ifname=name,
-            kind='vlan',
-            link=link,
-            vlan_id=id,
-        )
-
-        ipdb.commit()
-        return interface
-
-
-    def netns_set(self, name, netns_name, netns_ipdb, ipdb):
-        """
-        Moves an interface into a chosen network namespace. Returns the
-        interface object from the network namespace.
-        """
-
-        if name not in netns_ipdb.by_name.keys():
-            logging.debug("moving interface %s to network namespace %s" % (name, netns_name))
-
-            ipdb.interfaces[name].net_ns_fd = netns_name
-            ipdb.commit()
-        else:
-            logging.debug("no need to move interface %s to network namespace %s" % (name, netns_name))
-
-        return netns_ipdb.interfaces[name]
 
 
     def bird_config_add(self, key, value):
@@ -900,6 +665,11 @@ class Overlay(object):
 
         logging.debug("adding variable %s to BIRD6 configuration" % key)
         self.bird6_config[key] = value
+
+
+    #
+    ## Overlay starting methods.
+    #
 
 
     def start(self):
@@ -928,17 +698,8 @@ class Overlay(object):
         Create the network namespace.
         """
 
-        try:
-            netns.create(self.netns_name)
-        except FileExistsError:
-            logging.debug("no need to create namespace %s" % self.netns_name)
-        except:
-            raise Exception("could not create namespace %s" % self.netns_name)
-        else:
-            logging.debug("creating namespace %s" % self.netns_name)
-
-        self.netns = NetNS(self.netns_name)
-        self.ipdb = IPDB(nl=self.netns)
+        # Create the NetNS and IPDB objects for the network namespace.
+        self.netns, self.ipdb = Network.netns_create(self.netns_name)
 
         # Create the network namespace root directory.
         Util.directory_create(self.netns_root)
@@ -1010,7 +771,7 @@ class Overlay(object):
             logging.debug("creating mesh tunnel %s" % gretap_name)
 
             # Create the mesh tunnel interface.
-            gretap_if = self.gre_create(
+            gretap_if = Network.gre_create(
                 name=gretap_name,
                 kind='gretap',
                 local=physical_local,
@@ -1020,34 +781,34 @@ class Overlay(object):
             )
 
             # Create the tunnel's veth pair in the root namespace.
-            root_veth_if = self.veth_create(
+            root_veth_if = Network.veth_create(
                 name=root_veth_name,
                 peer=netns_veth_name,
                 ipdb=self.root_ipdb,
             )
 
             # Create a bridge interface.
-            bridge_if = self.bridge_create(
+            bridge_if = Network.bridge_create(
                 name=bridge_name,
                 ipdb=self.root_ipdb,
             )
 
             # Add the root namespace veth interface and the mesh tunnel
             # interface to the bridge, linking them.
-            self.bridge_add_port(
+            Network.bridge_add_port(
                 bridge=bridge_if,
                 interface=gretap_if,
                 ipdb=self.root_ipdb,
             )
 
-            self.bridge_add_port(
+            Network.bridge_add_port(
                 bridge=bridge_if,
                 interface=root_veth_if,
                 ipdb=self.root_ipdb,
             )
 
             # Move one of the veth interfaces into the network namespace.
-            netns_veth_if = self.netns_set(
+            netns_veth_if = Network.netns_set(
                 name=netns_veth_name,
                 netns_name=self.netns_name,
                 netns_ipdb=self.ipdb,
@@ -1056,7 +817,7 @@ class Overlay(object):
 
             # Add an address to the network namespace veth interface, so it can
             # be addressed from either side of the mesh tunnel.
-            self.interface_add_ip(
+            Network.interface_add_ip(
                 interface=netns_veth_if,
                 address=netns_veth_address_local,
                 netmask=netns_veth_address_netmask,
@@ -1064,10 +825,10 @@ class Overlay(object):
             )
 
             # Bring up all interfaces.
-            self.interface_up(gretap_if)
-            self.interface_up(root_veth_if)
-            self.interface_up(bridge_if)
-            self.interface_up(netns_veth_if)
+            Network.interface_up(gretap_if)
+            Network.interface_up(root_veth_if)
+            Network.interface_up(bridge_if)
+            Network.interface_up(netns_veth_if)
 
             # Add the mesh tunnel to the list of routed interfaces.
             logging.debug("adding BGP route for mesh tunnel %s" % gretap_name)
@@ -1125,13 +886,13 @@ class Overlay(object):
                 logging.debug("creating static VLAN %s" % name)
 
                 # Find the physical interface in the IPDB.
-                physical_if = self.interface_get(
+                physical_if = Network.interface_get(
                     physical_interface,
                     ipdb=self.root_ipdb,
                 )
 
                 # Create the VLAN interface.
-                vlan_if = self.vlan_create(
+                vlan_if = Network.vlan_create(
                     name=vlan_name,
                     link=self.root_ipdb.interfaces[physical_interface],
                     id=id,
@@ -1139,14 +900,14 @@ class Overlay(object):
                 )
 
                 # Create the veth pair.
-                root_veth_if = self.veth_create(
+                root_veth_if = Network.veth_create(
                     name=root_veth_name,
                     peer=netns_veth_name,
                     ipdb=self.root_ipdb,
                 )
 
                 # Move the netns veth interface to the network namespace.
-                netns_veth_if = self.netns_set(
+                netns_veth_if = Network.netns_set(
                     name=netns_veth_name,
                     netns_name=self.netns_name,
                     netns_ipdb=self.ipdb,
@@ -1155,7 +916,7 @@ class Overlay(object):
 
                 # Add the assigned address for the VLAN to the netns veth
                 # interface.
-                self.interface_add_ip(
+                Network.interface_add_ip(
                     interface=netns_veth_if,
                     address=address,
                     netmask=netmask,
@@ -1164,31 +925,31 @@ class Overlay(object):
 
                 # Create a bridge for the physical interface to connect to the
                 # network namespace via the veth pair.
-                bridge_if = self.bridge_create(
+                bridge_if = Network.bridge_create(
                     name=bridge_name,
                     ipdb=self.root_ipdb,
                 )
 
                 # Add the physical interface and the root veth interface to the
                 # bridge.
-                self.bridge_add_port(
+                Network.bridge_add_port(
                     bridge=bridge_if,
                     interface=vlan_if,
                     ipdb=self.root_ipdb,
                 )
 
-                self.bridge_add_port(
+                Network.bridge_add_port(
                     bridge=bridge_if,
                     interface=root_veth_if,
                     ipdb=self.root_ipdb,
                 )
 
                 # Finally, we're done! Bring up the interfaces!
-                self.interface_up(physical_if)
-                self.interface_up(vlan_if)
-                self.interface_up(root_veth_if)
-                self.interface_up(netns_veth_if)
-                self.interface_up(bridge_if)
+                Network.interface_up(physical_if)
+                Network.interface_up(vlan_if)
+                Network.interface_up(root_veth_if)
+                Network.interface_up(netns_veth_if)
+                Network.interface_up(bridge_if)
 
                 # Add the veth interface connected to the VLAN to the list of 
                 # routed interfaces.
@@ -1242,7 +1003,7 @@ class Overlay(object):
 
                 logging.debug("creating static tunnel %s" % name)
 
-                tunnel_if = self.gre_create(
+                tunnel_if = Network.gre_create(
                     name=tunnel_name,
                     kind=mode,
                     local=local,
@@ -1251,14 +1012,14 @@ class Overlay(object):
                     ipdb=self.ipdb,
                 )
 
-                self.interface_add_ip(
+                Network.interface_add_ip(
                     interface=tunnel_if,
                     address=address,
                     netmask=netmask,
                     ipdb=self.ipdb,
                 )
 
-                self.interface_up(tunnel_if)
+                Network.interface_up(tunnel_if)
 
                 # Add the tunnel to the list of routed interfaces.
                 static_tunnel = {
@@ -1311,7 +1072,7 @@ class Overlay(object):
                 if type(inner_address) != type(outer_address):
                     raise ValueError("inner address %s is not the same type of IP address as outer address %s" % (inner_address, outer_address))
 
-                outer_if = self.veth_create(
+                outer_if = Network.veth_create(
                     name=outer_name,
                     peer=inner_name,
                     ipdb=self.root_ipdb,
@@ -1320,29 +1081,29 @@ class Overlay(object):
                 # Move the inner interface into the network namespace. The idea
                 # of a static veth is that it creates a static path between the
                 # root and network namespaces.
-                inner_if = self.netns_set(
+                inner_if = Network.netns_set(
                     name=inner_name,
                     netns_name=self.netns_name,
                     netns_ipdb=self.ipdb,
                     ipdb=self.root_ipdb,
                 )
 
-                self.interface_add_ip(
+                Network.interface_add_ip(
                     interface=outer_if,
                     address=outer_address,
                     netmask=netmask,
                     ipdb=self.root_ipdb,
                 )
 
-                self.interface_add_ip(
+                Network.interface_add_ip(
                     interface=inner_if,
                     address=inner_address,
                     netmask=netmask,
                     ipdb=self.ipdb,
                 )
 
-                self.interface_up(outer_if)
-                self.interface_up(inner_if)
+                Network.interface_up(outer_if)
+                Network.interface_up(inner_if)
 
                 # Add the inner interface to the list of routed interfaces.
                 static_veth = {
@@ -1607,6 +1368,11 @@ class Overlay(object):
                 raise
 
 
+    #
+    ## Overlay stopping methods.
+    #
+
+
     def stop(self):
         """
         Stop the overlay.
@@ -1637,14 +1403,7 @@ class Overlay(object):
 
         logging.debug("removing namespace %s" % self.netns_name)
 
-        logging.debug("releasing the IPDB for namespace %s" % self.netns_name)
-        self.ipdb.release()
-
-        logging.debug("closing the netns for namespace %s" % self.netns_name)
-        self.netns.close()
-
-        logging.debug("removing the netns for namespace %s" % self.netns_name)
-        netns.remove(self.netns_name)
+        Network.netns_remove(self.netns_name, self.netns, self.ipdb)
 
         logging.debug("removing the netns root tree for namespace %s" % self.netns_name)
         shutil.rmtree(self.netns_root)
@@ -1659,17 +1418,17 @@ class Overlay(object):
 
         logging.debug("removing mesh tunnels")
 
-        self.interface_remove(
+        Network.interface_remove(
             self.root_ipdb,
             expr="^m%il[0-9][0-9]*br$" % self.asn,
         )
 
-        self.interface_remove(
+        Network.interface_remove(
             self.root_ipdb,
             expr="^m%il[0-9][0-9]*v0$" % self.asn,
         )
 
-        self.interface_remove(
+        Network.interface_remove(
             self.root_ipdb,
             expr="^m%il[0-9][0-9]*$" % self.asn,
         )
@@ -1688,7 +1447,7 @@ class Overlay(object):
 
             logging.debug("removing static tunnel %s" % name)
 
-            self.interface_remove(
+            Network.interface_remove(
                 self.ipdb,
                 name=tunnel_name,
             )
@@ -1706,17 +1465,17 @@ class Overlay(object):
 
             logging.debug("removing static VLAN %s" % name)
 
-            self.interface_remove(
+            Network.interface_remove(
                 self.root_ipdb,
                 name=vlan['bridge_interface'],
             )
 
-            self.interface_remove(
+            Network.interface_remove(
                 self.root_ipdb,
                 name=vlan['root_interface'],
             )
 
-            self.interface_remove(
+            Network.interface_remove(
                 self.root_ipdb,
                 name=vlan['vlan_interface'],
             )
@@ -1734,7 +1493,7 @@ class Overlay(object):
 
             logging.debug("removing static veth %s" % name)
 
-            self.interface_remove(
+            Network.interface_remove(
                 self.root_ipdb,
                 name=veth['outer_interface'],
             )
@@ -1765,12 +1524,315 @@ class Overlay(object):
         logging.debug("stopped the BIRD routing daemon")
 
 
+class Network(object):
+    """
+    Network interface manipulation static methods.
+    """
+
+    @staticmethod
+    def interface_get(name, ipdb):
+        """
+        Tries to find an interface with the given name in the chosen IPDB
+        and returns it. Throws an exception if it can't find it.
+        """
+
+        if name in ipdb.by_name.keys():
+            return ipdb.interfaces[name]
+        else:
+            raise Exception("unable to find interface %s in IPDB" % name)
+
+
+    @staticmethod
+    def interface_add_ip(interface, address, netmask, ipdb):
+        """
+        Add the given IP address (either a string, IPv4Address or IPv6Address)
+        with its netmask to the interface in the chosen IPDB.
+        """
+
+        ip_tuple = (str(address), netmask)
+        ip_string = "%s/%i" % ip_tuple
+
+        if ip_tuple in interface.ipaddr:
+            logging.debug("no need to add address %s to interface %s" % (ip_string, interface.ifname))
+            return
+
+        logging.debug("adding address %s to interface %s" % (ip_string, interface.ifname))
+
+        interface.add_ip(ip_string)
+        ipdb.commit()
+
+
+    @staticmethod
+    def _interface_remove(ipdb, interface, delay=0.001, timeout=1.0):
+        """
+        Remove an interface, and wait for it to show as removed in the IPDB.
+        """
+
+        waited = 0.0
+        name = interface.ifname
+
+        logging.debug("removing interface %s" % name)
+
+        interface.down()
+        interface.remove().commit()
+
+        # pyroute2 seems to take a little while to actually execute
+        # an interface removal. Wait for the IPDB to register that the
+        # interface no longer exists.
+        # This stops waiting after a while, to prevent infinite loops.
+        while name in ipdb.by_name.keys() and waited < timeout:
+            time.sleep(delay)
+            waited += delay
+
+        if name in ipdb.by_name.keys():
+            raise Exception("interface %s still exists in IPDB even after waiting" % name)
+
+        logging.debug("finished removing interface %s" % name)
+
+
+    @staticmethod
+    def interface_remove(ipdb, interface=None, name=None, expr=None):
+        """
+        Remove an interface, or any interface matching a given regular
+        expression.
+
+        The required arguments are the IPDB object the interface belongs to,
+        and one of an interface object, an interface name, or a matching
+        regular expression.
+        """
+
+        if interface is not None:
+            Network._interface_remove(ipdb, interface)
+        elif name is not None:
+            if name in ipdb.by_name.keys():
+                Network._interface_remove(ipdb, ipdb.interfaces[name])
+        elif expr is not None:
+            for name in ipdb.by_name.keys():
+                if re.match(expr, name):
+                    Network._interface_remove(ipdb, ipdb.interfaces[name])
+        else:
+            raise Exception("invalid arguments for interface_remove: interface=%s, name=%s, expr=%s, ipdb=" % (interface.ifname if interface is not None else "None", str(name), str(expr), str(ipdb)))
+
+
+    @staticmethod
+    def interface_up(interface):
+        """
+        Bring up the given interface.
+        """
+
+        logging.debug("bringing up interface %s" % interface.ifname)
+        interface.up().commit()
+
+
+    @staticmethod
+    def bridge_create(name, ipdb):
+        """
+        Create a bridge interface with the given name in a chosen IPDB.
+        Returns the interface entry from the IPDB.
+        """
+
+        if name not in ipdb.by_name.keys():
+            logging.debug("creating bridge interface %s" % name)
+
+            interface = ipdb.create(
+                ifname=name,
+                kind='bridge',
+            )
+
+            ipdb.commit()
+        else:
+            logging.debug("no need to create bridge interface %s" % name)
+            interface = ipdb.interfaces[name]
+
+        return interface
+
+
+    @staticmethod
+    def bridge_add_port(bridge, interface, ipdb):
+        """
+        Add the given interface to the list of ports for a given bridge.
+        """
+
+        if interface.index not in bridge.ports:
+            logging.debug("adding interface %s to bridge %s" % (interface.ifname, bridge.ifname))
+
+            bridge.add_port(interface)
+
+            ipdb.commit()
+        else:
+            logging.debug("no need to add interface %s to bridge %s" % (interface.ifname, bridge.ifname))
+
+
+    @staticmethod
+    def gre_create(name, local, remote, ipdb, kind='gre', ttl=16, key=None, ikey=None, okey=None, iflags=32, oflags=32):
+        """
+        Create a gre/gretap interface with the given name in a chosen ipdb.
+        Returns the interface entry from the ipdb.
+        """
+
+        if key is not None:
+            ikey = key
+            okey = key
+
+        if name in ipdb.by_name.keys():
+            interface = ipdb.interfaces[name]
+
+            if (interface.kind != kind or
+                    # Cast for compatibility with IPv4Address/IPv6Address.
+                    interface.gre_local != str(local) or
+                    interface.gre_remote != str(remote) or
+                    interface.gre_ttl != ttl or
+                    interface.gre_ikey != ikey or
+                    interface.gre_okey != okey or
+                    interface.gre_iflags != iflags or
+                    interface.gre_oflags != oflags):
+                logging.debug("removing existing interface %s" % name)
+                Network.interface_remove(ipdb, interface=interface)
+            else:
+                logging.debug("no need to create %s tunnel %s" % (kind, name))
+                return interface
+
+        logging.debug("creating %s tunnel %s" % (kind, name))
+
+        interface = ipdb.create(
+            ifname=name,
+            kind=kind,
+            # Cast for compatibility with IPv4Address/IPv6Address.
+            gre_local=str(local),
+            gre_remote=str(remote),
+            gre_ttl=ttl,
+            gre_ikey=ikey,
+            gre_okey=okey,
+            gre_iflags=iflags,
+            gre_oflags=oflags,
+        )
+
+        ipdb.commit()
+        return interface
+
+
+    @staticmethod
+    def veth_create(name, peer, ipdb):
+        """
+        Create a veth pair with the given names in the chosen IPDB, and
+        returns the root interface. The peer must be retrieved separately.
+        """
+
+        if name in ipdb.by_name.keys():
+            interface = ipdb.interfaces[name]
+
+            if interface.kind != 'veth':
+                logging.debug("removing existing interface %s" % name)
+                Network.interface_remove(ipdb, interface=interface)
+            else:
+                logging.debug("no need to create veth pair %s and %s" % (name, peer))
+                return interface
+
+        logging.debug("creating veth pair %s and %s" % (name, peer))
+
+        interface = ipdb.create(
+            ifname=name,
+            kind='veth',
+            peer=peer,
+        )
+
+        ipdb.commit()
+        return interface
+
+
+    @staticmethod
+    def vlan_create(name, link, id, ipdb):
+        """
+        Create a IEEE 802.1Q VLAN interface with the given name, physical link
+        and ID in the chosen IPDB, and return the interface.
+        """
+
+        if name in ipdb.by_name.keys():
+            interface = ipdb.interfaces[name]
+
+            if (interface.kind != 'vlan' or
+                    ipdb.by_index[interface.link] != link or
+                    interface.vlan_id != id):
+                logging.debug("removing existing interface %s" % name)
+                Network.interface_remove(ipdb, interface=interface)
+            else:
+                logging.debug("no need to create vlan interface %s" % name)
+                return interface
+        else:
+            logging.debug("creating VLAN interface %s" % name)
+
+        interface = ipdb.create(
+            ifname=name,
+            kind='vlan',
+            link=link,
+            vlan_id=id,
+        )
+
+        ipdb.commit()
+        return interface
+
+
+    @staticmethod
+    def netns_create(name):
+        """
+        Create a network namespace, and return a tuple containing its
+        NetNS and IPDB objects.
+        """
+
+        try:
+            netns.create(name)
+        except FileExistsError:
+            logging.debug("no need to create network namespace %s" % name)
+        except:
+            raise Exception("could not create network namespace %s" % name)
+        else:
+            logging.debug("creating network namespace %s" % name)
+
+        nl = NetNS(name)
+        ipdb = IPDB(nl=nl)
+
+        return (nl, ipdb)
+
+
+    @staticmethod
+    def netns_set(name, netns_name, netns_ipdb, ipdb):
+        """
+        Moves an interface into a chosen network namespace. Returns the
+        interface object from the network namespace.
+        """
+
+        if name not in netns_ipdb.by_name.keys():
+            logging.debug("moving interface %s to network namespace %s" % (name, netns_name))
+
+            ipdb.interfaces[name].net_ns_fd = netns_name
+            ipdb.commit()
+        else:
+            logging.debug("no need to move interface %s to network namespace %s" % (name, netns_name))
+
+        return netns_ipdb.interfaces[name]
+
+
+    @staticmethod
+    def netns_remove(name, nl, ipdb):
+        """
+        Close a network namespace's IPDB and NetNS objects, and remove it from
+        the system.
+        """
+
+        logging.debug("releasing the IPDB for network namespace %s" % name)
+        ipdb.release()
+
+        logging.debug("closing the NetNS for network namespace %s" % name)
+        nl.close()
+
+        logging.debug("removing the network namespace %s from system" % name)
+        netns.remove(name)
+
+
 class Util(object):
-
-
-    #
-    ## Argument/parameter processing.
-    #
+    """
+    Argument/parameter processing.
+    """
 
     @staticmethod
     def ip_network_get(value):
