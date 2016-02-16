@@ -3,6 +3,7 @@
 /.data_root
 /.with_init_d
 /.with_upstart
+/default/l3overlay
 /init.d/l3overlay
 /upstart/l3overlay.conf
 

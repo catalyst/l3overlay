@@ -106,6 +106,15 @@ if with_init_d:
 
     data_files.append(("/etc/init.d", ['init.d/l3overlay']))
 
+# Generate the default configuration parameters for the Upstart/init.d service
+# configuration, if either of them are enabled.
+if with_upstart or with_init_d:
+    with open('default/l3overlay.in', encoding='UTF-8') as f:
+        with open('default/l3overlay', mode='w', encoding='UTF-8') as g:
+            g.write(re.sub("__PREFIX__", data_root, f.read()))
+
+    data_files.append(("/etc/default", ['default/l3overlay']))
+
 # Setup the package.
 setup(
     name='l3overlay',

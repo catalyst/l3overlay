@@ -1,0 +1,37 @@
+#!/bin/sh
+
+#
+# l3overlay file and directory locations.
+#
+
+# Configuration directory prefix.
+# Automatically specified by the build system.
+PREFIX=__PREFIX__
+
+# The directory where all l3overlay configuration is stored.
+CONFIG_DIR=$PREFIX/etc/l3overlay
+
+# Global configuration location.
+GLOBAL_CONF=$CONFIG_DIR/global.conf
+
+# Overlay configuration search directory.
+OVERLAY_CONF_DIR=$CONFIG_DIR/overlays
+
+# fwbuilder script search directory.
+FWBUILDER_SCRIPT_DIR=$CONFIG_DIR/fwbuilder_scripts
+
+# System daemon configuration template search directory.
+TEMPLATE_DIR=$PREFIX/etc/l3overlay/templates
+
+# Runtime data locations.
+LIB_DIR=/var/lib/l3overlay
+
+# File to log output to.
+LOG_FILE=/var/log/l3overlay.log
+
+# PID lock file. Default specified in /etc/init.d/l3overlay.
+# PIDFILE=
+
+# Amalgamate the configuration options into a set of arguments. This is required
+# for the above configuration options to take effect.
+DAEMON_ARGS="--global-conf $GLOBAL_CONF --overlay-conf-dir $OVERLAY_CONF_DIR --lib-dir $LIB_DIR --template-dir $TEMPLATE_DIR --log-file $LOG_FILE"
