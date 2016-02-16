@@ -2364,4 +2364,5 @@ if __name__ == "__main__":
     os.chmod(pid_file, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH)
 
     # The daemon is now started. Wait until we receive a signal.
-    signal.pause()
+    while True:
+        signal.pause()
