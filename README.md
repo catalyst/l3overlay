@@ -53,6 +53,49 @@ Any configuration files or directories mentioned in this document should be plac
 * `/etc/l3overlay/global.conf`
 * `/etc/l3overlay/overlays/example.conf`
 
+Running
+-------
+
+Once l3overlay is installed and configured, it can be executed by simply running the `l3overlayd` command if it is located in the `PATH` environment variable, or by running the executable directly if it is not.
+
+If the `WITH_UPSTART` or `WITH_INIT_D` configuration options were specified when installing l3overlay, an Upstart configuration or `/etc/init.d` script would have been installed with l3overlay.
+
+To start l3overlay as a service, simply run:
+
+    sudo service l3overlay start
+
+To ensure that l3overlay starts with the system using the `/etc/init.d` script, this command should also be run:
+
+    sudo update-rc.d l3overlay defaults
+
+All of the directories and files that `l3overlayd` uses can be specified on the command line. The command `l3overlayd --help` documents the command line switches which can be used:
+
+    usage: l3overlayd [-h] [-gc FILE] [-ocd DIR] [-oc FILE [FILE ...]] [-td DIR]
+                      [-fsd DIR] [-Ld DIR] [-lf FILE] [-pf FILE]
+
+    Construct one or more MPLS-like VRF networks using IPsec tunnels and network
+    namespaces.
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -gc FILE, --global-conf FILE
+                            use FILE as the global configuration file
+      -ocd DIR, --overlay-conf-dir DIR
+                            use DIR as the overlay conf search directory
+      -oc FILE [FILE ...], --overlay-conf FILE [FILE ...]
+                            configure the overlay defined in FILE, disables
+                            overlay config directory searching
+      -td DIR, --template-dir DIR
+                            use DIR as the configuration template search directory
+      -fsd DIR, --fwbuilder-script-dir DIR
+                            use DIR as the fwbuilder script search directory
+      -Ld DIR, --lib-dir DIR
+                            use DIR as the runtime data directory
+      -lf FILE, --log-file FILE
+                            log output to FILE
+      -pf FILE, --pid-file FILE
+                            use FILE as the PID lock file
+
 Example configuration
 ----------------------
 
