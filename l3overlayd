@@ -261,12 +261,11 @@ class OverlayDaemon(object):
         # Save the IPsec configuration.
         logging.debug("saving ipsec configuration to disk")
 
-        f = open(self.ipsec_config_file, 'w')
-        f.write(self.ipsec_config_template.render(
-            file=self.ipsec_config_file,
-            mesh_tunnels=self.mesh_tunnels,
-        ))
-        f.close()
+        with open(self.ipsec_config_file, 'w') as f:
+            f.write(self.ipsec_config_template.render(
+                file=self.ipsec_config_file,
+                mesh_tunnels=self.mesh_tunnels,
+            ))
 
         # Create the directory where the IPsec secrets are stored.
         logging.debug("creating IPsec secrets directory")
@@ -276,9 +275,9 @@ class OverlayDaemon(object):
         # by l3overlay. Only gets created if ipsec_manage is true.
         if self.ipsec_manage == True:
             logging.debug("saving IPsec secrets stub file to disk")
-            f = open(self.ipsec_secrets_stub_file, 'w')
-            f.write("include %s\n" % self.ipsec_secrets_file)
-            f.close()
+
+            with open(self.ipsec_secrets_stub_file, 'w') as f:
+                f.write("include %s\n" % self.ipsec_secrets_file)
 
         # Save the REAL ipsec.secrets.
         logging.debug("saving IPsec secrets file to disk")
@@ -292,13 +291,12 @@ class OverlayDaemon(object):
             if remote not in addresses:
                 addresses.append(remote)
 
-        f = open(self.ipsec_secrets_file, 'w')
-        f.write(self.ipsec_secrets_template.render(
-            file=self.ipsec_secrets_file,
-            addresses=addresses,
-            secret=self.ipsec_psk,
-        ))
-        f.close()
+        with open(self.ipsec_secrets_file, 'w') as f:
+            f.write(self.ipsec_secrets_template.render(
+                file=self.ipsec_secrets_file,
+                addresses=addresses,
+                secret=self.ipsec_psk,
+            ))
 
         logging.debug("finished configuring ipsec")
 
@@ -1304,15 +1302,15 @@ class Overlay(object):
         # Save the BIRD configuration.
         if self.bird_config:
             logging.debug("saving bird configuration to disk")
-            f = open(bird_config_file, 'w')
-            f.write(self.bird_config_template.render(self.bird_config))
-            f.close()
+
+            with open(bird_config_file, 'w') as f:
+                f.write(self.bird_config_template.render(self.bird_config))
 
         if self.bird6_config:
             logging.debug("saving bird6 configuration to disk")
-            f = open(bird6_config_file, 'w')
-            f.write(self.bird_config_template.render(self.bird6_config))
-            f.close()
+
+            with open(bird6_config_file, 'w') as f:
+                f.write(self.bird_config_template.render(self.bird6_config))
 
         logging.debug("finished configuring BIRD")
 
@@ -2163,9 +2161,8 @@ class Util(object):
 
         if pid_file is not None:
             if os.path.exists(pid_file):
-                f = open(pid_file, 'r')
-                pid_file_data = f.read().strip()
-                f.close()
+                with open(pid_file, 'r') as f:
+                    pid_file_data = f.read().strip()
 
                 if len(pid_file_data) > 0 and re.match("[0-9][0-9]*", pid_file_data):
                     pid = int(pid_file_data)
@@ -2392,9 +2389,8 @@ if __name__ == "__main__":
 
     # Save the PID of this daemon to a file. This serves as a lock for
     # l3overlayd, and allows it to be monitored by external processes.
-    f = open(args.pid_file, 'w')
-    f.write("%i\n" % os.getpid())
-    f.close()
+    with open(args.pid_file, 'w') as f:
+        f.write("%i\n" % os.getpid())
 
     os.chmod(pid_file, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH)
 
