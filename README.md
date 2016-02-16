@@ -283,20 +283,16 @@ See the [BIRD filter documentation on data types](http://bird.network.cz/?get_do
 
 This section is used to configure a static veth pair, with an outer interface in the root namespace, and an inner interface inside the overlay. Both the outer and inner interface must share the same type of IP address (for example, both must be either IPv4 or IPv6, not one and the other), as the two interface addresses must share the same subnet.
 
-#### inner-address
+#### <inner|outer>-address
 * Type: **ip address**
 * Required: **yes**
 
-The IP address assigned to the inner (overlay) interface.
+The IP address assigned to the either the inner veth interface inside the overlay, or the outer interface in the root namespace.
 
-#### outer-address
-* Type: **ip address**
-* Required: **yes**
-
-The IP address assigned to the outer (overlay) interface.
+In a veth pair, only one of the two interfaces should be configured. Therefore, either `inner-address` or `outer-address` can be specified, but not both at the same time.
 
 #### netmask
 * Type: **subnet mask**
 * Required: **yes**
 
-The subnet mask for both the inner and outer addresses.
+The subnet mask for the assigned address.

@@ -1060,27 +1060,37 @@ class Overlay(object):
         for section in self.config.sections():
             if section.startswith('static-veth'):
                 name = Util.name_get(section.lstrip('static-veth:'))
-                inner_address = Util.ip_address_get(self.config[section]['inner-address'])
-                outer_address = Util.ip_address_get(self.config[section]['outer-address'])
-                netmask = Util.netmask_get(self.config[section]['netmask'], Util.ip_address_is_v6(inner_address))
+                inner_address = Util.ip_address_get(self.config[section]['inner-address']) if 'inner-address' in self.config[section] else None
+                outer_address = Util.ip_address_get(self.config[section]['outer-address']) if 'outer-address' in self.config[section] else None
+
+                # A valid veth pair only has an address assigned at only one
+                # end of the pair. Enforce this restriction.
+                if inner_address is not None and outer_address is not None:
+                    raise ValueError("cannot have both inner-address and outer-address in static veth" % name)
+                elif inner_address is not None:
+                    address = inner_address
+                elif outer_address is not None:
+                    address = outer_address
+                else:
+                    raise ValueError("one of inner-address or outer-address must be specified in static veth" % name)
+
+                netmask = Util.netmask_get(self.config[section]['netmask'], Util.ip_address_is_v6(address))
 
                 outer_name = self.interface_name(name + 'v')
                 inner_name = self.interface_name(name + 'v')
 
                 logging.debug("creating static veth %s" % name)
 
-                if type(inner_address) != type(outer_address):
-                    raise ValueError("inner address %s is not the same type of IP address as outer address %s" % (inner_address, outer_address))
-
+                # The idea of a static veth is that it creates a static path
+                # between the root and network namespaces. The outer interface
+                # stays in the root namespace, while the inner interface gets
+                # moved into the network namespace.
                 outer_if = Network.veth_create(
                     name=outer_name,
                     peer=inner_name,
                     ipdb=self.root_ipdb,
                 )
 
-                # Move the inner interface into the network namespace. The idea
-                # of a static veth is that it creates a static path between the
-                # root and network namespaces.
                 inner_if = Network.netns_set(
                     name=inner_name,
                     netns_name=self.netns_name,
@@ -1088,20 +1098,23 @@ class Overlay(object):
                     ipdb=self.root_ipdb,
                 )
 
+                # Determine which interface to assign the address to.
+                if inner_address is not None:
+                    interface = inner_if
+                    ipdb = self.ipdb
+                elif outer_address is not None:
+                    interface = outer_if
+                    ipdb = self.root_ipdb
+
+                # Assign the address to the correct interface.
                 Network.interface_add_ip(
-                    interface=outer_if,
-                    address=outer_address,
+                    interface=interface,
+                    address=address,
                     netmask=netmask,
-                    ipdb=self.root_ipdb,
+                    ipdb=ipdb,
                 )
 
-                Network.interface_add_ip(
-                    interface=inner_if,
-                    address=inner_address,
-                    netmask=netmask,
-                    ipdb=self.ipdb,
-                )
-
+                # Bring up both the inner and outer interfaces.
                 Network.interface_up(outer_if)
                 Network.interface_up(inner_if)
 
