@@ -821,7 +821,6 @@ class Overlay(object):
                 interface=netns_veth_if,
                 address=netns_veth_address_local,
                 netmask=netns_veth_address_netmask,
-                ipdb=self.ipdb,
             )
 
             # Bring up all interfaces.
@@ -920,7 +919,6 @@ class Overlay(object):
                     interface=netns_veth_if,
                     address=address,
                     netmask=netmask,
-                    ipdb=self.ipdb,
                 )
 
                 # Create a bridge for the physical interface to connect to the
@@ -1016,7 +1014,6 @@ class Overlay(object):
                     interface=tunnel_if,
                     address=address,
                     netmask=netmask,
-                    ipdb=self.ipdb,
                 )
 
                 Network.interface_up(tunnel_if)
@@ -1111,7 +1108,6 @@ class Overlay(object):
                     interface=interface,
                     address=address,
                     netmask=netmask,
-                    ipdb=ipdb,
                 )
 
                 # Bring up both the inner and outer interfaces.
@@ -1556,10 +1552,10 @@ class Network(object):
 
 
     @staticmethod
-    def interface_add_ip(interface, address, netmask, ipdb):
+    def interface_add_ip(interface, address, netmask):
         """
         Add the given IP address (either a string, IPv4Address or IPv6Address)
-        with its netmask to the interface in the chosen IPDB.
+        with its netmask to the chosen interface.
         """
 
         ip_tuple = (str(address), netmask)
@@ -1571,8 +1567,7 @@ class Network(object):
 
         logging.debug("adding address %s to interface %s" % (ip_string, interface.ifname))
 
-        interface.add_ip(ip_string)
-        ipdb.commit()
+        interface.add_ip(ip_string).commit()
 
 
     @staticmethod
