@@ -2283,7 +2283,7 @@ if __name__ == "__main__":
     argparser = argparse.ArgumentParser(description="Construct one or more MPLS-like VRF networks using IPsec tunnels and network namespaces.")
 
     argparser.add_argument(
-        '--global-conf',
+        '-gc', '--global-conf',
         metavar='FILE',
         type=str,
         default=global_conf,
@@ -2291,7 +2291,7 @@ if __name__ == "__main__":
     )
 
     argparser.add_argument(
-        '--overlay-conf-dir',
+        '-ocd', '--overlay-conf-dir',
         metavar='DIR',
         type=str,
         default=overlay_conf_dir,
@@ -2299,7 +2299,24 @@ if __name__ == "__main__":
     )
 
     argparser.add_argument(
-        '--fwbuilder-script-dir',
+        '-oc', '--overlay-conf',
+        metavar='FILE',
+        type=str,
+        nargs='+',
+        default=None,
+        help="configure the overlay defined in FILE, disables overlay config directory searching",
+    )
+
+    argparser.add_argument(
+        '-td', '--template-dir',
+        metavar='DIR',
+        type=str,
+        default=template_dir,
+        help="use DIR as the configuration template search directory",
+    )
+
+    argparser.add_argument(
+        '-fsd', '--fwbuilder-script-dir',
         metavar='DIR',
         type=str,
         default=fwbuilder_script_dir,
@@ -2307,12 +2324,27 @@ if __name__ == "__main__":
     )
 
     argparser.add_argument(
-        '--overlay-conf',
+        '-Ld', '--lib-dir',
+        metavar='DIR',
+        type=str,
+        default=lib_dir,
+        help="use DIR as the runtime data directory",
+    )
+
+    argparser.add_argument(
+        '-lf', '--log-file',
         metavar='FILE',
         type=str,
-        nargs='+',
-        default=None,
-        help="configure the overlay defined in FILE",
+        default=log_file,
+        help="log output to FILE",
+    )
+
+    argparser.add_argument(
+        '-pf', '--pid-file',
+        metavar='FILE',
+        type=str,
+        default=pid_file,
+        help="use FILE as the PID lock file",
     )
 
     args = argparser.parse_args()
@@ -2321,7 +2353,7 @@ if __name__ == "__main__":
     # PID actually exists, shut down this instance and warn the user. If there
     # is a PID file and it doesn't contain a valid process, remove the PID lock
     # and start anyway.
-    old_pid = Util.pid_get(pid_file=pid_file)
+    old_pid = Util.pid_get(pid_file=args.pid_file)
 
     if old_pid is not None:
         raise RuntimeError("valid PID lock file at %s, to start a new l3overlayd instance, kill the running l3overlayd instance with the PID %i" % (pid_file, old_pid))
@@ -2329,21 +2361,24 @@ if __name__ == "__main__":
     # Find all available overlay configuration files, and build those overlays.
     overlay_paths = []
 
-    for overlay in os.listdir(args.overlay_conf_dir):
-        overlay_path = os.path.join(args.overlay_conf_dir, overlay)
-        if os.path.isfile(overlay_path):
-            overlay_paths.append(overlay_path)
-
+    # If specific overlay configuration files are specified on the command
+    # use only those. If not, search the overlay configuration directory for
+    # overlay configuration files.
     if args.overlay_conf is not None:
         for overlay_path in args.overlay_conf:
             overlay_paths.append(overlay_path)
+    else:
+        for overlay in os.listdir(args.overlay_conf_dir):
+            overlay_path = os.path.join(args.overlay_conf_dir, overlay)
+            if os.path.isfile(overlay_path):
+                overlay_paths.append(overlay_path)
 
     # Launch a new OverlayDaemon, which takes in all of the configured data and
     # starts/stops the overlays.
     daemon = OverlayDaemon(
-        template_dir=template_dir,
-        lib_dir=lib_dir,
-        log_file=log_file,
+        template_dir=args.template_dir,
+        lib_dir=args.lib_dir,
+        log_file=args.log_file,
         global_conf=args.global_conf,
         fwbuilder_script_dir=args.fwbuilder_script_dir,
         overlay_paths=overlay_paths,
@@ -2357,7 +2392,7 @@ if __name__ == "__main__":
 
     # Save the PID of this daemon to a file. This serves as a lock for
     # l3overlayd, and allows it to be monitored by external processes.
-    f = open(pid_file, 'w')
+    f = open(args.pid_file, 'w')
     f.write("%i\n" % os.getpid())
     f.close()
 
