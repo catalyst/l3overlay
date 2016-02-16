@@ -682,10 +682,9 @@ class Overlay(object):
         Remove an interface, or any interface matching a given regular
         expression.
 
-        The required arguments are one of an interface object, an interface
-        name, or a matching regular expression. In addition to this, an IPDB
-        object is required for an interface name or a regular expression, to
-        allow for the method to search for interface objects to remove.
+        The required arguments are the IPDB object the interface belongs to,
+        and one of an interface object, an interface name, or a matching
+        regular expression.
         """
 
         if interface is not None:
