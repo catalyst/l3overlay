@@ -545,9 +545,9 @@ class Overlay(object):
         # Used by Overlay.gre_key().
         self.mesh_tunnels = daemon.mesh_tunnels
 
-        # self.static_vlans = defined in start_vlans()
-        # self.static_tunnels = defined in start_tunnels()
-        # self.static_veths = defined in start_veths()
+        # self.static_vlans = defined in start_static_vlans()
+        # self.static_tunnels = defined in start_static_tunnels()
+        # self.static_veths = defined in start_static_veths()
 
         # Network namespace root directory. Used for saving network namespace
         # specific configuration files.
