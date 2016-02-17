@@ -209,7 +209,10 @@ class OverlayDaemon(object):
         self.start_directories()
 
         # Start all of the configured overlays.
-        for overlay_path in overlay_paths:
+        # This is sorted to make l3overlay load the overlays in
+        # alphabetical order, which can be controlled in the filesystem.
+        # TODO: Build a dependency tree instead.
+        for overlay_path in sorted(self.overlay_paths):
             self.overlays.append(Overlay(self, overlay_path))
 
         # Start the IPsec tunnels for the overlays.
@@ -362,7 +365,9 @@ class OverlayDaemon(object):
 
         daemon.stop_ipsec()
 
-        for overlay in self.overlays:
+        # Reverse the list of overlays in order to unload overlays
+        # in the opposite order of loading.
+        for overlay in reversed(self.overlays):
             overlay.stop()
 
         daemon.stop_directories()
@@ -490,7 +495,9 @@ class Overlay(object):
 
 
     def __init__(self, daemon, configuration_path):
-        # Relevant global configuration.
+        # Relevant global fields.
+        self.overlays = daemon.overlays
+
         self.lib_dir = daemon.lib_dir
         self.fwbuilder_script_dir = daemon.fwbuilder_script_dir
 
@@ -1057,6 +1064,7 @@ class Overlay(object):
                 name = Util.name_get(section.lstrip('static-veth:'))
                 inner_address = Util.ip_address_get(self.config[section]['inner-address']) if 'inner-address' in self.config[section] else None
                 outer_address = Util.ip_address_get(self.config[section]['outer-address']) if 'outer-address' in self.config[section] else None
+                outer_namespace = Util.ip_address_get(self.config[section]['outer-namespace']) if 'outer-namespace' in self.config[section] else None
 
                 # A valid veth pair only has an address assigned at only one
                 # end of the pair. Enforce this restriction.
@@ -1076,14 +1084,37 @@ class Overlay(object):
 
                 logging.debug("creating static veth %s" % name)
 
-                # The idea of a static veth is that it creates a static path
-                # between the root and network namespaces. The outer interface
-                # stays in the root namespace, while the inner interface gets
-                # moved into the network namespace.
+                # Get the NetNS and IPDB objects for the outer interface's
+                # configured network namespace.
+                outer_overlay = None
+                outer_netns = None
+                outer_ipdb = None
+
+                if outer_namespace is not None:
+                    # Check if the outer namespace name is the name of an
+                    # overlay. If it is, fetch the overlay object, as well
+                    # as its NetNS and IPDB objects.
+                    for overlay in self.overlays:
+                        if outer_namespace == overlay.netns_name:
+                            outer_overlay = overlay
+                            outer_netns = overlay.netns
+                            outer_ipdb = overlay.ipdb
+                            break
+
+                    # Couldn't find the outer namespace name in the list of
+                    # overlays. Look for it as an external network namespace.
+                    if outer_netns is None and outer_ipdb is None:
+                        outer_netns, outer_ipdb = Network.netns_get(outer_namespace)
+                # outer-namespace not defined. Set outer_ipdb to the root
+                # namespace IPDB.
+                else:
+                    outer_ipdb = self.root_ipdb
+
+                # Create the inner and outer interfaces.
                 outer_if = Network.veth_create(
                     name=outer_name,
                     peer=inner_name,
-                    ipdb=self.root_ipdb,
+                    ipdb=outer_ipdb,
                 )
 
                 inner_if = Network.netns_set(
@@ -1094,12 +1125,7 @@ class Overlay(object):
                 )
 
                 # Determine which interface to assign the address to.
-                if inner_address is not None:
-                    interface = inner_if
-                    ipdb = self.ipdb
-                elif outer_address is not None:
-                    interface = outer_if
-                    ipdb = self.root_ipdb
+                interface = inner_if if inner_address is not None else outer_if
 
                 # Assign the address to the correct interface.
                 Network.interface_add_ip(
@@ -1111,6 +1137,12 @@ class Overlay(object):
                 # Bring up both the inner and outer interfaces.
                 Network.interface_up(outer_if)
                 Network.interface_up(inner_if)
+
+                # We are done with the outer interface's network namespace.
+                # Close the NetNS and IPDB objects for it if it is not an
+                # overlay.
+                if outer_namespace is not None and outer_overlay is None:
+                    Network.netns_close(outer_namespace, outer_netns, outer_ipdb)
 
                 # Add the inner interface to the list of routed interfaces.
                 static_veth = {
@@ -1779,6 +1811,22 @@ class Network(object):
 
 
     @staticmethod
+    def netns_get(name):
+        """
+        Check if a network namespace exists, and return a tuple containing its
+        NetNS and IPDB objects. Raise an Exception if it doesn't exist.
+        """
+
+        if name not in netns.listnetns():
+            raise Exception("no existing network namespace with name %s" % name)
+
+        nl = NetNS(name)
+        ipdb = IPDB(nl=nl)
+
+        return (nl, ipdb)
+
+
+    @staticmethod
     def netns_create(name):
         """
         Create a network namespace, and return a tuple containing its
@@ -1794,10 +1842,7 @@ class Network(object):
         else:
             logging.debug("creating network namespace %s" % name)
 
-        nl = NetNS(name)
-        ipdb = IPDB(nl=nl)
-
-        return (nl, ipdb)
+        return Network.netns_get(name)
 
 
     @staticmethod
@@ -1819,10 +1864,9 @@ class Network(object):
 
 
     @staticmethod
-    def netns_remove(name, nl, ipdb):
+    def netns_close(nl, ipdb):
         """
-        Close a network namespace's IPDB and NetNS objects, and remove it from
-        the system.
+        Close a network namespace's IPDB and NetNS objects.
         """
 
         logging.debug("releasing the IPDB for network namespace %s" % name)
@@ -1830,6 +1874,16 @@ class Network(object):
 
         logging.debug("closing the NetNS for network namespace %s" % name)
         nl.close()
+
+
+    @staticmethod
+    def netns_remove(name, nl, ipdb):
+        """
+        Close a network namespace's IPDB and NetNS objects, and remove it from
+        the system.
+        """
+
+        Network.netns_close(nl, ipdb)
 
         logging.debug("removing the network namespace %s from system" % name)
         netns.remove(name)

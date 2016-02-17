@@ -324,7 +324,7 @@ See the [BIRD filter documentation on data types](http://bird.network.cz/?get_do
 
 ### [static-veth:*{name}*]
 
-This section is used to configure a static veth pair, with an outer interface in the root namespace, and an inner interface inside the overlay. Both the outer and inner interface must share the same type of IP address (for example, both must be either IPv4 or IPv6, not one and the other), as the two interface addresses must share the same subnet.
+This section is used to configure a static veth pair, with an inner interface inside the overlay, and an outer interface, either in the root namespace, or an externally created network namespace.
 
 #### <inner|outer>-address
 * Type: **ip address**
@@ -339,3 +339,13 @@ In a veth pair, only one of the two interfaces should be configured. Therefore, 
 * Required: **yes**
 
 The subnet mask for the assigned address.
+
+#### outer-namespace
+* Type: **name**
+* Required: no
+
+The name of the network namespace to move the outer interface into. The network namespace must already exist before the overlay is created.
+
+This can be used to connect to another overlay, but `l3overlayd` does not yet enforce any dependency ordering. However, overlay configuration files are started in alphabetical order, and stopped in reverse order of starting, so in the mean time, that can be used for ordering.
+
+To link overlays, define `outer-namespace` in the overlay that starts **LAST**, and specify the value to be the name of the overlay that starts **FIRST**.
