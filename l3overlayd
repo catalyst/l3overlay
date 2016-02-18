@@ -1864,7 +1864,7 @@ class Network(object):
 
 
     @staticmethod
-    def netns_close(nl, ipdb):
+    def netns_close(name, nl, ipdb):
         """
         Close a network namespace's IPDB and NetNS objects.
         """
@@ -1883,7 +1883,7 @@ class Network(object):
         the system.
         """
 
-        Network.netns_close(nl, ipdb)
+        Network.netns_close(name, nl, ipdb)
 
         logging.debug("removing the network namespace %s from system" % name)
         netns.remove(name)
