@@ -1064,7 +1064,7 @@ class Overlay(object):
                 name = Util.name_get(section.lstrip('static-veth:'))
                 inner_address = Util.ip_address_get(self.config[section]['inner-address']) if 'inner-address' in self.config[section] else None
                 outer_address = Util.ip_address_get(self.config[section]['outer-address']) if 'outer-address' in self.config[section] else None
-                outer_namespace = Util.ip_address_get(self.config[section]['outer-namespace']) if 'outer-namespace' in self.config[section] else None
+                outer_namespace = Util.name_get(self.config[section]['outer-namespace']) if 'outer-namespace' in self.config[section] else None
 
                 # A valid veth pair only has an address assigned at only one
                 # end of the pair. Enforce this restriction.
