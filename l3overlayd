@@ -229,19 +229,19 @@ class OverlayDaemon(object):
 
         # Set the umask so that any files that this OverlayDaemon creates, will
         # only be readable and writable by itself.
-        logging.info("setting up file and directory handling")
+        logging.debug("setting up file and directory handling")
 
-        logging.info("setting umask")
+        logging.debug("setting umask")
         os.umask(
             stat.S_IRGRP | stat.S_IWGRP | stat.S_IXGRP |
             stat.S_IROTH | stat.S_IWOTH | stat.S_IXOTH
         )
 
         # Create directories.
-        logging.info("creating %s" % self.lib_dir)
+        logging.debug("creating %s" % self.lib_dir)
         Util.directory_create(self.lib_dir)
 
-        logging.info("finished setting up file and directory handling")
+        logging.debug("finished setting up file and directory handling")
 
 
     def start_ipsec(self):
@@ -382,7 +382,7 @@ class OverlayDaemon(object):
         files in the runtime directories.
         """
 
-        logging.info("removing %s" % self.lib_dir)
+        logging.debug("removing %s" % self.lib_dir)
         shutil.rmtree(self.lib_dir)
 
 
