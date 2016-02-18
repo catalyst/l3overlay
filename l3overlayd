@@ -520,7 +520,7 @@ class Overlay(object):
 
         for key in self.config['overlay'].keys():
             if key.startswith('node-'):
-                nodes_dict[int(key.lstrip('node-'))] = tuple(self.config['overlay'][key].split())
+                nodes_dict[int(re.sub('^node-', '', key))] = tuple(self.config['overlay'][key].split())
 
         self.nodes = [nodes_dict[key] for key in sorted(nodes_dict.keys())]
 
@@ -876,7 +876,7 @@ class Overlay(object):
 
         for section in self.config.sections():
             if section.startswith('static-vlan'):
-                name = Util.name_get(section.lstrip('static-vlan:'))
+                name = Util.section_name_get('static-vlan', section)
                 id = int(self.config[section]['id'])
                 physical_interface = Util.name_get(self.config[section]['physical-interface'])
                 address = Util.ip_address_get(self.config[section]['address'])
@@ -995,7 +995,7 @@ class Overlay(object):
 
         for section in self.config.sections():
             if section.startswith('static-tunnel'):
-                name = Util.name_get(section.lstrip('static-tunnel:'))
+                name = Util.section_name_get('static-tunnel', section)
                 mode = Util.enum_get(self.config[section]['mode'], ['gre', 'gretap'])
                 local = Util.ip_address_get(self.config[section]['local'])
                 remote = Util.ip_address_get(self.config[section]['remote'])
@@ -1061,7 +1061,7 @@ class Overlay(object):
 
         for section in self.config.sections():
             if section.startswith('static-veth'):
-                name = Util.name_get(section.lstrip('static-veth:'))
+                name = Util.section_name_get('static-veth', section)
                 inner_address = Util.ip_address_get(self.config[section]['inner-address']) if 'inner-address' in self.config[section] else None
                 outer_address = Util.ip_address_get(self.config[section]['outer-address']) if 'outer-address' in self.config[section] else None
                 outer_namespace = Util.name_get(self.config[section]['outer-namespace']) if 'outer-namespace' in self.config[section] else None
@@ -1121,7 +1121,7 @@ class Overlay(object):
                     name=inner_name,
                     netns_name=self.netns_name,
                     netns_ipdb=self.ipdb,
-                    ipdb=self.root_ipdb,
+                    ipdb=outer_ipdb,
                 )
 
                 # Determine which interface to assign the address to.
@@ -1182,7 +1182,7 @@ class Overlay(object):
             if section.startswith('static-bgp'):
                 bgp = {}
 
-                name = Util.name_get(section.lstrip('static-bgp:'))
+                name = Util.section_name_get('static-bgp', section)
                 neighbor = Util.ip_address_get(self.config[section]['neighbor'])
                 local = Util.ip_address_get(self.config[section]['local']) if 'local' in self.config[section] else None
 
@@ -1820,7 +1820,10 @@ class Network(object):
         if name not in netns.listnetns():
             raise Exception("no existing network namespace with name %s" % name)
 
+        logging.debug("creating the NetNS for network namespace %s" % name)
         nl = NetNS(name)
+
+        logging.debug("creating the IPDB for network namespace %s" % name)
         ipdb = IPDB(nl=nl)
 
         return (nl, ipdb)
@@ -1893,6 +1896,35 @@ class Util(object):
     """
     Argument/parameter processing.
     """
+
+    @staticmethod
+    def section_name_get(section_type, section):
+        """
+        Get the unique name for a configuration section by passing in the
+        section type and the raw section data.
+        """
+
+        return Util.name_get(re.sub("^%s:" % section_type, '', section))
+
+
+    @staticmethod
+    def name_get(value):
+        """
+        Check that a string is a valid name, and return it. A name is a string
+        that is just one word, without whitespace. Raise a ValueError if the
+        string is not a valid name.
+        """
+
+        name = value.strip()
+
+        if len(name) == 0:
+            raise ValueError("empty string not a valid name")
+
+        if not re.fullmatch("[^\s][^\s]*", value):
+            raise ValueError("given string not a valid name (contains whitespace): %s" % name)
+
+        return name
+
 
     @staticmethod
     def ip_network_get(value):
@@ -2020,25 +2052,6 @@ class Util(object):
             raise ValueError("invalid value for boolean: %s" % lower_value)
 
         return True if lower_value == "true" else False
-
-
-    @staticmethod
-    def name_get(value):
-        """
-        Check that a string is a valid name, and return it. A name is a string
-        that is just one word, without whitespace. Raise a ValueError if the 
-        string is not a valid name.
-        """
-
-        name = value.strip()
-
-        if len(name) == 0:
-            raise ValueError("empty string not a valid name")
-
-        if not re.fullmatch("[^\s][^\s]*", value):
-            raise ValueError("given string not a valid name (contains whitespace): %s" % name)
-
-        return name
 
 
     @staticmethod
