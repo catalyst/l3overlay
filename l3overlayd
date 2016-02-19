@@ -125,8 +125,8 @@ class OverlayDaemon(object):
             overlay = configparser.ConfigParser()
             overlay.read(path)
 
-            overlays[config['overlay']['name']] = overlay
-            overlay_names_to_paths[config['overlay']['name']] = path
+            overlays[overlay['overlay']['name']] = overlay
+            overlay_names_to_paths[overlay['overlay']['name']] = path
 
         # Pass 2: add each overlay to the list of sorted overlay paths,
         # using a recursive function to resolve dependencies.
