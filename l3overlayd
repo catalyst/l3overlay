@@ -79,6 +79,103 @@ class OverlayDaemon(object):
         self.start()
 
 
+    @staticmethod
+    def _overlay_paths_sorted(overlays, overlay_names_to_paths, sorted_overlay_paths, name):
+        """
+        Add an overlay configuration file path to the list of sorted overlay
+        paths, while adding any overlays that the overlay depends on before it.
+        """
+
+        overlay = overlays[name]
+        path = overlay_names_to_paths[name]
+
+        if path in sorted_overlay_paths:
+            return
+
+        for section in overlay.sections():
+            if section.startswith('static-veth') and 'outer-namespace' in section:
+                outer_namespace = Util.name_get(section['outer-namespace'])
+
+                if outer_namespace in overlays:
+                    OverlayDaemon._overlay_paths_sorted(
+                        overlays,
+                        overlay_names_to_paths,
+                        sorted_overlay_paths,
+                        outer_namespace)
+
+        sorted_overlay_paths.append(path)
+
+
+    @staticmethod
+    def overlay_paths_sorted(overlay_paths):
+        """
+        Return a list of overlay configuration file paths, where the elements
+        are sorted such that if the overlays are loaded in that order, there
+        will be no issues with inter-overlay dependencies, such as a
+        static-veth overlay link.
+        """
+
+        overlays = {}
+        overlay_names_to_paths = {}
+        sorted_overlay_paths = []
+
+        # Pass 1: load overlay configurations, map overlay names to overlay
+        # file paths.
+        for path in overlay_paths:
+            overlay = configparser.ConfigParser()
+            overlay.read(path)
+
+            overlays[config['overlay']['name']] = overlay
+            overlay_names_to_paths[config['overlay']['name']] = path
+
+        # Pass 2: add each overlay to the list of sorted overlay paths,
+        # using a recursive function to resolve dependencies.
+        for name in overlay_names_to_paths:
+            OverlayDaemon._overlay_paths_sorted(
+                overlays,
+                overlay_names_to_paths,
+                sorted_overlay_paths,
+                name)
+
+        return tuple(sorted_overlay_paths)
+
+
+    def start(self):
+        """
+        Start this OverlayDaemon, and all of its configured overlays.
+        """
+
+        if self.shut_down == True:
+            raise Exception("OverlayDaemon permanently shut down, cannot start again")
+
+        if self.stopped == False:
+            return
+
+        self.stopped = False
+
+        # Load the runtime configuration data.
+        self.start_config()
+
+        # Configure the logging system.
+        self.start_logging()
+
+        # This is the point where building the OverlayDaemon starts.
+        logging.info("Starting daemon...")
+
+        # Create the runtime directories.
+        self.start_directories()
+
+        # Start all of the configured overlays, respecting any inter-overlay
+        # dependencies.
+        for overlay_path in OverlayDaemon.overlay_paths_sorted(self.overlay_paths):
+            self.overlays.append(Overlay(self, overlay_path))
+
+        # Start the IPsec tunnels for the overlays.
+        self.start_ipsec()
+
+        logging.info("Started.")
+
+
     def start_config(self):
         """
         Load the runtime configuration for this OverlayDaemon.
@@ -181,44 +278,6 @@ class OverlayDaemon(object):
                 logging.StreamHandler(),
             ],
         )
-
-
-    def start(self):
-        """
-        Start this OverlayDaemon, and all of its configured overlays.
-        """
-
-        if self.shut_down == True:
-            raise Exception("OverlayDaemon permanently shut down, cannot start again")
-
-        if self.stopped == False:
-            return
-
-        self.stopped = False
-
-        # Load the runtime configuration data.
-        self.start_config()
-
-        # Configure the logging system.
-        self.start_logging()
-
-        # This is the point where building the OverlayDaemon starts.
-        logging.info("Starting daemon...")
-
-        # Create the runtime directories.
-        self.start_directories()
-
-        # Start all of the configured overlays.
-        # This is sorted to make l3overlay load the overlays in
-        # alphabetical order, which can be controlled in the filesystem.
-        # TODO: Build a dependency tree instead.
-        for overlay_path in sorted(self.overlay_paths):
-            self.overlays.append(Overlay(self, overlay_path))
-
-        # Start the IPsec tunnels for the overlays.
-        self.start_ipsec()
-
-        logging.info("Started.")
 
 
     def start_directories(self):
