@@ -346,6 +346,4 @@ The subnet mask for the assigned address.
 
 The name of the network namespace to move the outer interface into. The network namespace must already exist before the overlay is created.
 
-This can be used to connect to another overlay, but `l3overlayd` does not yet enforce any dependency ordering. However, overlay configuration files are started in alphabetical order, and stopped in reverse order of starting, so in the mean time, that can be used for ordering.
-
-To link overlays, define `outer-namespace` in the overlay that starts **LAST**, and specify the value to be the name of the overlay that starts **FIRST**.
+This option can also be used to connect two overlays together, via the static veth pair. To link overlays this way, define `outer-namespace` in just one of the overlays. The overlay which the static veth is defined in will get the inner interface, and the overlay specified in `outer-namespace` will get the outer interface.
