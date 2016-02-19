@@ -347,3 +347,5 @@ The subnet mask for the assigned address.
 The name of the network namespace to move the outer interface into. The network namespace must already exist before the overlay is created.
 
 This option can also be used to connect two overlays together, via the static veth pair. To link overlays this way, define `outer-namespace` in just one of the overlays. The overlay which the static veth is defined in will get the inner interface, and the overlay specified in `outer-namespace` will get the outer interface.
+
+Note that this does not do any additional configuratiom to overlays when they are linked via this option, therefore if the two overlays are to communicate, additional work needs to be done (such as a static BGP link between the two overlays).
