@@ -326,7 +326,7 @@ See the [BIRD filter documentation on data types](http://bird.network.cz/?get_do
 
 This section is used to configure a static veth pair, with an inner interface inside the overlay, and an outer interface, either in the root namespace, or an externally created network namespace.
 
-#### <inner|outer>-address
+#### inner-address|outer-address
 * Type: **ip address**
 * Required: **yes**
 
