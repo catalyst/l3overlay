@@ -765,6 +765,9 @@ class Overlay(object):
         # Create the NetNS and IPDB objects for the network namespace.
         self.netns, self.ipdb = Network.netns_create(self.netns_name)
 
+        # Start the loopback interface in the network namespace.
+        Network.interface_up(Network.interface_get('lo', self.ipdb))
+
         # Create the network namespace root directory.
         Util.directory_create(self.netns_root)
 
