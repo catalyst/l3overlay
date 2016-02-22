@@ -698,25 +698,25 @@ class Overlay(object):
         on the given base name string, and returns it.
         """
 
-        if_name_num = 0
+        ifname_num = 0
 
         while True:
             digits = len(str(if_name_num))
 
             if suffix is not None:
-                if_name_base = re.sub('[^A-Za-z0-9]', '', name)[:limit - len(suffix) - digits]
-                if_name = "%s%s%i" % (if_name_base, suffix, if_name_num)
+                ifname_base = "%s%s" % (re.sub('[^A-Za-z0-9]', '', name)[:limit - len(suffix) - digits], suffix)
             else:
-                if_name_base = re.sub('[^A-Za-z0-9]', '', name)[:limit - digits]
-                if_name = "%s%i" % (if_name_base, if_name_num)
+                ifname_base = re.sub('[^A-Za-z0-9]', '', name)[:limit - digits]
 
-            if if_name not in self.interface_names:
+            ifname = "%s%i" % (ifname_base, ifname_num)
+
+            if ifname not in self.interface_names:
                 break
 
-            if_name_num += 1
+            ifname_num += 1
 
-        self.interface_names.append(if_name)
-        return if_name
+        self.interface_names.append(ifname)
+        return ifname
 
 
     def gre_key(self, local, remote):
