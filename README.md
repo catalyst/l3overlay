@@ -348,13 +348,13 @@ The name of the network namespace to move the outer interface into. The network 
 
 This option can also be used to connect two overlays together, via the static veth pair. To link overlays this way, define `outer-namespace` in just one of the overlays. The overlay which the static veth is defined in will get the inner interface, and the overlay specified in `outer-namespace` will get the outer interface.
 
-Note that this does not do any additional configuratiom to overlays when they are linked via this option, therefore if the two overlays are to communicate, additional work needs to be done.
+Note that this does not do any additional configuration to overlays when they are linked via this option, it is simply a veth pair. To allow traffic to flow in the veth pair, additional work needs to be done.
 
-For a less configurable, but fully configured and routed link between overlays, consider using a `static-overlay-link`. 
+For a fully configured and routed link between overlays, consider using a `[static-overlay-link]`. 
 
 ### [static-overlay-link:*{name}*]
 
-This section is used to create a link between two overlays, by creating a veth pair between them, bridged to a TAP interface on the creating overlay end. A BGP peering is also set up between them, allowing routing to take place between the overlays.
+This section is used to create a link between two overlays, by creating a veth pair between them. The outer veth interface stays in the creating overlay, and gets bridged to a TAP interface, and the inner veth interface gets moved to the overlay to be linked to. A BGP peering is also set up between them, allowing route distribution to take place between the overlays.
 
 #### overlay-name
 * Type: **name**
@@ -366,13 +366,13 @@ The name of the overlay to link with.
 * Type: **ip address**
 * Required: **yes**
 
-The IP address assigned to the either the bridge interface in this overlay, to address the link between the two overlays. This must be the same type of IP address as the value set in `inner-address`.
+The IP address assigned to the bridge interface in this overlay, to address the link between the two overlays. This must be the same type of IP address as the value set in `inner-address`.
 
 #### inner-address
 * Type: **ip address**
 * Required: **yes**
 
-The IP address assigned to the either the veth interface in the opposing connected overlay, to address the link between the two overlays. This must be the same type of IP address as the value set in `outer-address`.
+The IP address assigned to the veth interface in the opposing connected overlay, to address the link between the two overlays. This must be the same type of IP address as the value set in `outer-address`.
 
 #### netmask
 * Type: **subnet mask**
