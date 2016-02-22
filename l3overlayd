@@ -737,28 +737,25 @@ class Overlay(object):
     @staticmethod
     def _bird_config_add(dictionary, key, value):
         """
-        Add a key-value pair to a dictonary.
-
-        If the value is a dict and the dictionary contains a value with the
-        same key that is also a dict, update the existing value with the new
-        value's attributes.
+        Add a key-value pair to a dictonary. If the key already exists in the
+        dictionary, add the value to the key as an additional value, making the
+        actual value an array of entries.
         """
 
-        if key in dictionary and
-                isinstance(dictionary[key, dict]) and
-                isinstance(value, dict):
-            dictionary[key].update(value)
-
-        dictionary[key] = value
+        if key in dictionary:
+            if isinstance(dictionary[key], list):
+                dictionary[key].append(value)
+            else:
+                dictionary[key] = [dictionary[key], value]
+        else:
+            dictionary[key] = [value]
 
 
     def bird_config_add(self, key, value):
         """
-        Add a variable to render to the BIRD configuration template.
-
-        If the value is a dict and the template contains a value with the
-        same key that is also a dict, update the existing value with the new
-        value's attributes.
+        Add a variable to render to the BIRD configuration template. If the
+        key already exists in the template, add the value to the key as an
+        additional value, making the actual value an array of entries.
         """
 
         logging.debug("adding variable %s to BIRD configuration" % key)
@@ -767,11 +764,9 @@ class Overlay(object):
 
     def bird6_config_add(self, key, value):
         """
-        Add a variable to render to the BIRD6 configuration template.
-
-        If the value is a dict and the template contains a value with the
-        same key that is also a dict, update the existing value with the new
-        value's attributes.
+        Add a variable to render to the BIRD6 configuration template. If the
+        key already exists in the template, add the value to the key as an
+        additional value, making the actual value an array of entries.
         """
 
         logging.debug("adding variable %s to BIRD6 configuration" % key)
@@ -798,6 +793,7 @@ class Overlay(object):
         self.start_mesh_tunnels()
         self.start_static_vlans()
         self.start_static_tunnels()
+        self.start_static_tuntaps()
         self.start_static_veths()
         self.start_static_overlay_links()
         self.start_static_bgps()
@@ -1153,6 +1149,62 @@ class Overlay(object):
             self.bird6_config_add(key='tunnels', value=static_tunnels_bgp6)
 
 
+    def start_static_tuntaps(self):
+        """
+        Create a static TUN or TAP interface in the network namespace.
+        """
+
+        # The list of static tunnels configured.
+        self.static_tuntaps = []
+
+        for section in self.config.sections():
+            if section.startswith('static-tuntap'):
+                name = Util.section_name_get('static-tuntap', section)
+                mode = Util.enum_get(self.config[section]['mode'], ['tun', 'tap'])
+                uid = Util.integer_get(self.config[section]['uid'])
+                gid = Util.integer_get(self.config[section]['gid'])
+                address = Util.ip_address_get(self.config[section]['address'])
+                netmask = Util.netmask_get(self.config[section]['netmask'], Util.ip_address_is_v6(address))
+
+                tuntap_name = self.interface_name(name)
+
+                logging.debug("creating static %s %s" % (mode, name))
+
+                tuntap_if = Network.tuntap_create(
+                    name=tuntap_name,
+                    mode=mode,
+                    uid=uid,
+                    gid=gid,
+                    ipdb=self.ipdb,
+                )
+
+                Network.interface_add_ip(
+                    interface=tuntap_if,
+                    address=address,
+                    netmask=netmask,
+                )
+
+                Network.interface_up(tuntap_if)
+
+                # Add the tunnel to the list of routed interfaces.
+                static_tuntap = {
+                    'name': name,
+                    'interface': tunnel_name,
+                    'mode': mode,
+                }
+
+                logging.debug("adding %s to list of static tuntaps" % name)
+                self.static_tunnels.append(static_tunnel)
+
+                logging.debug("adding BGP route for static %s %s" % (mode, name))
+                if Util.ip_address_is_v6(address):
+                    self.bird_config_add('tuntaps', static_tuntap)
+                else:
+                    self.bird6_config_add('tuntaps', static_tuntap)
+
+                logging.debug("finished creating static %s %s" % (mode, name))
+
+
     def start_static_veths(self):
         """
         Create a static veth pair between the network namespace and the root
@@ -1396,7 +1448,6 @@ class Overlay(object):
                 else:
                     self.bird6_config_add(key='overlay_links', value=static_overlay_links_bgp6)
                     outer_overlay.bird6_config_add(key='overlay_links', value=static_overlay_links_bgp)
-
 
                 logging.debug("finished creating link %s between overlays %s and %s" % (name, self.name, overlay_name))
 
@@ -1657,13 +1708,15 @@ class Overlay(object):
         # Ensure this Overlay object cannot be restarted.
         self.stopped = True
 
-        # Already removed because it is entirely contained in the network namespace.
+        # Already removed because it is entirely contained in the network
+        # namespace.
         # self.stop_firewall()
         self.stop_bird()
         # Already removed because it is entirely contained in BIRD.
         # self.stop_static_bgps()
         self.stop_static_overlay_links()
         self.stop_static_veths()
+        self.stop_static_tuntaps()
         self.stop_static_tunnels()
         self.stop_static_vlans()
         self.stop_mesh_tunnels()
@@ -1727,6 +1780,26 @@ class Overlay(object):
             )
 
             logging.debug("finished removing static tunnel %s" % name)
+
+
+    def stop_static_tuntaps(self):
+        """
+        Destroy the static TUN/TAP interfaces.
+        """
+
+        for tuntap in self.static_tuntaps:
+            name = tunnel['name']
+            tuntap_name = tunnel['interface']
+            mode = tunnel['mode']
+
+            logging.debug("removing static %s %s" % (mode, name))
+
+            Network.interface_remove(
+                self.ipdb,
+                name=tuntap_name,
+            )
+
+            logging.debug("finished removing static %s %s" % (mode, name))
 
 
     def stop_static_vlans(self):
@@ -2201,6 +2274,71 @@ class Util(object):
     """
 
     @staticmethod
+    def integer_get(value):
+        """
+        Get an integer value from a string. Raise a ValueError if the string
+        is not a valid boolean.
+        """
+
+        return int(value)
+
+
+    @staticmethod
+    def boolean_get(value):
+        """
+        Get a boolean value from a string. Raise a ValueError if the string
+        is not a valid boolean.
+        """
+
+        lower_value = value.lower()
+
+        if lower_value != "true" and lower_value != "false":
+            raise ValueError("invalid value for boolean: %s" % lower_value)
+
+        return True if lower_value == "true" else False
+
+
+    @staticmethod
+    def hex_get_string(value, min=None, max=None):
+        """
+        Check that a string is a valid hexadecimal integer, optionally
+        checking if it is within a minimum and maximum length. Returns the
+        string if the conditions are satisfied, raises a ValueError otherwise.
+        """
+
+        length = len(value)
+
+        if length == 0:
+            raise ValueError("empty string not a valid hexadecimal integer")
+
+        if min is not None and length < min:
+            raise ValueError("hexadecimal integer too short, minimum %i digits required: %s" % (min, value))
+
+        if max is not None and length > max:
+            raise ValueError("hexadecimal integer too long, maximum %i digits required: %s" % (max, value))
+
+        if not re.fullmatch("[0-9A-Fa-f][0-9A-Fa-f]*", value):
+            raise ValueError("given string not a valid hexadecimal integer: %s" % value)
+
+        return value
+
+
+    @staticmethod
+    def enum_get(value, enum):
+        """
+        Check that the given value string is in the list of enumeration string
+        values, and return the enumeration value the value string is
+        equivalent to. Raise a ValueError if it is not in the list.
+        """
+
+        for e in enum:
+            if value.lower() == e.lower():
+                return e
+
+        raise ValueError("given value %s is not a valid enum, must be one of %s" % (value, str(enum)))
+
+
+    @staticmethod
     def section_name_get(section_type, section):
         """
         Get the unique name for a configuration section by passing in the
@@ -2340,61 +2478,6 @@ class Util(object):
                 break
 
         return i
-
-
-    @staticmethod
-    def boolean_get(value):
-        """
-        Get a boolean value from a string. Raise a ValueError if the string
-        is not a valid boolean.
-        """
-
-        lower_value = value.lower()
-
-        if lower_value != "true" and lower_value != "false":
-            raise ValueError("invalid value for boolean: %s" % lower_value)
-
-        return True if lower_value == "true" else False
-
-
-    @staticmethod
-    def hex_get_string(value, min=None, max=None):
-        """
-        Check that a string is a valid hexadecimal integer, optionally
-        checking if it is within a minimum and maximum length. Returns the 
-        string if the conditions are satisfied, raises a ValueError otherwise.
-        """
-
-        length = len(value)
-
-        if length == 0:
-            raise ValueError("empty string not a valid hexadecimal integer")
-
-        if min is not None and length < min:
-            raise ValueError("hexadecimal integer too short, minimum %i digits required: %s" % (min, value))
-
-        if max is not None and length > max:
-            raise ValueError("hexadecimal integer too long, maximum %i digits required: %s" % (max, value))
-
-        if not re.fullmatch("[0-9A-Fa-f][0-9A-Fa-f]*", value):
-            raise ValueError("given string not a valid hexadecimal integer: %s" % value)
-
-        return value
-
-
-    @staticmethod
-    def enum_get(value, enum):
-        """
-        Check that the given value string is in the list of enumeration string
-        values, and return the enumeration value the value string is
-        equivalent to. Raise a ValueError if it is not in the list.
-        """
-
-        for e in enum:
-            if value.lower() == e.lower():
-                return e
-
-        raise ValueError("given value %s is not a valid enum, must be one of %s" % (value, str(enum)))
 
 
     @staticmethod

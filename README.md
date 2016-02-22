@@ -280,6 +280,41 @@ The IP address assigned to the GRE tunnel interface.
 
 The subnet mask for the GRE tunnel interface address.
 
+### [static-tuntap:*{name}*]
+
+This section is used to define a TUN or TAP virtual interface in the overlay.
+
+#### mode
+* Type: **enum**
+* Required: **yes**
+* Values: `tun`, `tap`
+
+The mode in which the virtual interface will operate.
+
+#### address
+* Type: **ip address**
+* Required: **yes**
+
+The IP address assigned to the virtual interface.
+
+#### netmask
+* Type: **subnet mask**
+* Required: **yes**
+
+The subnet mask for the virtual interface address.
+
+#### uid
+* Type: **integer**
+* Required: no
+
+The user ID which owns and is allowed to attach to the 'network/wire' side of the interface.
+
+#### gid
+* Type: **integer**
+* Required: no
+
+The group ID which is allowed to attach to the 'network/wire' side of the interface.
+
 ### [static-bgp:*{name}*]
 
 This section is used to define a static BGP protocol in the BIRD routing daemon, used for distributing routes in the overlay. This is made to be used in conjunction with static GRE tunnels, to distribute routes across it.
