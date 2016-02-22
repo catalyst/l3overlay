@@ -1341,7 +1341,7 @@ class Overlay(object):
                 inner_if = Network.netns_set(
                     name=inner_name,
                     ipdb=self.ipdb,
-                    netns_name=outer_overlay.netns,
+                    netns_name=outer_overlay.netns_name,
                     netns_ipdb=outer_overlay.ipdb,
                 )
 
