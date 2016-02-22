@@ -1968,7 +1968,7 @@ class Network(object):
 
 
     @staticmethod
-    def tuntap_create(name, ipdb, mode='tap', uid=None, gid=None, ifr=None):
+    def tuntap_create(name, ipdb, mode='tap', uid=0, gid=0, ifr=None):
         """
         Create a tun/tap interface with the given name in the chosen IPDB.
         Returns the interface entry from the IPDB.
