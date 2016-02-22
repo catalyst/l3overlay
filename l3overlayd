@@ -701,7 +701,7 @@ class Overlay(object):
         ifname_num = 0
 
         while True:
-            digits = len(str(if_name_num))
+            digits = len(str(ifname_num))
 
             if suffix is not None:
                 ifname_base = "%s%s" % (re.sub('[^A-Za-z0-9]', '', name)[:limit - len(suffix) - digits], suffix)
