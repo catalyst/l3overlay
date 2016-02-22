@@ -93,7 +93,7 @@ class OverlayDaemon(object):
             return
 
         for section in overlay.sections():
-            if section.startswith('static-veth') and 'outer-namespace' in section:
+            if section.startswith('static-veth') and 'outer-namespace' in overlay[section]:
                 outer_namespace = Util.name_get(overlay[section]['outer-namespace'])
 
                 if outer_namespace in overlays:
