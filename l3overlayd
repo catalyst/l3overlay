@@ -1310,7 +1310,7 @@ class Overlay(object):
 
         for section in self.config.sections():
             if section.startswith('static-overlay-link'):
-                name = Util.section_name_get('static-overlay-link', self.config[section])
+                name = Util.section_name_get('static-overlay-link', section)
                 inner_overlay_name = Util.name_get(self.config[section]['inner-overlay-name'])
                 inner_address = Util.ip_address_get(self.config[section]['inner-address'])
                 outer_address = Util.ip_address_get(self.config[section]['outer-address'])
