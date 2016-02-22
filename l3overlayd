@@ -94,7 +94,7 @@ class OverlayDaemon(object):
 
         for section in overlay.sections():
             if section.startswith('static-veth') and 'outer-namespace' in section:
-                outer_namespace = Util.name_get(section['outer-namespace'])
+                outer_namespace = Util.name_get(overlay[section]['outer-namespace'])
 
                 if outer_namespace in overlays:
                     OverlayDaemon._overlay_paths_sorted(
@@ -102,15 +102,17 @@ class OverlayDaemon(object):
                         overlay_names_to_paths,
                         sorted_overlay_paths,
                         outer_namespace)
-            elif section.startswith('static-overlay-link') and 'overlay-name' in section:
-                outer_namespace = Util.name_get(section['overlay-name'])
+            elif section.startswith('static-overlay-link') and 'inner-overlay-name' in section:
+                inner_overlay_name = Util.name_get(overlay[section]['inner-overlay-name'])
 
-                if outer_namespace in overlays:
+                if inner_overlay_name in overlays:
                     OverlayDaemon._overlay_paths_sorted(
                         overlays,
                         overlay_names_to_paths,
                         sorted_overlay_paths,
-                        outer_namespace)
+                        inner_overlay_name)
+                else:
+                    raise ValueError("no overlay configured with name %s, required by inner-overlay-name in [%s] for overlay %s" % (inner_overlay_name, section, name))
 
         sorted_overlay_paths.append(path)
 
@@ -917,9 +919,9 @@ class Overlay(object):
             # Move one of the veth interfaces into the network namespace.
             netns_veth_if = Network.netns_set(
                 name=netns_veth_name,
+                ipdb=self.root_ipdb,
                 netns_name=self.netns_name,
                 netns_ipdb=self.ipdb,
-                ipdb=self.root_ipdb,
             )
 
             # Add an address to the network namespace veth interface, so it can
@@ -1012,9 +1014,9 @@ class Overlay(object):
                 # Move the netns veth interface to the network namespace.
                 netns_veth_if = Network.netns_set(
                     name=netns_veth_name,
+                    ipdb=self.root_ipdb,
                     netns_name=self.netns_name,
                     netns_ipdb=self.ipdb,
-                    ipdb=self.root_ipdb,
                 )
 
                 # Add the assigned address for the VLAN to the netns veth
@@ -1197,9 +1199,6 @@ class Overlay(object):
         # The list of static veths configured.
         self.static_veths = []
 
-        static_veths_bgp = []
-        static_veths_bgp6 = []
-
         for section in self.config.sections():
             if section.startswith('static-veth'):
                 name = Util.section_name_get('static-veth', section)
@@ -1257,9 +1256,9 @@ class Overlay(object):
 
                 inner_if = Network.netns_set(
                     name=inner_name,
+                    ipdb=outer_ipdb,
                     netns_name=self.netns_name,
                     netns_ipdb=self.ipdb,
-                    ipdb=outer_ipdb,
                 )
 
                 # Determine which interface to assign the address to.
@@ -1293,7 +1292,7 @@ class Overlay(object):
                 self.static_veths.append(static_veth)
 
                 logging.debug("adding BGP route for static veth %s" % name)
-                if Util.ip_address_is_v6(inner_address):
+                if Util.ip_address_is_v6(address):
                     self.bird6_config_add('veths', static_veth)
                 else:
                     self.bird_config_add('veths', static_veth)
@@ -1311,11 +1310,11 @@ class Overlay(object):
 
         for section in self.config.sections():
             if section.startswith('static-overlay-link'):
-                name = Util.section_name_get('static-overlay-link', section)
-                overlay_name = Util.name_get(section['overlay-name'])
-                inner_address = Util.ip_address_get(section['inner-address'])
-                outer_address = Util.ip_address_get(section['outer-address'])
-                netmask = Util.netmask_get(section['netmask'])
+                name = Util.section_name_get('static-overlay-link', self.config[section])
+                inner_overlay_name = Util.name_get(self.config[section]['inner-overlay-name'])
+                inner_address = Util.ip_address_get(self.config[section]['inner-address'])
+                outer_address = Util.ip_address_get(self.config[section]['outer-address'])
+                netmask = Util.netmask_get(self.config[section]['netmask'])
 
                 if (type(inner_address) != type(outer_address)):
                     raise ValueError("inner address %s (%s) and outer address %s (%s) must be the same type of IP address" % (inner_address, str(type(inner_address)), outer_address, str(type(outer_address))))
@@ -1325,11 +1324,11 @@ class Overlay(object):
                 outer_name = self.interface_name(tap_name, suffix='v')
                 inner_name = self.interface_name(tap_name, suffix='v')
 
-                logging.debug("creating link %s between overlays %s and %s" % (name, self.name, overlay_name))
+                logging.debug("creating link %s between overlays %s and %s" % (name, self.name, inner_overlay_name))
 
                 # Get the NetNS and IPDB objects for the outer interface's
                 # configured network namespace.
-                outer_overlay = self.overlay_get(overlay_name)
+                outer_overlay = self.overlay_get(inner_overlay_name)
 
                 # Create the inner and outer veth interfaces, which link the
                 # overlays together.
@@ -1393,7 +1392,7 @@ class Overlay(object):
                 static_overlay_link = {
                     'name': name,
                     'inner': {
-                        'overlay': overlay_name,
+                        'overlay': inner_overlay_name,
                         'asn': outer_overlay.asn,
                         'interface': inner_name,
                         'address': inner_address,
@@ -1423,7 +1422,7 @@ class Overlay(object):
                     self.bird_config_add('overlay_links', static_overlay_link)
                     outer_overlay.bird_config_add('overlay_links', static_overlay_link)
 
-                logging.debug("finished creating link %s between overlays %s and %s" % (name, self.name, overlay_name))
+                logging.debug("finished creating link %s between overlays %s and %s" % (name, self.name, inner_overlay_name))
 
 
     def start_static_bgps(self):
@@ -2189,7 +2188,7 @@ class Network(object):
 
 
     @staticmethod
-    def netns_set(name, netns_name, netns_ipdb, ipdb):
+    def netns_set(name, ipdb, netns_name, netns_ipdb):
         """
         Moves an interface into a chosen network namespace. Returns the
         interface object from the network namespace.

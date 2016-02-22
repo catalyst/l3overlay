@@ -349,12 +349,6 @@ For a fully configured and routed link between overlays, consider using a `[stat
 
 This section is used to create a link between two overlays, by creating a veth pair between them. The outer veth interface stays in the creating overlay, and gets bridged to a TAP interface, and the inner veth interface gets moved to the overlay to be linked to. A BGP peering is also set up between them, allowing route distribution to take place between the overlays.
 
-#### overlay-name
-* Type: **name**
-* Required: **yes**
-
-The name of the overlay to link with.
-
 #### outer-address
 * Type: **ip address**
 * Required: **yes**
@@ -366,6 +360,12 @@ The IP address assigned to the bridge interface in this overlay, to address the 
 * Required: **yes**
 
 The IP address assigned to the veth interface in the opposing connected overlay, to address the link between the two overlays. This must be the same type of IP address as the value set in `outer-address`.
+
+#### inner-overlay-name
+* Type: **name**
+* Required: **yes**
+
+The name of the overlay to link with.
 
 #### netmask
 * Type: **subnet mask**
