@@ -831,11 +831,6 @@ class Overlay(object):
         linknet_pool_address_base = self.linknet_pool.network_address
         linknet_pool_address_end = self.linknet_pool.broadcast_address
 
-        # The list of mesh tunnels to add to the BIRD configuration, with their
-        # IPsec encapsulations.
-        gretaps = []
-        ipsecs = []
-
         for index, link in enumerate(self.links()):
             # Check if this link requires a tunnel on this host. If not,
             # continue.
@@ -941,7 +936,7 @@ class Overlay(object):
             # Add the mesh tunnel to the list of routed interfaces.
             logging.debug("adding BGP route for mesh tunnel %s" % gretap_name)
 
-            gretaps.append({
+            gretap = {
                 'interface': gretap_name,
 
                 'local': {
@@ -953,17 +948,17 @@ class Overlay(object):
                     'name': link[1],
                     'address': netns_veth_address_remote,
                 },
-            })
+            }
+
+            if Util.ip_network_is_v6(self.linknet_pool):
+                self.bird6_config_add('gretaps', gretap)
+            else:
+                self.bird_config_add('gretaps', gretap)
 
             # Add the local-remote link to the list of mesh tunnel links made.
             self.mesh_tunnels.append((physical_local, physical_remote))
 
             logging.debug("finished creating mesh tunnel %s" % gretap_name)
-
-        if Util.ip_network_is_v6(self.linknet_pool):
-            self.bird6_config_add(key='gretaps', value=gretaps)
-        else:
-            self.bird_config_add(key='gretaps', value=gretaps)
 
 
     def start_static_vlans(self):
@@ -974,9 +969,6 @@ class Overlay(object):
 
         # The list of static VLANs configured.
         self.static_vlans = []
-
-        static_vlans_bgp = []
-        static_vlans_bgp6 = []
 
         for section in self.config.sections():
             if section.startswith('static-vlan'):
@@ -1071,17 +1063,11 @@ class Overlay(object):
 
                 logging.debug("adding BGP route for static VLAN %s" % name)
                 if Util.ip_address_is_v6(address):
-                    static_vlans_bgp6.append(static_vlan)
+                    self.bird_config_add('vlans', static_vlan)
                 else:
-                    static_vlans_bgp.append(static_vlan)
+                    self.bird6_config_add('vlans', static_vlan)
 
                 logging.debug("finished creating static VLAN %s" % name)
-
-        if static_vlans_bgp:
-            self.bird_config_add(key='vlans', value=static_vlans_bgp)
-
-        if static_vlans_bgp6:
-            self.bird6_config_add(key='vlans', value=static_vlans_bgp6)
 
 
     def start_static_tunnels(self):
@@ -1136,17 +1122,11 @@ class Overlay(object):
 
                 logging.debug("adding BGP route for static tunnel %s" % name)
                 if Util.ip_address_is_v6(address):
-                    static_tunnels_bgp6.append(static_tunnel)
+                    self.bird_config_add('tunnels', static_tunnel)
                 else:
-                    static_tunnels_bgp.append(static_tunnel)
+                    self.bird6_config_add('tunnels', static_tunnel)
 
                 logging.debug("creating of static tunnel %s" % name)
-
-        if static_tunnels_bgp:
-            self.bird_config_add(key='tunnels', value=static_tunnels_bgp)
-
-        if static_tunnels_bgp6:
-            self.bird6_config_add(key='tunnels', value=static_tunnels_bgp6)
 
 
     def start_static_tuntaps(self):
@@ -1311,17 +1291,11 @@ class Overlay(object):
 
                 logging.debug("adding BGP route for static veth %s" % name)
                 if Util.ip_address_is_v6(inner_address):
-                    static_veths_bgp6.append(static_veth)
+                    self.bird_config_add('veths', static_veth)
                 else:
-                    static_veths_bgp.append(static_veth)
+                    self.bird6_config_add('veths', static_veth)
 
                 logging.debug("finished creating static veth %s" % name)
-
-        if static_veths_bgp:
-            self.bird_config_add(key='veths', value=static_veths_bgp)
-
-        if static_veths_bgp6:
-            self.bird6_config_add(key='veths', value=static_veths_bgp6)
 
 
     def start_static_overlay_links(self):
@@ -1331,9 +1305,6 @@ class Overlay(object):
 
         # The list of static veths configured.
         self.static_overlay_links = []
-
-        static_overlay_links_bgp = []
-        static_overlay_links_bgp6 = []
 
         for section in self.config.sections():
             if section.startswith('static-overlay-link'):
@@ -1443,11 +1414,11 @@ class Overlay(object):
 
                 logging.debug("adding BGP route for static overlay link %s" % name)
                 if Util.ip_address_is_v6(inner_address):
-                    self.bird_config_add(key='overlay_links', value=static_overlay_links_bgp)
-                    outer_overlay.bird_config_add(key='overlay_links', value=static_overlay_links_bgp)
+                    self.bird_config_add('overlay_links', static_overlay_links)
+                    outer_overlay.bird_config_add('overlay_links', static_overlay_link)
                 else:
-                    self.bird6_config_add(key='overlay_links', value=static_overlay_links_bgp6)
-                    outer_overlay.bird6_config_add(key='overlay_links', value=static_overlay_links_bgp)
+                    self.bird6_config_add('overlay_links', static_overlay_link)
+                    outer_overlay.bird6_config_add('overlay_links', static_overlay_link)
 
                 logging.debug("finished creating link %s between overlays %s and %s" % (name, self.name, overlay_name))
 
