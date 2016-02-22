@@ -743,12 +743,15 @@ class Overlay(object):
         """
 
         if key in dictionary:
-            if isinstance(dictionary[key], list):
-                dictionary[key].append(value)
+            if not isinstance(dictionary[key], list):
+                dictionary[key] = [dictionary[key]]
+
+            if isinstance(value, list):
+                dictionary[key].extend(value)
             else:
-                dictionary[key] = [dictionary[key], value]
+                dictionary[key].append(value)
         else:
-            dictionary[key] = [value]
+            dictionary[key] = value
 
 
     def bird_config_add(self, key, value):
@@ -1063,9 +1066,9 @@ class Overlay(object):
 
                 logging.debug("adding BGP route for static VLAN %s" % name)
                 if Util.ip_address_is_v6(address):
-                    self.bird_config_add('vlans', static_vlan)
-                else:
                     self.bird6_config_add('vlans', static_vlan)
+                else:
+                    self.bird_config_add('vlans', static_vlan)
 
                 logging.debug("finished creating static VLAN %s" % name)
 
@@ -1122,9 +1125,9 @@ class Overlay(object):
 
                 logging.debug("adding BGP route for static tunnel %s" % name)
                 if Util.ip_address_is_v6(address):
-                    self.bird_config_add('tunnels', static_tunnel)
-                else:
                     self.bird6_config_add('tunnels', static_tunnel)
+                else:
+                    self.bird_config_add('tunnels', static_tunnel)
 
                 logging.debug("creating of static tunnel %s" % name)
 
@@ -1178,9 +1181,9 @@ class Overlay(object):
 
                 logging.debug("adding BGP route for static %s %s" % (mode, name))
                 if Util.ip_address_is_v6(address):
-                    self.bird_config_add('tuntaps', static_tuntap)
-                else:
                     self.bird6_config_add('tuntaps', static_tuntap)
+                else:
+                    self.bird_config_add('tuntaps', static_tuntap)
 
                 logging.debug("finished creating static %s %s" % (mode, name))
 
@@ -1291,9 +1294,9 @@ class Overlay(object):
 
                 logging.debug("adding BGP route for static veth %s" % name)
                 if Util.ip_address_is_v6(inner_address):
-                    self.bird_config_add('veths', static_veth)
-                else:
                     self.bird6_config_add('veths', static_veth)
+                else:
+                    self.bird_config_add('veths', static_veth)
 
                 logging.debug("finished creating static veth %s" % name)
 
@@ -1414,11 +1417,11 @@ class Overlay(object):
 
                 logging.debug("adding BGP route for static overlay link %s" % name)
                 if Util.ip_address_is_v6(inner_address):
-                    self.bird_config_add('overlay_links', static_overlay_links)
-                    outer_overlay.bird_config_add('overlay_links', static_overlay_link)
-                else:
-                    self.bird6_config_add('overlay_links', static_overlay_link)
+                    self.bird6_config_add('overlay_links', static_overlay_links)
                     outer_overlay.bird6_config_add('overlay_links', static_overlay_link)
+                else:
+                    self.bird_config_add('overlay_links', static_overlay_link)
+                    outer_overlay.bird_config_add('overlay_links', static_overlay_link)
 
                 logging.debug("finished creating link %s between overlays %s and %s" % (name, self.name, overlay_name))
 
@@ -1427,10 +1430,6 @@ class Overlay(object):
         """
         Create a static BGP protocol in the network namespace.
         """
-
-        # The list of static BGP protocols to add to the BIRD configuration.
-        bgps = []
-        bgps6 = []
 
         for section in self.config.sections():
             if section.startswith('static-bgp'):
@@ -1471,17 +1470,11 @@ class Overlay(object):
                 logging.debug("adding static BGP %s to BIRD configuration" % name)
 
                 if Util.ip_address_is_v6(neighbor) or (local is not None and Util.ip_address_is_v6(local)):
-                    bgps6.append(bgp)
+                    self.bird6_config_add('bgps', value=bgp)
                 else:
-                    bgps.append(bgp)
+                    self.bird_config_add('bgps', value=bgp)
 
                 logging.debug("finished adding static BGP %s to BIRD configuration" % name)
-
-        if bgps:
-            self.bird_config_add(key='bgps', value=bgps)
-
-        if bgps6:
-            self.bird_config_add(key='bgps', value=bgps6)
 
 
     def start_bird_daemon(self, bird, bird_config_file, bird_socket_file, bird_pid_file):
@@ -1582,7 +1575,7 @@ class Overlay(object):
             self.bird_config_add(key='asn', value=self.asn)
 
         if self.bird6_config:
-            self.bird_config_add(key='overlay', value=self.name)
+            self.bird6_config_add(key='overlay', value=self.name)
             self.bird6_config_add(key='file', value=bird6_config_file)
             self.bird6_config_add(key='netns', value=self.netns_name)
             self.bird6_config_add(key='asn', value=self.asn)
