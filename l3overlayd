@@ -1327,8 +1327,6 @@ class Overlay(object):
                 # Get the NetNS and IPDB objects for the outer interface's
                 # configured network namespace.
                 outer_overlay = self.overlay_get(overlay_name)
-                outer_netns = outer_overlay.netns
-                outer_ipdb = outer_overlay.ipdb
 
                 # Create the inner and outer veth interfaces, which link the
                 # overlays together.
@@ -1341,8 +1339,8 @@ class Overlay(object):
                 inner_if = Network.netns_set(
                     name=inner_name,
                     ipdb=self.ipdb,
-                    netns_name=outer_netns,
-                    netns_ipdb=outer_ipdb,
+                    netns_name=outer_overlay.netns,
+                    netns_ipdb=outer_overlay.ipdb,
                 )
 
                 # Create a TAP interface for the outer veth interface to be
@@ -1393,11 +1391,13 @@ class Overlay(object):
                     'name': name,
                     'inner': {
                         'overlay': overlay_name,
+                        'asn': outer_overlay.asn,
                         'interface': inner_name,
                         'address': inner_address,
                     },
                     'outer': {
                         'overlay': self.name,
+                        'asn': self.asn,
                         'interface': outer_name,
                         'tap': {
                             'interface': tap_name,
@@ -1826,8 +1826,8 @@ class Overlay(object):
 
         for overlay_link in self.static_overlay_links:
             name = overlay_link['name']
-            outer_overlay_name = overlay_link['outer_overlay']
-            inner_overlay_name = overlay_link['inner_overlay']
+            outer_overlay_name = overlay_link['outer']['overlay']
+            inner_overlay_name = overlay_link['inner']['overlay']
 
             outer_name = overlay_link['outer']['interface']
             tap_name = overlay_link['outer']['tap']['interface']
@@ -1837,17 +1837,17 @@ class Overlay(object):
 
             Network.interface_remove(
                 self.ipdb,
-                name=veth['bridge_interface'],
+                name=bridge_name,
             )
 
             Network.interface_remove(
                 self.ipdb,
-                name=veth['tap_interface'],
+                name=tap_name,
             )
 
             Network.interface_remove(
                 self.ipdb,
-                name=veth['outer_interface'],
+                name=outer_name,
             )
 
             logging.debug("finished removing static link %s between overlays %s and %s" % (name, outer_overlay_name, inner_overlay_name))
