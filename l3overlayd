@@ -936,7 +936,7 @@ class Overlay(object):
             # Add the mesh tunnel to the list of routed interfaces.
             logging.debug("adding BGP route for mesh tunnel %s" % gretap_name)
 
-            gretap = {
+            mesh_tunnel = {
                 'interface': gretap_name,
 
                 'local': {
@@ -951,9 +951,9 @@ class Overlay(object):
             }
 
             if Util.ip_network_is_v6(self.linknet_pool):
-                self.bird6_config_add('gretaps', gretap)
+                self.bird6_config_add('mesh_tunnels', mesh_tunnel)
             else:
-                self.bird_config_add('gretaps', gretap)
+                self.bird_config_add('mesh_tunnels', mesh_tunnel)
 
             # Add the local-remote link to the list of mesh tunnel links made.
             self.mesh_tunnels.append((physical_local, physical_remote))
