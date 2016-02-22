@@ -102,6 +102,15 @@ class OverlayDaemon(object):
                         overlay_names_to_paths,
                         sorted_overlay_paths,
                         outer_namespace)
+            elif section.startswith('static-overlay-link') and 'overlay-name' in section:
+                outer_namespace = Util.name_get(section['overlay-name'])
+
+                if outer_namespace in overlays:
+                    OverlayDaemon._overlay_paths_sorted(
+                        overlays,
+                        overlay_names_to_paths,
+                        sorted_overlay_paths,
+                        outer_namespace)
 
         sorted_overlay_paths.append(path)
 
@@ -671,6 +680,18 @@ class Overlay(object):
         return links
 
 
+    def overlay_get(self, name):
+        """
+        Gets the Overlay object for the named overlay.
+        """
+
+        for overlay in self.overlays:
+            if name == overlay.netns_name:
+                return overlay
+
+        raise ValueError("unable to find overlay with name %s" % name)
+
+
     def interface_name(self, name, suffix=None, limit=15):
         """
         Creates a valid, unique (in this overlay daemon) interface name based
@@ -713,22 +734,48 @@ class Overlay(object):
         return key
 
 
+    @staticmethod
+    def _bird_config_add(dictionary, key, value):
+        """
+        Add a key-value pair to a dictonary.
+
+        If the value is a dict and the dictionary contains a value with the
+        same key that is also a dict, update the existing value with the new
+        value's attributes.
+        """
+
+        if key in dictionary and
+                isinstance(dictionary[key, dict]) and
+                isinstance(value, dict):
+            dictionary[key].update(value)
+
+        dictionary[key] = value
+
+
     def bird_config_add(self, key, value):
         """
         Add a variable to render to the BIRD configuration template.
+
+        If the value is a dict and the template contains a value with the
+        same key that is also a dict, update the existing value with the new
+        value's attributes.
         """
 
         logging.debug("adding variable %s to BIRD configuration" % key)
-        self.bird_config[key] = value
+        Overlay._bird_config_add(self.bird_config, key, value)
 
 
     def bird6_config_add(self, key, value):
         """
         Add a variable to render to the BIRD6 configuration template.
+
+        If the value is a dict and the template contains a value with the
+        same key that is also a dict, update the existing value with the new
+        value's attributes.
         """
 
         logging.debug("adding variable %s to BIRD6 configuration" % key)
-        self.bird6_config[key] = value
+        Overlay._bird_config_add(self.bird6_config, key, value)
 
 
     #
@@ -752,6 +799,7 @@ class Overlay(object):
         self.start_static_vlans()
         self.start_static_tunnels()
         self.start_static_veths()
+        self.start_static_overlay_links()
         self.start_static_bgps()
         self.start_bird()
         self.start_firewall()
@@ -865,13 +913,11 @@ class Overlay(object):
             Network.bridge_add_port(
                 bridge=bridge_if,
                 interface=gretap_if,
-                ipdb=self.root_ipdb,
             )
 
             Network.bridge_add_port(
                 bridge=bridge_if,
                 interface=root_veth_if,
-                ipdb=self.root_ipdb,
             )
 
             # Move one of the veth interfaces into the network namespace.
@@ -1000,13 +1046,11 @@ class Overlay(object):
                 Network.bridge_add_port(
                     bridge=bridge_if,
                     interface=vlan_if,
-                    ipdb=self.root_ipdb,
                 )
 
                 Network.bridge_add_port(
                     bridge=bridge_if,
                     interface=root_veth_if,
-                    ipdb=self.root_ipdb,
                 )
 
                 # Finally, we're done! Bring up the interfaces!
@@ -1156,16 +1200,13 @@ class Overlay(object):
                     # Check if the outer namespace name is the name of an
                     # overlay. If it is, fetch the overlay object, as well
                     # as its NetNS and IPDB objects.
-                    for overlay in self.overlays:
-                        if outer_namespace == overlay.netns_name:
-                            outer_overlay = overlay
-                            outer_netns = overlay.netns
-                            outer_ipdb = overlay.ipdb
-                            break
-
+                    try:
+                        outer_overlay = self.overlay_get(outer_namespace)
+                        outer_netns = outer_overlay.netns
+                        outer_ipdb = outer_overlay.ipdb
                     # Couldn't find the outer namespace name in the list of
                     # overlays. Look for it as an external network namespace.
-                    if outer_netns is None and outer_ipdb is None:
+                    except ValueError:
                         outer_netns, outer_ipdb = Network.netns_get(outer_namespace)
                 # outer-namespace not defined. Set outer_ipdb to the root
                 # namespace IPDB.
@@ -1229,6 +1270,135 @@ class Overlay(object):
 
         if static_veths_bgp6:
             self.bird6_config_add(key='veths', value=static_veths_bgp6)
+
+
+    def start_static_overlay_links(self):
+        """
+        Link and distribute routes between two configured overlays.
+        """
+
+        # The list of static veths configured.
+        self.static_overlay_links = []
+
+        static_overlay_links_bgp = []
+        static_overlay_links_bgp6 = []
+
+        for section in self.config.sections():
+            if section.startswith('static-overlay-link'):
+                name = Util.section_name_get('static-overlay-link', section)
+                overlay_name = Util.name_get(section['overlay-name'])
+                inner_address = Util.ip_address_get(section['inner-address'])
+                outer_address = Util.ip_address_get(section['outer-address'])
+                netmask = Util.netmask_get(section['netmask'])
+
+                if (type(inner_address) != type(outer_address)):
+                    raise ValueError("inner address %s (%s) and outer address %s (%s) must be the same type of IP address" % (inner_address, str(type(inner_address)), outer_address, str(type(outer_address))))
+
+                tap_name = self.interface_name(name, limit=13)
+                bridge_name = self.interface_name(tap_name, suffix='br')
+                outer_name = self.interface_name(tap_name, suffix='v')
+                inner_name = self.interface_name(tap_name, suffix='v')
+
+                logging.debug("creating link %s between overlays %s and %s" % (name, self.name, overlay_name))
+
+                # Get the NetNS and IPDB objects for the outer interface's
+                # configured network namespace.
+                outer_overlay = self.overlay_get(overlay_name)
+                outer_netns = outer_overlay.netns
+                outer_ipdb = outer_overlay.ipdb
+
+                # Create the inner and outer veth interfaces, which link the
+                # overlays together.
+                outer_if = Network.veth_create(
+                    name=outer_name,
+                    peer=inner_name,
+                    ipdb=self.ipdb,
+                )
+
+                inner_if = Network.netns_set(
+                    name=inner_name,
+                    ipdb=self.ipdb,
+                    netns_name=outer_netns,
+                    netns_ipdb=outer_ipdb,
+                )
+
+                # Create a TAP interface for the outer veth interface to be
+                # bridged with.
+                tap_if = Network.tuntap_create(
+                    name=tap_name,
+                    ipdb=self.ipdb,
+                )
+
+                bridge_if = Network.bridge_create(
+                    name=bridge_name,
+                    ipdb=self.ipdb,
+                )
+
+                Network.bridge_add_port(
+                    bridge=bridge_if,
+                    interface=outer_if,
+                )
+
+                Network.bridge_add_port(
+                    bridge=bridge_if,
+                    interface=tap_if,
+                )
+
+                # Assign address to the interfaces.
+                Network.interface_add_ip(
+                    interface=bridge_if,
+                    address=outer_address,
+                    netmask=netmask,
+                )
+
+                Network.interface_add_ip(
+                    interface=inner_if,
+                    address=inner_address,
+                    netmask=netmask,
+                )
+
+                # Bring up both the inner and outer interfaces, and their
+                # linking interfaces.
+                Network.interface_up(outer_if)
+                Network.interface_up(inner_if)
+
+                Network.interface_up(tap_if)
+                Network.interface_up(bridge_if)
+
+                # Add the inner interface to the list of routed interfaces.
+                static_overlay_link = {
+                    'name': name,
+                    'inner': {
+                        'overlay': overlay_name,
+                        'interface': inner_name,
+                        'address': inner_address,
+                    },
+                    'outer': {
+                        'overlay': self.name,
+                        'interface': outer_name,
+                        'tap': {
+                            'interface': tap_name,
+                        },
+                        'bridge': {
+                            'interface': bridge_name,
+                            'address': outer_address,
+                        },
+                    },
+                }
+
+                logging.debug("adding %s to list of static overlay links" % name)
+                self.static_overlay_links.append(static_overlay_link)
+
+                logging.debug("adding BGP route for static overlay link %s" % name)
+                if Util.ip_address_is_v6(inner_address):
+                    self.bird_config_add(key='overlay_links', value=static_overlay_links_bgp)
+                    outer_overlay.bird_config_add(key='overlay_links', value=static_overlay_links_bgp)
+                else:
+                    self.bird6_config_add(key='overlay_links', value=static_overlay_links_bgp6)
+                    outer_overlay.bird6_config_add(key='overlay_links', value=static_overlay_links_bgp)
+
+
+                logging.debug("finished creating link %s between overlays %s and %s" % (name, self.name, overlay_name))
 
 
     def start_static_bgps(self):
@@ -1384,11 +1554,13 @@ class Overlay(object):
 
         # Add required parameters to the BIRD configuration.
         if self.bird_config:
+            self.bird_config_add(key='overlay', value=self.name)
             self.bird_config_add(key='file', value=bird_config_file)
             self.bird_config_add(key='netns', value=self.netns_name)
             self.bird_config_add(key='asn', value=self.asn)
 
         if self.bird6_config:
+            self.bird_config_add(key='overlay', value=self.name)
             self.bird6_config_add(key='file', value=bird6_config_file)
             self.bird6_config_add(key='netns', value=self.netns_name)
             self.bird6_config_add(key='asn', value=self.asn)
@@ -1490,6 +1662,7 @@ class Overlay(object):
         self.stop_bird()
         # Already removed because it is entirely contained in BIRD.
         # self.stop_static_bgps()
+        self.stop_static_overlay_links()
         self.stop_static_veths()
         self.stop_static_tunnels()
         self.stop_static_vlans()
@@ -1600,6 +1773,40 @@ class Overlay(object):
             )
 
             logging.debug("finished removing static veth %s" % name)
+
+
+    def stop_static_overlay_links(self):
+        """
+        Destroy links between overlays.
+        """
+
+        for overlay_link in self.static_overlay_links:
+            name = overlay_link['name']
+            outer_overlay_name = overlay_link['outer_overlay']
+            inner_overlay_name = overlay_link['inner_overlay']
+
+            outer_name = overlay_link['outer']['interface']
+            tap_name = overlay_link['outer']['tap']['interface']
+            bridge_name = overlay_linkk['outer']['bridge']['interface']
+
+            logging.debug("removing static link %s between overlays %s and %s" % (name, outer_overlay_name, inner_overlay_name))
+
+            Network.interface_remove(
+                self.ipdb,
+                name=veth['bridge_interface'],
+            )
+
+            Network.interface_remove(
+                self.ipdb,
+                name=veth['tap_interface'],
+            )
+
+            Network.interface_remove(
+                self.ipdb,
+                name=veth['outer_interface'],
+            )
+
+            logging.debug("finished removing static link %s between overlays %s and %s" % (name, outer_overlay_name, inner_overlay_name))
 
 
     def stop_bird(self):
@@ -1725,6 +1932,42 @@ class Network(object):
 
 
     @staticmethod
+    def tuntap_create(name, mode='tap', uid=None, gid=None, ifr=None, ipdb):
+        """
+        Create a tun/tap interface with the given name in the chosen IPDB.
+        Returns the interface entry from the IPDB.
+        """
+
+        if name in ipdb.by_name.keys():
+            interface = ipdb.interfaces[name]
+
+            if (interface.kind != 'tuntap' or
+                    interface.mode != mode or
+                    interface.uid != uid or
+                    interface.gid != gid or
+                    interface.ifr != ifr):
+                logging.debug("removing existing interface %s" % name)
+                Network.interface_remove(ipdb, interface=interface)
+            else:
+                logging.debug("no need to create tuntap interface %s" % name)
+                return interface
+        else:
+            logging.debug("creating tuntap interface %s" % name)
+
+        interface = ipdb.create(
+            ifname=name,
+            kind='tuntap',
+            mode=mode,
+            uid=uid,
+            gid=gid,
+            ifr=ifr,
+        )
+
+        ipdb.commit()
+        return interface
+
+
+    @staticmethod
     def bridge_create(name, ipdb):
         """
         Create a bridge interface with the given name in a chosen IPDB.
@@ -1748,7 +1991,7 @@ class Network(object):
 
 
     @staticmethod
-    def bridge_add_port(bridge, interface, ipdb):
+    def bridge_add_port(bridge, interface):
         """
         Add the given interface to the list of ports for a given bridge.
         """
@@ -1756,9 +1999,7 @@ class Network(object):
         if interface.index not in bridge.ports:
             logging.debug("adding interface %s to bridge %s" % (interface.ifname, bridge.ifname))
 
-            bridge.add_port(interface)
-
-            ipdb.commit()
+            bridge.add_port(interface).commit()
         else:
             logging.debug("no need to add interface %s to bridge %s" % (interface.ifname, bridge.ifname))
 
@@ -1766,8 +2007,8 @@ class Network(object):
     @staticmethod
     def gre_create(name, local, remote, ipdb, kind='gre', ttl=16, key=None, ikey=None, okey=None, iflags=32, oflags=32):
         """
-        Create a gre/gretap interface with the given name in a chosen ipdb.
-        Returns the interface entry from the ipdb.
+        Create a gre/gretap interface with the given name in a chosen IPDB.
+        Returns the interface entry from the IPDB.
         """
 
         if key is not None:
@@ -1856,7 +2097,7 @@ class Network(object):
                 logging.debug("removing existing interface %s" % name)
                 Network.interface_remove(ipdb, interface=interface)
             else:
-                logging.debug("no need to create vlan interface %s" % name)
+                logging.debug("no need to create VLAN interface %s" % name)
                 return interface
         else:
             logging.debug("creating VLAN interface %s" % name)
