@@ -102,7 +102,7 @@ class OverlayDaemon(object):
                         overlay_names_to_paths,
                         sorted_overlay_paths,
                         outer_namespace)
-            elif section.startswith('static-overlay-link') and 'inner-overlay-name' in section:
+            elif section.startswith('static-overlay-link'):
                 inner_overlay_name = Util.name_get(overlay[section]['inner-overlay-name'])
 
                 if inner_overlay_name in overlays:
