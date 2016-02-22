@@ -315,48 +315,6 @@ The user ID which owns and is allowed to attach to the 'network/wire' side of th
 
 The group ID which is allowed to attach to the 'network/wire' side of the interface.
 
-### [static-bgp:*{name}*]
-
-This section is used to define a static BGP protocol in the BIRD routing daemon, used for distributing routes in the overlay. This is made to be used in conjunction with static GRE tunnels, to distribute routes across it.
-
-#### neighbor
-* Type: **ip address**
-* Required: **yes**
-
-The neighbor BGP node's IP address.
-
-#### local
-* Type: **ip address**
-* Required: no
-
-The local IP address used to make the BGP connection with the neighbor. Optional.
-
-#### local-asn
-* Type: **integer**
-* Required: no
-
-The BGP autonomous system (AS) number used to identify the AS the local node is part of. The default value is the ASN number set for the overlay (the `asn` value in the `[overlay]` section).
-
-#### neighbor-asn
-* Type: **integer**
-* Required: no
-
-The BGP autonomous system (AS) number used to identify the AS the neighbor node is part of.  The default value is the ASN number set for the overlay (the `asn` value in the `[overlay]` section).
-
-#### description
-* Type: **string**
-* Required: no
-
-An optional description of the BGP protocol, displayed with the use of `show protocol all` in the BIRD client.
-
-#### import-prefix[-*{int}*]
-* Type: **bird prefix**
-* Required: no
-
-One or more BIRD filters used to filter the routes which get imported into the BGP protocol. The default is to import all routes.
-
-See the [BIRD filter documentation on data types](http://bird.network.cz/?get_doc&f=bird-5.html#ss5.2) for more information.
-
 ### [static-veth:*{name}*]
 
 This section is used to configure a static veth pair, with an inner interface inside the overlay, and an outer interface, either in the root namespace, or an externally created network namespace.
@@ -414,3 +372,45 @@ The IP address assigned to the veth interface in the opposing connected overlay,
 * Required: **yes**
 
 The subnet mask for the assigned addresses. Usually this would be set to `31`/`255.255.255.254` (IPv4) or `127` (IPv6) to configure the link as a two-node subnet.
+
+### [static-bgp:*{name}*]
+
+This section is used to define a static BGP protocol in the BIRD routing daemon, used for distributing routes in the overlay. This is made to be used in conjunction with static GRE tunnels, to distribute routes across it.
+
+#### neighbor
+* Type: **ip address**
+* Required: **yes**
+
+The neighbor BGP node's IP address.
+
+#### local
+* Type: **ip address**
+* Required: no
+
+The local IP address used to make the BGP connection with the neighbor. Optional.
+
+#### local-asn
+* Type: **integer**
+* Required: no
+
+The BGP autonomous system (AS) number used to identify the AS the local node is part of. The default value is the ASN number set for the overlay (the `asn` value in the `[overlay]` section).
+
+#### neighbor-asn
+* Type: **integer**
+* Required: no
+
+The BGP autonomous system (AS) number used to identify the AS the neighbor node is part of.  The default value is the ASN number set for the overlay (the `asn` value in the `[overlay]` section).
+
+#### description
+* Type: **string**
+* Required: no
+
+An optional description of the BGP protocol, displayed with the use of `show protocol all` in the BIRD client.
+
+#### import-prefix[-*{int}*]
+* Type: **bird prefix**
+* Required: no
+
+One or more BIRD filters used to filter the routes which get imported into the BGP protocol. The default is to import all routes.
+
+See the [BIRD filter documentation on data types](http://bird.network.cz/?get_doc&f=bird-5.html#ss5.2) for more information.
