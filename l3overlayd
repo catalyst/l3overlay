@@ -255,7 +255,7 @@ class OverlayDaemon(object):
         #
         # Also used by start_ipsec() and stop_ipsec() to generate the IPsec
         # tunnels that are used to encapsulate the GRE tunnels.
-        self.mesh_tunnels = []
+        self.mesh_tunnel_links = []
 
         # List of overlays.
         self.overlays = []
@@ -335,7 +335,7 @@ class OverlayDaemon(object):
         with open(self.ipsec_config_file, 'w') as f:
             f.write(self.ipsec_config_template.render(
                 file=self.ipsec_config_file,
-                mesh_tunnels=self.mesh_tunnels,
+                mesh_tunnel_links=self.mesh_tunnel_links,
             ))
 
         # Create the directory where the IPsec secrets are stored.
@@ -355,7 +355,7 @@ class OverlayDaemon(object):
 
         addresses = []
 
-        for local, remote in self.mesh_tunnels:
+        for local, remote in self.mesh_tunnel_links:
             if local not in addresses:
                 addresses.append(local)
 
@@ -508,7 +508,7 @@ class OverlayDaemon(object):
                     stderr=subprocess.STDOUT,
                 )
 
-                for local, remote in self.mesh_tunnels:
+                for local, remote in self.mesh_tunnel_links:
                     logging.debug("shutting down IPsec tunnel %s-%s" % (str(local), str(remote)))
                     subprocess.check_output(
                         [ipsec, "down", "%s-%s" % (str(local), str(remote))],
@@ -618,7 +618,7 @@ class Overlay(object):
         self.interface_names = daemon.interface_names
 
         # Used by Overlay.gre_key().
-        self.mesh_tunnels = daemon.mesh_tunnels
+        self.mesh_tunnel_links = daemon.mesh_tunnel_links
 
         # self.static_vlans = defined in start_static_vlans()
         # self.static_tunnels = defined in start_static_tunnels()
@@ -727,7 +727,7 @@ class Overlay(object):
         key = 0
         link = (local, remote)
 
-        for l in self.mesh_tunnels:
+        for l in self.mesh_tunnel_links:
             if l == link:
                 key += 1
 
@@ -959,7 +959,7 @@ class Overlay(object):
                 self.bird_config_add('mesh_tunnels', mesh_tunnel)
 
             # Add the local-remote link to the list of mesh tunnel links made.
-            self.mesh_tunnels.append((physical_local, physical_remote))
+            self.mesh_tunnel_links.append((physical_local, physical_remote))
 
             logging.debug("finished creating mesh tunnel %s" % gretap_name)
 
