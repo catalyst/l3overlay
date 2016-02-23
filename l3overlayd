@@ -797,6 +797,7 @@ class Overlay(object):
         self.start_namespace()
         self.start_mesh_tunnels()
         self.start_static_vlans()
+        self.start_static_dummies()
         self.start_static_tunnels()
         self.start_static_tuntaps()
         self.start_static_veths()
@@ -1075,6 +1076,55 @@ class Overlay(object):
                 logging.debug("finished creating static VLAN %s" % name)
 
 
+    def start_static_dummies(self):
+        """
+        Create static dummy interfaces in the network namespace.
+        """
+
+        # The list of static dummy interfaces configured.
+        self.static_dummies = []
+
+        for section in self.config.sections():
+            if section.startswith('static-dummy'):
+                name = Util.section_name_get('static-dummy', section)
+                address = Util.ip_address_get(self.config[section]['address'])
+                netmask = Util.netmask_get(self.config[section]['netmask'], Util.ip_address_is_v6(address))
+
+                dummy_name = self.interface_name(name)
+
+                logging.debug("creating static dummy %s" % name)
+
+                dummy_if = Network.dummy_create(
+                    name=dummy_name,
+                    ipdb=self.ipdb,
+                )
+
+                Network.interface_add_ip(
+                    interface=dummy_if,
+                    address=address,
+                    netmask=netmask,
+                )
+
+                Network.interface_up(tunnel_if)
+
+                # Add the tunnel to the list of routed interfaces.
+                static_dummy = {
+                    'name': name,
+                    'interface': dummy_name,
+                }
+
+                logging.debug("adding %s to list of static dummies" % name)
+                self.static_dummies.append(static_tunnel)
+
+                logging.debug("adding BGP route for static dummy %s" % name)
+                if Util.ip_address_is_v6(address):
+                    self.bird6_config_add('dummies', static_dummy)
+                else:
+                    self.bird_config_add('dummies', static_dummy)
+
+                logging.debug("finished creating static dummy %s" % name)
+
+
     def start_static_tunnels(self):
         """
         Create a static GRE or gretap tunnel in the network namespace.
@@ -1082,9 +1132,6 @@ class Overlay(object):
 
         # The list of static tunnels configured.
         self.static_tunnels = []
-
-        static_tunnels_bgp = []
-        static_tunnels_bgp6 = []
 
         for section in self.config.sections():
             if section.startswith('static-tunnel'):
@@ -1131,7 +1178,7 @@ class Overlay(object):
                 else:
                     self.bird_config_add('tunnels', static_tunnel)
 
-                logging.debug("creating of static tunnel %s" % name)
+                logging.debug("finished creating static tunnel %s" % name)
 
 
     def start_static_tuntaps(self):
@@ -1319,10 +1366,10 @@ class Overlay(object):
                 if (type(inner_address) != type(outer_address)):
                     raise ValueError("inner address %s (%s) and outer address %s (%s) must be the same type of IP address" % (inner_address, str(type(inner_address)), outer_address, str(type(outer_address))))
 
-                tap_name = self.interface_name(name, limit=13)
-                bridge_name = self.interface_name(tap_name, suffix='br')
-                outer_name = self.interface_name(tap_name, suffix='v')
-                inner_name = self.interface_name(tap_name, suffix='v')
+                dummy_name = self.interface_name(name, limit=13)
+                bridge_name = self.interface_name(dummy_name, suffix='br')
+                outer_name = self.interface_name(dummy_name, suffix='v')
+                inner_name = self.interface_name(dummy_name, suffix='v')
 
                 logging.debug("creating link %s between overlays %s and %s" % (name, self.name, inner_overlay_name))
 
@@ -1345,10 +1392,10 @@ class Overlay(object):
                     netns_ipdb=outer_overlay.ipdb,
                 )
 
-                # Create a TAP interface for the outer veth interface to be
+                # Create a dummy interface for the outer veth interface to be
                 # bridged with.
-                tap_if = Network.tuntap_create(
-                    name=tap_name,
+                dummy_if = Network.dummy_create(
+                    name=dummy_name,
                     ipdb=self.ipdb,
                 )
 
@@ -1364,7 +1411,7 @@ class Overlay(object):
 
                 Network.bridge_add_port(
                     bridge=bridge_if,
-                    interface=tap_if,
+                    interface=dummy_if,
                 )
 
                 # Assign address to the interfaces.
@@ -1401,8 +1448,8 @@ class Overlay(object):
                         'overlay': self.name,
                         'asn': self.asn,
                         'interface': outer_name,
-                        'tap': {
-                            'interface': tap_name,
+                        'dummy': {
+                            'interface': dummy_name,
                         },
                         'bridge': {
                             'interface': bridge_name,
@@ -1681,6 +1728,7 @@ class Overlay(object):
         self.stop_static_veths()
         self.stop_static_tuntaps()
         self.stop_static_tunnels()
+        self.stop_static_dummies()
         self.stop_static_vlans()
         self.stop_mesh_tunnels()
         self.stop_namespace()
@@ -1724,6 +1772,25 @@ class Overlay(object):
         )
 
         logging.debug("finished removing mesh tunnels")
+
+
+    def stop_static_dummies(self):
+        """
+        Destroy the static dummies.
+        """
+
+        for dummy in self.static_dummies:
+            name = dummy['name']
+            dummy_name = dummy['interface']
+
+            logging.debug("removing static dummy %s" % name)
+
+            Network.interface_remove(
+                self.ipdb,
+                name=dummy_name,
+            )
+
+            logging.debug("finished removing static dummy %s" % name)
 
 
     def stop_static_tunnels(self):
@@ -1822,7 +1889,7 @@ class Overlay(object):
             inner_overlay_name = overlay_link['inner']['overlay']
 
             outer_name = overlay_link['outer']['interface']
-            tap_name = overlay_link['outer']['tap']['interface']
+            dummy_name = overlay_link['outer']['dummy']['interface']
             bridge_name = overlay_linkk['outer']['bridge']['interface']
 
             logging.debug("removing static link %s between overlays %s and %s" % (name, outer_overlay_name, inner_overlay_name))
@@ -1834,7 +1901,7 @@ class Overlay(object):
 
             Network.interface_remove(
                 self.ipdb,
-                name=tap_name,
+                name=dummy_name,
             )
 
             Network.interface_remove(
@@ -1968,42 +2035,6 @@ class Network(object):
 
 
     @staticmethod
-    def tuntap_create(name, ipdb, mode='tap', uid=0, gid=0, ifr=None):
-        """
-        Create a tun/tap interface with the given name in the chosen IPDB.
-        Returns the interface entry from the IPDB.
-        """
-
-        if name in ipdb.by_name.keys():
-            interface = ipdb.interfaces[name]
-
-            if (interface.kind != 'tuntap' or
-                    interface.mode != mode or
-                    interface.uid != uid or
-                    interface.gid != gid or
-                    interface.ifr != ifr):
-                logging.debug("removing existing interface %s" % name)
-                Network.interface_remove(ipdb, interface=interface)
-            else:
-                logging.debug("no need to create tuntap interface %s" % name)
-                return interface
-        else:
-            logging.debug("creating tuntap interface %s" % name)
-
-        interface = ipdb.create(
-            ifname=name,
-            kind='tuntap',
-            mode=mode,
-            uid=uid,
-            gid=gid,
-            ifr=ifr,
-        )
-
-        ipdb.commit()
-        return interface
-
-
-    @staticmethod
     def bridge_create(name, ipdb):
         """
         Create a bridge interface with the given name in a chosen IPDB.
@@ -2038,6 +2069,29 @@ class Network(object):
             bridge.add_port(interface).commit()
         else:
             logging.debug("no need to add interface %s to bridge %s" % (interface.ifname, bridge.ifname))
+
+
+    @staticmethod
+    def dummy_create(name, ipdb):
+        """
+        Create a dummy interface with the given name in a chosen IPDB.
+        Returns the interface entry from the IPDB.
+        """
+
+        if name not in ipdb.by_name.keys():
+            logging.debug("creating dummy interface %s" % name)
+
+            interface = ipdb.create(
+                ifname=name,
+                kind='dummy',
+            )
+
+            ipdb.commit()
+        else:
+            logging.debug("no need to create dummy interface %s" % name)
+            interface = ipdb.interfaces[name]
+
+        return interface
 
 
     @staticmethod
@@ -2082,6 +2136,42 @@ class Network(object):
             gre_okey=okey,
             gre_iflags=iflags,
             gre_oflags=oflags,
+        )
+
+        ipdb.commit()
+        return interface
+
+
+    @staticmethod
+    def tuntap_create(name, ipdb, mode='tap', uid=0, gid=0, ifr=None):
+        """
+        Create a tun/tap interface with the given name in the chosen IPDB.
+        Returns the interface entry from the IPDB.
+        """
+
+        if name in ipdb.by_name.keys():
+            interface = ipdb.interfaces[name]
+
+            if (interface.kind != 'tuntap' or
+                    interface.mode != mode or
+                    interface.uid != uid or
+                    interface.gid != gid or
+                    interface.ifr != ifr):
+                logging.debug("removing existing interface %s" % name)
+                Network.interface_remove(ipdb, interface=interface)
+            else:
+                logging.debug("no need to create tuntap interface %s" % name)
+                return interface
+        else:
+            logging.debug("creating tuntap interface %s" % name)
+
+        interface = ipdb.create(
+            ifname=name,
+            kind='tuntap',
+            mode=mode,
+            uid=uid,
+            gid=gid,
+            ifr=ifr,
         )
 
         ipdb.commit()

@@ -245,6 +245,22 @@ The IP address assigned to the static VLAN interface.
 
 The subnet mask for the VLAN interface address.
 
+### [static-dummy:*{name}*]
+
+This section is used to define a dummy interface in the overlay. Used internally as a component of a `[static-overlay-link]`.
+
+#### address
+* Type: **ip address**
+* Required: **yes**
+
+The IP address assigned to the dummy interface.
+
+#### netmask
+* Type: **subnet mask**
+* Required: **yes**
+
+The subnet mask for the dummy interface address.
+
 ### [static-tunnel:*{name}*]
 
 This section is used to define a layer 2/3 GRE tunnel in the overlay. It can be connected to any IP address available in the overlay.
@@ -347,7 +363,7 @@ For a fully configured and routed link between overlays, consider using a `[stat
 
 ### [static-overlay-link:*{name}*]
 
-This section is used to create a link between two overlays, by creating a veth pair between them. The outer veth interface stays in the creating overlay, and gets bridged to a TAP interface, and the inner veth interface gets moved to the overlay to be linked to. A BGP peering is also set up between them, allowing route distribution to take place between the overlays.
+This section is used to create a link between two overlays, by creating a veth pair between them. The outer veth interface stays in the creating overlay, and gets bridged to a dummy interface, and the inner veth interface gets moved to the overlay to be linked to. A BGP peering is also set up between them, allowing route distribution to take place between the overlays.
 
 #### outer-address
 * Type: **ip address**
