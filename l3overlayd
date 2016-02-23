@@ -1886,7 +1886,7 @@ class Overlay(object):
 
             outer_name = overlay_link['outer']['interface']
             dummy_name = overlay_link['outer']['dummy']['interface']
-            bridge_name = overlay_linkk['outer']['bridge']['interface']
+            bridge_name = overlay_link['outer']['bridge']['interface']
 
             logging.debug("removing static link %s between overlays %s and %s" % (name, outer_overlay_name, inner_overlay_name))
 
