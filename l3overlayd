@@ -622,10 +622,6 @@ class Overlay(object):
         # Used by Overlay.gre_key().
         self.mesh_tunnel_links = daemon.mesh_tunnel_links
 
-        # self.static_vlans = defined in start_static_vlans()
-        # self.static_tunnels = defined in start_static_tunnels()
-        # self.static_veths = defined in start_static_veths()
-
         # Network namespace root directory. Used for saving network namespace
         # specific configuration files.
         self.netns_root = os.path.join(self.lib_dir, "netns", self.netns_name)
@@ -796,10 +792,10 @@ class Overlay(object):
 
         self.start_namespace()
         self.start_mesh_tunnels()
-        self.start_static_vlans()
         self.start_static_dummies()
         self.start_static_tunnels()
         self.start_static_tuntaps()
+        self.start_static_vlans()
         self.start_static_veths()
         self.start_static_overlay_links()
         self.start_static_bgps()
@@ -967,115 +963,6 @@ class Overlay(object):
             logging.debug("finished creating mesh tunnel %s" % gretap_name)
 
 
-    def start_static_vlans(self):
-        """
-        Create a static VLAN between a physical interface on the node and the
-        network namespace.
-        """
-
-        # The list of static VLANs configured.
-        self.static_vlans = []
-
-        for section in self.config.sections():
-            if section.startswith('static-vlan'):
-                name = Util.section_name_get('static-vlan', section)
-                id = int(self.config[section]['id'])
-                physical_interface = Util.name_get(self.config[section]['physical-interface'])
-                address = Util.ip_address_get(self.config[section]['address'])
-                netmask = Util.netmask_get(self.config[section]['netmask'], Util.ip_address_is_v6(address))
-
-                vlan_name = self.interface_name(name=name, suffix='vl', limit=13)
-                root_veth_name = "%sv0" % vlan_name
-                netns_veth_name = "%sv1" % vlan_name
-                bridge_name = "%sbr" % vlan_name
-
-                logging.debug("creating static VLAN %s" % name)
-
-                # Find the physical interface in the IPDB.
-                physical_if = Network.interface_get(
-                    physical_interface,
-                    ipdb=self.root_ipdb,
-                )
-
-                # Create the VLAN interface.
-                vlan_if = Network.vlan_create(
-                    name=vlan_name,
-                    link=self.root_ipdb.interfaces[physical_interface],
-                    id=id,
-                    ipdb=self.root_ipdb,
-                )
-
-                # Create the veth pair.
-                root_veth_if = Network.veth_create(
-                    name=root_veth_name,
-                    peer=netns_veth_name,
-                    ipdb=self.root_ipdb,
-                )
-
-                # Move the netns veth interface to the network namespace.
-                netns_veth_if = Network.netns_set(
-                    name=netns_veth_name,
-                    ipdb=self.root_ipdb,
-                    netns_name=self.netns_name,
-                    netns_ipdb=self.ipdb,
-                )
-
-                # Add the assigned address for the VLAN to the netns veth
-                # interface.
-                Network.interface_add_ip(
-                    interface=netns_veth_if,
-                    address=address,
-                    netmask=netmask,
-                )
-
-                # Create a bridge for the physical interface to connect to the
-                # network namespace via the veth pair.
-                bridge_if = Network.bridge_create(
-                    name=bridge_name,
-                    ipdb=self.root_ipdb,
-                )
-
-                # Add the physical interface and the root veth interface to the
-                # bridge.
-                Network.bridge_add_port(
-                    bridge=bridge_if,
-                    interface=vlan_if,
-                )
-
-                Network.bridge_add_port(
-                    bridge=bridge_if,
-                    interface=root_veth_if,
-                )
-
-                # Finally, we're done! Bring up the interfaces!
-                Network.interface_up(physical_if)
-                Network.interface_up(vlan_if)
-                Network.interface_up(root_veth_if)
-                Network.interface_up(netns_veth_if)
-                Network.interface_up(bridge_if)
-
-                # Add the veth interface connected to the VLAN to the list of 
-                # routed interfaces.
-                static_vlan = {
-                    'name': name,
-                    'interface': netns_veth_name,
-                    'vlan_interface': vlan_name,
-                    'root_interface': root_veth_name,
-                    'bridge_interface': bridge_name,
-                }
-
-                logging.debug("adding %s to list of static VLANs" % name)
-                self.static_vlans.append(static_vlan)
-
-                logging.debug("adding BGP route for static VLAN %s" % name)
-                if Util.ip_address_is_v6(address):
-                    self.bird6_config_add('vlans', static_vlan)
-                else:
-                    self.bird_config_add('vlans', static_vlan)
-
-                logging.debug("finished creating static VLAN %s" % name)
-
-
     def start_static_dummies(self):
         """
         Create static dummy interfaces in the network namespace.
@@ -1235,6 +1122,115 @@ class Overlay(object):
                     self.bird_config_add('tuntaps', static_tuntap)
 
                 logging.debug("finished creating static %s %s" % (mode, name))
+
+
+    def start_static_vlans(self):
+        """
+        Create a static VLAN between a physical interface on the node and the
+        network namespace.
+        """
+
+        # The list of static VLANs configured.
+        self.static_vlans = []
+
+        for section in self.config.sections():
+            if section.startswith('static-vlan'):
+                name = Util.section_name_get('static-vlan', section)
+                id = int(self.config[section]['id'])
+                physical_interface = Util.name_get(self.config[section]['physical-interface'])
+                address = Util.ip_address_get(self.config[section]['address'])
+                netmask = Util.netmask_get(self.config[section]['netmask'], Util.ip_address_is_v6(address))
+
+                vlan_name = self.interface_name(name=name, suffix='vl', limit=13)
+                root_veth_name = "%sv0" % vlan_name
+                netns_veth_name = "%sv1" % vlan_name
+                bridge_name = "%sbr" % vlan_name
+
+                logging.debug("creating static VLAN %s" % name)
+
+                # Find the physical interface in the IPDB.
+                physical_if = Network.interface_get(
+                    physical_interface,
+                    ipdb=self.root_ipdb,
+                )
+
+                # Create the VLAN interface.
+                vlan_if = Network.vlan_create(
+                    name=vlan_name,
+                    link=self.root_ipdb.interfaces[physical_interface],
+                    id=id,
+                    ipdb=self.root_ipdb,
+                )
+
+                # Create the veth pair.
+                root_veth_if = Network.veth_create(
+                    name=root_veth_name,
+                    peer=netns_veth_name,
+                    ipdb=self.root_ipdb,
+                )
+
+                # Move the netns veth interface to the network namespace.
+                netns_veth_if = Network.netns_set(
+                    name=netns_veth_name,
+                    ipdb=self.root_ipdb,
+                    netns_name=self.netns_name,
+                    netns_ipdb=self.ipdb,
+                )
+
+                # Add the assigned address for the VLAN to the netns veth
+                # interface.
+                Network.interface_add_ip(
+                    interface=netns_veth_if,
+                    address=address,
+                    netmask=netmask,
+                )
+
+                # Create a bridge for the physical interface to connect to the
+                # network namespace via the veth pair.
+                bridge_if = Network.bridge_create(
+                    name=bridge_name,
+                    ipdb=self.root_ipdb,
+                )
+
+                # Add the physical interface and the root veth interface to the
+                # bridge.
+                Network.bridge_add_port(
+                    bridge=bridge_if,
+                    interface=vlan_if,
+                )
+
+                Network.bridge_add_port(
+                    bridge=bridge_if,
+                    interface=root_veth_if,
+                )
+
+                # Finally, we're done! Bring up the interfaces!
+                Network.interface_up(physical_if)
+                Network.interface_up(vlan_if)
+                Network.interface_up(root_veth_if)
+                Network.interface_up(netns_veth_if)
+                Network.interface_up(bridge_if)
+
+                # Add the veth interface connected to the VLAN to the list of 
+                # routed interfaces.
+                static_vlan = {
+                    'name': name,
+                    'interface': netns_veth_name,
+                    'vlan_interface': vlan_name,
+                    'root_interface': root_veth_name,
+                    'bridge_interface': bridge_name,
+                }
+
+                logging.debug("adding %s to list of static VLANs" % name)
+                self.static_vlans.append(static_vlan)
+
+                logging.debug("adding BGP route for static VLAN %s" % name)
+                if Util.ip_address_is_v6(address):
+                    self.bird6_config_add('vlans', static_vlan)
+                else:
+                    self.bird_config_add('vlans', static_vlan)
+
+                logging.debug("finished creating static VLAN %s" % name)
 
 
     def start_static_veths(self):
@@ -1726,10 +1722,10 @@ class Overlay(object):
         # self.stop_static_bgps()
         self.stop_static_overlay_links()
         self.stop_static_veths()
+        self.stop_static_vlans()
         self.stop_static_tuntaps()
         self.stop_static_tunnels()
         self.stop_static_dummies()
-        self.stop_static_vlans()
         self.stop_mesh_tunnels()
         self.stop_namespace()
 
@@ -2179,35 +2175,6 @@ class Network(object):
 
 
     @staticmethod
-    def veth_create(name, peer, ipdb):
-        """
-        Create a veth pair with the given names in the chosen IPDB, and
-        returns the root interface. The peer must be retrieved separately.
-        """
-
-        if name in ipdb.by_name.keys():
-            interface = ipdb.interfaces[name]
-
-            if interface.kind != 'veth':
-                logging.debug("removing existing interface %s" % name)
-                Network.interface_remove(ipdb, interface=interface)
-            else:
-                logging.debug("no need to create veth pair %s and %s" % (name, peer))
-                return interface
-
-        logging.debug("creating veth pair %s and %s" % (name, peer))
-
-        interface = ipdb.create(
-            ifname=name,
-            kind='veth',
-            peer=peer,
-        )
-
-        ipdb.commit()
-        return interface
-
-
-    @staticmethod
     def vlan_create(name, link, id, ipdb):
         """
         Create a IEEE 802.1Q VLAN interface with the given name, physical link
@@ -2233,6 +2200,35 @@ class Network(object):
             kind='vlan',
             link=link,
             vlan_id=id,
+        )
+
+        ipdb.commit()
+        return interface
+
+
+    @staticmethod
+    def veth_create(name, peer, ipdb):
+        """
+        Create a veth pair with the given names in the chosen IPDB, and
+        returns the root interface. The peer must be retrieved separately.
+        """
+
+        if name in ipdb.by_name.keys():
+            interface = ipdb.interfaces[name]
+
+            if interface.kind != 'veth':
+                logging.debug("removing existing interface %s" % name)
+                Network.interface_remove(ipdb, interface=interface)
+            else:
+                logging.debug("no need to create veth pair %s and %s" % (name, peer))
+                return interface
+
+        logging.debug("creating veth pair %s and %s" % (name, peer))
+
+        interface = ipdb.create(
+            ifname=name,
+            kind='veth',
+            peer=peer,
         )
 
         ipdb.commit()

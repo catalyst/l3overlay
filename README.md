@@ -217,34 +217,6 @@ Specifies whether or not this overlay should be configured. The default value is
 
 The location to the fwbuilder script used to build the firewall settings inside the overlay. This can be either an absolute filepath to the script, or simply a filename relative to the `fwbuilder_scripts` directory.
 
-### [static-vlan:*{name}*]
-
-This section is used to statically define a IEEE 802.1Q VLAN interface, assigned to a physical interface, which will be accessible in the overlay via a veth pair.
-
-#### id
-* Type: **integer**
-* Required: **yes**
-
-The IEEE 802.1Q VLAN ID tag for the static VLAN interface.
-
-#### physical-interface
-* Type: **name**
-* Required: **yes**
-
-The physical interface assigned to the static VLAN interface.
-
-#### address
-* Type: **ip address**
-* Required: **yes**
-
-The IP address assigned to the static VLAN interface.
-
-#### netmask
-* Type: **subnet mask**
-* Required: **yes**
-
-The subnet mask for the VLAN interface address.
-
 ### [static-dummy:*{name}*]
 
 This section is used to define a dummy interface in the overlay. Used internally as a component of a `[static-overlay-link]`.
@@ -330,6 +302,34 @@ The user ID which owns and is allowed to attach to the 'network/wire' side of th
 * Required: no
 
 The group ID which is allowed to attach to the 'network/wire' side of the interface.
+
+### [static-vlan:*{name}*]
+
+This section is used to statically define a IEEE 802.1Q VLAN interface, assigned to a physical interface, which will be accessible in the overlay via a veth pair.
+
+#### id
+* Type: **integer**
+* Required: **yes**
+
+The IEEE 802.1Q VLAN ID tag for the static VLAN interface.
+
+#### physical-interface
+* Type: **name**
+* Required: **yes**
+
+The physical interface assigned to the static VLAN interface.
+
+#### address
+* Type: **ip address**
+* Required: **yes**
+
+The IP address assigned to the static VLAN interface.
+
+#### netmask
+* Type: **subnet mask**
+* Required: **yes**
+
+The subnet mask for the VLAN interface address.
 
 ### [static-veth:*{name}*]
 
