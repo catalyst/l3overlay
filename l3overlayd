@@ -953,9 +953,9 @@ class Overlay(object):
             }
 
             if Util.ip_network_is_v6(self.linknet_pool):
-                self.bird6_config_add('mesh_tunnels', mesh_tunnel)
+                self.bird6_config_add('mesh_tunnels', [mesh_tunnel])
             else:
-                self.bird_config_add('mesh_tunnels', mesh_tunnel)
+                self.bird_config_add('mesh_tunnels', [mesh_tunnel])
 
             # Add the local-remote link to the list of mesh tunnel links made.
             self.mesh_tunnel_links.append((physical_local, physical_remote))
@@ -1005,9 +1005,9 @@ class Overlay(object):
 
                 logging.debug("adding BGP route for static dummy %s" % name)
                 if Util.ip_address_is_v6(address):
-                    self.bird6_config_add('dummies', static_dummy)
+                    self.bird6_config_add('dummies', [static_dummy])
                 else:
-                    self.bird_config_add('dummies', static_dummy)
+                    self.bird_config_add('dummies', [static_dummy])
 
                 logging.debug("finished creating static dummy %s" % name)
 
@@ -1061,9 +1061,9 @@ class Overlay(object):
 
                 logging.debug("adding BGP route for static tunnel %s" % name)
                 if Util.ip_address_is_v6(address):
-                    self.bird6_config_add('tunnels', static_tunnel)
+                    self.bird6_config_add('tunnels', [static_tunnel])
                 else:
-                    self.bird_config_add('tunnels', static_tunnel)
+                    self.bird_config_add('tunnels', [static_tunnel])
 
                 logging.debug("finished creating static tunnel %s" % name)
 
@@ -1117,9 +1117,9 @@ class Overlay(object):
 
                 logging.debug("adding BGP route for static %s %s" % (mode, name))
                 if Util.ip_address_is_v6(address):
-                    self.bird6_config_add('tuntaps', static_tuntap)
+                    self.bird6_config_add('tuntaps', [static_tuntap])
                 else:
-                    self.bird_config_add('tuntaps', static_tuntap)
+                    self.bird_config_add('tuntaps', [static_tuntap])
 
                 logging.debug("finished creating static %s %s" % (mode, name))
 
@@ -1226,9 +1226,9 @@ class Overlay(object):
 
                 logging.debug("adding BGP route for static VLAN %s" % name)
                 if Util.ip_address_is_v6(address):
-                    self.bird6_config_add('vlans', static_vlan)
+                    self.bird6_config_add('vlans', [static_vlan])
                 else:
-                    self.bird_config_add('vlans', static_vlan)
+                    self.bird_config_add('vlans', [static_vlan])
 
                 logging.debug("finished creating static VLAN %s" % name)
 
@@ -1336,9 +1336,9 @@ class Overlay(object):
 
                 logging.debug("adding BGP route for static veth %s" % name)
                 if Util.ip_address_is_v6(address):
-                    self.bird6_config_add('veths', static_veth)
+                    self.bird6_config_add('veths', [static_veth])
                 else:
-                    self.bird_config_add('veths', static_veth)
+                    self.bird_config_add('veths', [static_veth])
 
                 logging.debug("finished creating static veth %s" % name)
 
@@ -1459,11 +1459,11 @@ class Overlay(object):
 
                 logging.debug("adding BGP route for static overlay link %s" % name)
                 if Util.ip_address_is_v6(inner_address):
-                    self.bird6_config_add('overlay_links', static_overlay_links)
-                    outer_overlay.bird6_config_add('overlay_links', static_overlay_link)
+                    self.bird6_config_add('overlay_links', [static_overlay_links])
+                    outer_overlay.bird6_config_add('overlay_links', [static_overlay_link])
                 else:
-                    self.bird_config_add('overlay_links', static_overlay_link)
-                    outer_overlay.bird_config_add('overlay_links', static_overlay_link)
+                    self.bird_config_add('overlay_links', [static_overlay_link])
+                    outer_overlay.bird_config_add('overlay_links', [static_overlay_link])
 
                 logging.debug("finished creating link %s between overlays %s and %s" % (name, self.name, inner_overlay_name))
 
@@ -1512,9 +1512,9 @@ class Overlay(object):
                 logging.debug("adding static BGP %s to BIRD configuration" % name)
 
                 if Util.ip_address_is_v6(neighbor) or (local is not None and Util.ip_address_is_v6(local)):
-                    self.bird6_config_add('bgps', value=bgp)
+                    self.bird6_config_add('bgps', value=[bgp])
                 else:
-                    self.bird_config_add('bgps', value=bgp)
+                    self.bird_config_add('bgps', value=[bgp])
 
                 logging.debug("finished adding static BGP %s to BIRD configuration" % name)
 
