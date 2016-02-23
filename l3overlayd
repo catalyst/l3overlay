@@ -1428,7 +1428,7 @@ class Overlay(object):
                 Network.interface_up(outer_if)
                 Network.interface_up(inner_if)
 
-                Network.interface_up(tap_if)
+                Network.interface_up(dummy_if)
                 Network.interface_up(bridge_if)
 
                 # Add the inner interface to the list of routed interfaces.
