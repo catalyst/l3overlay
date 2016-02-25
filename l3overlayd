@@ -1258,7 +1258,7 @@ class Overlay(object):
                 elif outer_address is not None:
                     address = outer_address
                 else:
-                    raise ValueError("one of inner-address or outer-address must be specified in static veth" % name)
+                    raise ValueError("one of inner-address or outer-address must be specified in static veth %s" % name)
 
                 netmask = Util.netmask_get(self.config[section]['netmask'], Util.ip_address_is_v6(address))
 
