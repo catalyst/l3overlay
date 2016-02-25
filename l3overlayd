@@ -1253,12 +1253,8 @@ class Overlay(object):
                 # A valid veth pair only has an address assigned at only one
                 # end of the pair. Enforce this restriction.
                 if not inner_interface_bridged:
-                    if inner_address is not None and outer_address is not None:
+                    if inner_address and outer_address:
                         raise ValueError("set inner-interface-bridged to use both inner-address and outer-address in static veth" % name)
-                    elif inner_address is not None:
-                        address = inner_address
-                    elif outer_address is not None:
-                        address = outer_address
 
                 if inner_address or outer_address:
                     netmask = Util.netmask_get(self.config[section]['netmask'], Util.ip_address_is_v6(address))
@@ -1380,7 +1376,7 @@ class Overlay(object):
                 self.static_veths.append(static_veth)
 
                 logging.debug("adding BGP route for static veth %s" % name)
-                if Util.ip_address_is_v6(address):
+                if Util.ip_address_is_v6(inner_address):
                     self.bird6_config_add('veths', [static_veth])
                 else:
                     self.bird_config_add('veths', [static_veth])
