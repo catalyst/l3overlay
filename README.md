@@ -337,17 +337,29 @@ This section is used to configure a static veth pair, with an inner interface in
 
 #### inner-address|outer-address
 * Type: **ip address**
-* Required: **yes**
+* Required: no
 
-The IP address assigned to the either the inner veth interface inside the overlay, or the outer interface in the root namespace.
+The IP address assigned to the either the inner interface inside the overlay, or the outer interface in the root namespace.
 
 In a veth pair, only one of the two interfaces should be configured. Therefore, either `inner-address` or `outer-address` can be specified, but not both at the same time.
 
+However, if `inner-interface-bridged` is set to `true`, the inner interface will be bridged to a dummy interface, allowing both `inner-address` and `outer-address` to be used.
+
+If both are specified, they must both be the same type of IP address. In other words, both must be IPv4, or both must be IPv6, but not a mix of IPv4 and IPv6.
+
 #### netmask
 * Type: **subnet mask**
-* Required: **yes**
+* Required: **yes**, **IF** `inner-address` or `outer-address` is defined
 
-The subnet mask for the assigned address.
+The subnet mask for the assigned address. If both `inner-address` and `outer-address` are defined with the help of `inner-interface-bridged`, this option will be used as the netmask value for both of them, as they should be part of the same subnet. 
+
+#### inner-interface-bridged
+* Type: **boolean**
+* Required: no
+
+Attaches the inner interface of the static veth to a bridge interface, along with a dummy interface. This allows both `inner-address` and `outer-address` to be used at the same time.
+
+With this option set, `outer-address` goes to the outer interface as normal, but `inner-address` will be assigned to the bridge interface rather than being directly assigned to the inner interface.
 
 #### outer-namespace
 * Type: **name**

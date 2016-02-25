@@ -1247,23 +1247,32 @@ class Overlay(object):
                 name = Util.section_name_get('static-veth', section)
                 inner_address = Util.ip_address_get(self.config[section]['inner-address']) if 'inner-address' in self.config[section] else None
                 outer_address = Util.ip_address_get(self.config[section]['outer-address']) if 'outer-address' in self.config[section] else None
+                inner_interface_bridged = Util.boolean_get(self.config[section]['inner-interface-bridged']) if 'inner-address-bridged' in self.config[section] else False
                 outer_namespace = Util.name_get(self.config[section]['outer-namespace']) if 'outer-namespace' in self.config[section] else None
 
                 # A valid veth pair only has an address assigned at only one
                 # end of the pair. Enforce this restriction.
-                if inner_address is not None and outer_address is not None:
-                    raise ValueError("cannot have both inner-address and outer-address in static veth" % name)
-                elif inner_address is not None:
-                    address = inner_address
-                elif outer_address is not None:
-                    address = outer_address
-                else:
-                    raise ValueError("one of inner-address or outer-address must be specified in static veth %s" % name)
+                if not inner_interface_bridged:
+                    if inner_address is not None and outer_address is not None:
+                        raise ValueError("set inner-interface-bridged to use both inner-address and outer-address in static veth" % name)
+                    elif inner_address is not None:
+                        address = inner_address
+                    elif outer_address is not None:
+                        address = outer_address
 
-                netmask = Util.netmask_get(self.config[section]['netmask'], Util.ip_address_is_v6(address))
+                if inner_address or outer_address:
+                    netmask = Util.netmask_get(self.config[section]['netmask'], Util.ip_address_is_v6(address))
 
-                outer_name = self.interface_name(name + 'v')
-                inner_name = self.interface_name(name + 'v')
+                # Check that inner-address and outer-address are the same type
+                # of address.
+                if inner_address and outer_address:
+                    if type(inner_address) != type(outer_address):
+                        raise ValueError("inner-address (%s, %s) and outer-address (%s, %s) must be the same type of IP address" % (str(inner_address), str(type(inner_address)), str(outer_address), str(type(outer_address))))
+
+                dummy_name = self.interface_name(name, limit=12)
+                bridge_name = self.interface_name(dummy_name, suffix='br')
+                outer_name = self.interface_name(dummy_name, suffix='v')
+                inner_name = self.interface_name(dummy_name, suffix='v')
 
                 logging.debug("creating static veth %s" % name)
 
@@ -1273,7 +1282,7 @@ class Overlay(object):
                 outer_netns = None
                 outer_ipdb = None
 
-                if outer_namespace is not None:
+                if outer_namespace:
                     # Check if the outer namespace name is the name of an
                     # overlay. If it is, fetch the overlay object, as well
                     # as its NetNS and IPDB objects.
@@ -1304,32 +1313,68 @@ class Overlay(object):
                     netns_ipdb=self.ipdb,
                 )
 
+                # If the overlay's veth interface is to be bonded to a dummy
+                # bridge, do so, and make sure inner-address gets assigned to
+                # the bridge instead.
+                if inner_interface_bridged:
+                    dummy_if = Network.dummy_create(dummy_name, self.ipdb)
+                    bridge_if = Network.bridge_create(bridge_name, self.ipdb)
+
+                    Network.bridge_add_port(bridge_if, dummy_if)
+                    Network.bridge_add_port(bridge_if, inner_if)
+
+                    inner_address_name = bridge_name
+                    inner_address_if = bridge_if
+                else:
+                    inner_address_name = inner_name
+                    inner_address_if = inner_if
+
                 # Determine which interface to assign the address to.
                 interface = inner_if if inner_address is not None else outer_if
 
-                # Assign the address to the correct interface.
-                Network.interface_add_ip(
-                    interface=interface,
-                    address=address,
-                    netmask=netmask,
-                )
+                # Assign IP addresses to the interfaces, if configured.
+                if inner_address:
+                    Network.interface_add_ip(
+                        interface=inner_address_if,
+                        address=inner_address,
+                        netmask=netmask,
+                    )
 
-                # Bring up both the inner and outer interfaces.
+                if outer_address:
+                    Network.interface_add_ip(
+                        interface=outer_if,
+                        address=outer_address,
+                        netmask=netmask,
+                    )
+
+                # Bring up all interfaces.
                 Network.interface_up(outer_if)
                 Network.interface_up(inner_if)
+
+                if inner_interface_bridged:
+                    Network.interface_up(dummy_if)
+                    Network.interface_up(bridge_if)
 
                 # We are done with the outer interface's network namespace.
                 # Close the NetNS and IPDB objects for it if it is not an
                 # overlay.
-                if outer_namespace is not None and outer_overlay is None:
+                if outer_namespace and not outer_overlay:
                     Network.netns_close(outer_namespace, outer_netns, outer_ipdb)
 
-                # Add the inner interface to the list of routed interfaces.
+                # Add the interfaces to the list of routed interfaces.
                 static_veth = {
                     'name': name,
                     'inner_interface': inner_name,
                     'outer_interface': outer_name,
+                    'inner_address_interface': inner_address_name,
                 }
+
+                if inner_interface_bridged:
+                    static_veth['dummy_interface'] = dummy_name
+                    static_veth['bridge_interface'] = bridge_name
+
+                if outer_namespace:
+                    static_veth['outer_namespace'] = outer_namespace
 
                 logging.debug("adding %s to list of static veths" % name)
                 self.static_veths.append(static_veth)
@@ -1863,13 +1908,47 @@ class Overlay(object):
 
         for veth in self.static_veths:
             name = veth['name']
+            inner_name = veth['inner_interface']
+            outer_name = veth['outer_interface']
+            dummy_name = veth['dummy_interface'] if 'dummy_interface' in veth else None
+            bridge_name = veth['bridge_interface'] if 'bridge_interface' in veth else None
+            outer_namespace = veth['outer_namespace'] if 'outer_namespace' in veth else None
 
             logging.debug("removing static veth %s" % name)
 
+            # Find the outer namespace, or overlay if it is one.
+            if outer_namespace:
+                try:
+                    outer_overlay = self.overlay_get(outer_namespace)
+                    outer_netns = outer_overlay.netns
+                    outer_ipdb = outer_overlay.ipdb
+                except ValueError:
+                    outer_netns, outer_ipdb = Network.netns_get(outer_namespace)
+            else:
+                outer_ipdb = self.root_ipdb
+
+            if bridge_name:
+                Network.interface_remove(
+                    self.ipdb,
+                    name=bridge_name,
+                )
+
+            if dummy_name:
+                Network.interface_remove(
+                    self.ipdb,
+                    name=dummy_name,
+                )
+
+            # Removes both the outer and inner interfaces.
             Network.interface_remove(
-                self.root_ipdb,
-                name=veth['outer_interface'],
+                outer_ipdb,
+                name=outer_name,
             )
+
+            # Shutdown the NetNS/IPDB object if they are not connected to an
+            # overlay.
+            if outer_namespace and not outer_overlay:
+                Network.netns_close(outer_namespace, outer_netns, outer_ipdb)
 
             logging.debug("finished removing static veth %s" % name)
 
