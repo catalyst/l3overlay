@@ -1247,17 +1247,21 @@ class Overlay(object):
                 name = Util.section_name_get('static-veth', section)
                 inner_address = Util.ip_address_get(self.config[section]['inner-address']) if 'inner-address' in self.config[section] else None
                 outer_address = Util.ip_address_get(self.config[section]['outer-address']) if 'outer-address' in self.config[section] else None
-                inner_interface_bridged = Util.boolean_get(self.config[section]['inner-interface-bridged']) if 'inner-address-bridged' in self.config[section] else False
+                inner_interface_bridged = Util.boolean_get(self.config[section]['inner-interface-bridged']) if 'inner-interface-bridged' in self.config[section] else False
                 outer_namespace = Util.name_get(self.config[section]['outer-namespace']) if 'outer-namespace' in self.config[section] else None
 
                 # A valid veth pair only has an address assigned at only one
                 # end of the pair. Enforce this restriction.
                 if not inner_interface_bridged:
                     if inner_address and outer_address:
-                        raise ValueError("set inner-interface-bridged to use both inner-address and outer-address in static veth" % name)
+                        raise ValueError("set inner-interface-bridged to use both inner-address and outer-address in static veth %s" % name)
 
-                if inner_address or outer_address:
-                    netmask = Util.netmask_get(self.config[section]['netmask'], Util.ip_address_is_v6(address))
+                if inner_address:
+                    use_ipv6 = Util.ip_address_is_v6(inner_address)
+                elif outer_address:
+                    use_ipv6 = Util.ip_address_is_v6(outer_address)
+
+                netmask = Util.netmask_get(self.config[section]['netmask'], use_ipv6)
 
                 # Check that inner-address and outer-address are the same type
                 # of address.
@@ -1376,7 +1380,7 @@ class Overlay(object):
                 self.static_veths.append(static_veth)
 
                 logging.debug("adding BGP route for static veth %s" % name)
-                if Util.ip_address_is_v6(inner_address):
+                if use_ipv6:
                     self.bird6_config_add('veths', [static_veth])
                 else:
                     self.bird_config_add('veths', [static_veth])
@@ -1913,6 +1917,10 @@ class Overlay(object):
             logging.debug("removing static veth %s" % name)
 
             # Find the outer namespace, or overlay if it is one.
+            outer_overlay = None
+            outer_netns = None
+            outer_ipdb = None
+
             if outer_namespace:
                 try:
                     outer_overlay = self.overlay_get(outer_namespace)
