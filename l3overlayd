@@ -571,6 +571,8 @@ class Overlay(object):
         self.lib_dir = daemon.lib_dir
         self.fwbuilder_script_dir = daemon.fwbuilder_script_dir
 
+        self.logging_level = daemon.logging_level
+
         # Load the overlay configuration file.
         self.config = configparser.ConfigParser()
         self.config.read(configuration_path)
@@ -1637,6 +1639,9 @@ class Overlay(object):
         bird_socket_file = os.path.join(bird_socket_dir, "bird.ctl")
         bird_pid_file = os.path.join(bird_socket_dir, "bird.pid")
 
+        bird_log_dir = os.path.join(self.netns_root, "var", "log", "bird")
+        bird_log_file = os.path.join(bird_socket_dir, "bird.log")
+
         bird6_config_dir = os.path.join(self.netns_root, "etc", "bird")
         bird6_config_file = os.path.join(bird_config_dir, "bird6.conf")
 
@@ -1644,12 +1649,18 @@ class Overlay(object):
         bird6_socket_file = os.path.join(bird_socket_dir, "bird6.ctl")
         bird6_pid_file = os.path.join(bird_socket_dir, "bird6.pid")
 
+        bird6_log_dir = os.path.join(self.netns_root, "var", "log", "bird")
+        bird6_log_file = os.path.join(bird_socket_dir, "bird6.log")
+
         # Create the required BIRD directories.
         logging.debug("creating BIRD configuration directory")
         Util.directory_create(bird_config_dir)
 
         logging.debug("creating BIRD socket directory")
         Util.directory_create(bird_socket_dir)
+
+        logging.debug("creating BIRD log directory")
+        Util.directory_create(bird_log_dir)
 
         # Actual configuration time.
         logging.debug("configuring BIRD")
@@ -1660,12 +1671,16 @@ class Overlay(object):
             self.bird_config_add(key='file', value=bird_config_file)
             self.bird_config_add(key='netns', value=self.netns_name)
             self.bird_config_add(key='asn', value=self.asn)
+            self.bird_config_add(key='logging_level', value=self.logging_level)
+            self.bird_config_add(key='log_file', value=bird_log_file)
 
         if self.bird6_config:
             self.bird6_config_add(key='overlay', value=self.name)
             self.bird6_config_add(key='file', value=bird6_config_file)
             self.bird6_config_add(key='netns', value=self.netns_name)
             self.bird6_config_add(key='asn', value=self.asn)
+            self.bird6_config_add(key='logging_level', value=self.logging_level)
+            self.bird6_config_add(key='log_file', value=bird6_log_file)
 
         # Save the BIRD configuration.
         if self.bird_config:
