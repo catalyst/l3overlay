@@ -1653,14 +1653,25 @@ class Overlay(object):
         bird6_log_file = os.path.join(bird_socket_dir, "bird6.log")
 
         # Create the required BIRD directories.
-        logging.debug("creating BIRD configuration directory")
-        Util.directory_create(bird_config_dir)
+        if self.bird_config:
+          logging.debug("creating BIRD configuration directory")
+          Util.directory_create(bird_config_dir)
 
-        logging.debug("creating BIRD socket directory")
-        Util.directory_create(bird_socket_dir)
+          logging.debug("creating BIRD socket directory")
+          Util.directory_create(bird_socket_dir)
 
-        logging.debug("creating BIRD log directory")
-        Util.directory_create(bird_log_dir)
+          logging.debug("creating BIRD log directory")
+          Util.directory_create(bird_log_dir)
+
+        if self.bird6_config:
+          logging.debug("creating BIRD6 configuration directory")
+          Util.directory_create(bird6_config_dir)
+
+          logging.debug("creating BIRD6 socket directory")
+          Util.directory_create(bird6_socket_dir)
+
+          logging.debug("creating BIRD6 log directory")
+          Util.directory_create(bird6_log_dir)
 
         # Actual configuration time.
         logging.debug("configuring BIRD")
