@@ -1640,7 +1640,7 @@ class Overlay(object):
         bird_pid_file = os.path.join(bird_socket_dir, "bird.pid")
 
         bird_log_dir = os.path.join(self.netns_root, "var", "log", "bird")
-        bird_log_file = os.path.join(bird_socket_dir, "bird.log")
+        bird_log_file = os.path.join(bird_log_dir, "bird.log")
 
         bird6_config_dir = os.path.join(self.netns_root, "etc", "bird")
         bird6_config_file = os.path.join(bird_config_dir, "bird6.conf")
@@ -1650,7 +1650,7 @@ class Overlay(object):
         bird6_pid_file = os.path.join(bird_socket_dir, "bird6.pid")
 
         bird6_log_dir = os.path.join(self.netns_root, "var", "log", "bird")
-        bird6_log_file = os.path.join(bird_socket_dir, "bird6.log")
+        bird6_log_file = os.path.join(bird_log_dir, "bird6.log")
 
         # Create the required BIRD directories.
         if self.bird_config:
