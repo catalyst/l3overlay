@@ -429,6 +429,18 @@ The BGP autonomous system (AS) number used to identify the AS the local node is 
 
 The BGP autonomous system (AS) number used to identify the AS the neighbor node is part of.  The default value is the ASN number set for the overlay (the `asn` value in the `[overlay]` section).
 
+#### bfd
+* Type: **boolean**
+* Required: no
+
+Enable BFD for the BGP protocol, to monitor for neighbour availability and failure detection. Note that BFD also needs to be supported by the neighbour. Defaults to `false`.
+
+#### ttl-security
+* Type: **boolean**
+* Required: no
+
+Enable the RFC 5082 TTL security mechanism on this BGP protocol. Also needs to be enabled by the neighbour. Defaults to `false`.
+
 #### description
 * Type: **string**
 * Required: no

@@ -1531,15 +1531,22 @@ class Overlay(object):
                 local_asn = int(self.config[section]['local-asn']) if 'local-asn' in self.config[section] else self.asn
                 neighbor_asn = int(self.config[section]['neighbor-asn']) if 'neighbor-asn' in self.config[section] else self.asn
 
+                bfd = Util.boolean_get(self.config[section]['bfd']) if 'bfd' in self.config[section] else False
+                ttl_security = Util.boolean_get(self.config[section]['ttl-security']) if 'ttl-security' in self.config[section] else False
+
                 description = self.config[section]['description'] if 'description' in self.config[section] else None
 
                 bgp['name'] = name
+
                 bgp['neighbor'] = str(neighbor)
                 if local is not None:
                     bgp['local'] = str(local)
 
                 bgp['local_asn'] = local_asn
                 bgp['neighbor_asn'] = neighbor_asn
+
+                bgp['bfd'] = 'on' if bfd else 'off'
+                bgp['ttl_security'] = 'on' if ttl_security else 'off'
 
                 if description is not None:
                     bgp['description'] = description
