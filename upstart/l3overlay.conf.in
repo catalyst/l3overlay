@@ -11,18 +11,18 @@ kill timeout 30
 
 pre-start script
     # Set name and daemon name.
-    NAME=l3overlay
-    DAEMON_NAME=l3overlayd
+    NAME="l3overlay"
+    DAEMON_NAME="l3overlayd"
 
     # Set default PID lock file.
-    PIDFILE=/var/run/$DAEMON_NAME.pid
+    PIDFILE="/var/run/$DAEMON_NAME.pid"
 
     # Read configuration variable file if it is present
-    [ -r /etc/default/$NAME ] && . /etc/default/$NAME
+    [ -r "/etc/default/$NAME" ] && . "/etc/default/$NAME"
 
     # Set required environment variables for the daemon call.
-    initctl set-env PIDFILE=$PIDFILE
-    initctl set-env DAEMON_ARGS=$DAEMON_ARGS
+    initctl set-env PIDFILE="$PIDFILE"
+    initctl set-env DAEMON_ARGS="$DAEMON_ARGS"
 end script
 
-exec __L3OVERLAYD__ $DAEMON_ARGS --pid-file $PIDFILE
+exec "__L3OVERLAYD__" $DAEMON_ARGS --pid-file "$PIDFILE"

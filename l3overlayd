@@ -2839,9 +2839,17 @@ def close_overlays(signum, frame):
     before exiting.
     """
 
+    # Ensure that pyroute2 itself does not shut down due to the caught
+    # signal.
+    signal.signal(signal.SIGTERM, signal.SIG_IGN)
+
+    # Shut down all overlays.
     daemon.shutdown()
+
+    # Remove the PID lock file.
     os.remove(pid_file)
 
+    # Well, we're done...
     sys.exit(0)
 
 

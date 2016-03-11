@@ -15,7 +15,7 @@ The following software packages are required to run l3overlay:
 
 The following Python modules must also be installed:
 
-* **pyroute2**, version **0.3.16** or later
+* **pyroute2**, version **0.3.16** or later (**0.3.16.post22** or later if using Upstart configuration)
 * **jinja2**
 
 The following configuration settings should be set in `/etc/sysctl.conf`, to enable IPv4 (and IPv6 if desired) packet forwarding:
