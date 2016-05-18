@@ -811,7 +811,7 @@ class Overlay(object):
         """
 
         # Create the NetNS and IPDB objects for the network namespace.
-        self.netns, self.ipdb = Network.netns_create(self.netns_name)
+        self.netns, self.ipdb = Network.netns_get(self.netns_name, create=True)
 
         # Start the loopback interface in the network namespace.
         Network.interface_up(Network.interface_get('lo', self.ipdb))
@@ -1293,9 +1293,9 @@ class Overlay(object):
                         outer_netns = outer_overlay.netns
                         outer_ipdb = outer_overlay.ipdb
                     # Couldn't find the outer namespace name in the list of
-                    # overlays. Look for it as an external network namespace.
+                    # overlays. Get an external network namespace.
                     except ValueError:
-                        outer_netns, outer_ipdb = Network.netns_get(outer_namespace)
+                        outer_netns, outer_ipdb = Network.netns_get(outer_namespace, create=True)
                 # outer-namespace not defined. Set outer_ipdb to the root
                 # namespace IPDB.
                 else:
@@ -2352,14 +2352,25 @@ class Network(object):
 
 
     @staticmethod
-    def netns_get(name):
+    def netns_get(name, create=False):
         """
-        Check if a network namespace exists, and return a tuple containing its
-        NetNS and IPDB objects. Raise an Exception if it doesn't exist.
+        Return a tuple containing the given network namespace name's NetNS and IPDB objects.
+        Create the network namespace if the optional parameter create is true, otherwise raise
+        an Exception.
         """
 
         if name not in netns.listnetns():
-            raise Exception("no existing network namespace with name %s" % name)
+            if create:
+                try:
+                    netns.create(name)
+                except FileExistsError:
+                    logging.debug("no need to create network namespace %s" % name)
+                except:
+                    raise Exception("could not create network namespace %s" % name)
+                else:
+                    logging.debug("creating network namespace %s" % name)
+            else:
+                raise Exception("no existing network namespace with name %s" % name)
 
         logging.debug("creating the NetNS for network namespace %s" % name)
         nl = NetNS(name)
@@ -2368,25 +2379,6 @@ class Network(object):
         ipdb = IPDB(nl=nl)
 
         return (nl, ipdb)
-
-
-    @staticmethod
-    def netns_create(name):
-        """
-        Create a network namespace, and return a tuple containing its
-        NetNS and IPDB objects.
-        """
-
-        try:
-            netns.create(name)
-        except FileExistsError:
-            logging.debug("no need to create network namespace %s" % name)
-        except:
-            raise Exception("could not create network namespace %s" % name)
-        else:
-            logging.debug("creating network namespace %s" % name)
-
-        return Network.netns_get(name)
 
 
     @staticmethod
