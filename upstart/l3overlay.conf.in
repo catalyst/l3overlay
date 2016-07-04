@@ -3,8 +3,8 @@
 description "IPsec overlay network manager"
 author "Callum Dickinson <callum.dickinson@catalyst.net.nz>"
 
-start on started network-services
-stop on stopping network-services
+start on (started networking)
+stop on (stopping networking)
 
 respawn
 kill timeout 30
