@@ -1,5 +1,7 @@
 #!/usr/bin/make -f
 # -*- makefile -*-
+
+
 #
 # Copyright (c) 2016 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify
@@ -16,7 +18,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+
 ##############################
+
 
 #
 # Makefile arguments
@@ -31,8 +35,8 @@
 #
 # Optional arguments:
 #
-# * NO_DATA_ROOT - define this to disable prepending the PREFIX to the
-#                  configuration installation disrectory
+# * NO_PREFIX - define this to disable prepending the PREFIX to the
+#               configuration installation directory
 #
 # * INSTALL_PREFIX - configure l3overlayd to use a non-system Python
 #                    installation such as a virtualenv, specified by the root
@@ -46,19 +50,46 @@
 #
 
 ##############################
-# Install locations for the executable and data files.
-PREFIX     = /usr/local
-SBIN_DIR   = $(PREFIX)/sbin
 
-ifndef NO_DATA_ROOT
-DATA_ROOT = $(PREFIX)
-endif
 
-ifdef INSTALL_PREFIX
-override INSTALL_PREFIX := --prefix=$(INSTALL_PREFIX)
-endif
+#
+## Name of the project.
+#
+
+NAME = l3overlay
+
 
 ##############################
+
+
+#
+## Build system installation locations.
+#
+
+ifndef NO_PREFIX
+PREFIX = /usr/local
+endif
+
+SBIN_DIR = $(PREFIX)/sbin
+
+
+##############################
+
+
+#
+## staff-vpn default configuration values.
+#
+
+
+##############################
+
+
+#
+##  Build system runtime files and commands.
+#
+
+CONFIG   = .config
+SETUP_PY = setup.py
 
 # At this point, l3overlayd only supports Python >= 3.4.
 PYTHON  = python3
@@ -70,11 +101,25 @@ PIP     = pip3
 RM      = rm -f
 RMDIR   = rm -rf
 
-##############################
-
-SETUP_PY = setup.py
 
 ##############################
+
+
+#
+## Build system parameters.
+#
+
+ifdef INSTALL_PREFIX
+override INSTALL_PREFIX := --prefix=$(INSTALL_PREFIX)
+endif
+
+ifdef INSTALL_LIB
+override INSTALL_LIB := --install-lib=$(INSTALL_LIB)
+endif
+
+
+##############################
+
 
 all:
 	@echo "Targets:"
@@ -85,34 +130,40 @@ all:
 	@echo "  clean - clean build files"
 	@echo "See 'Makefile' for more details."
 
-build_vars:
-	@echo $(SBIN_DIR) > .sbin_dir
-	@echo $(DATA_ROOT) > .data_root
-	@echo $(WITH_INIT_D) > .with_init_d
-	@echo $(WITH_UPSTART) > .with_upstart
 
-sdist: build_vars
+config:
+	@echo -n > $(CONFIG)
+	@echo PREFIX=$(PREFIX) >> $(CONFIG)
+	@echo SBIN_DIR=$(SBIN_DIR) >> $(CONFIG)
+	@echo DATA_ROOT=$(DATA_ROOT) >> $(CONFIG)
+	@echo WITH_INIT_D=$(WITH_INIT_D) >> $(CONFIG)
+	@echo WITH_UPSTART=$(WITH_UPSTART) >> $(CONFIG)
+
+
+sdist: config
 	$(PYTHON) $(SETUP_PY) sdist
 
-bdist_wheel: build_vars
+
+bdist_wheel: config
 	$(PYTHON) $(SETUP_PY) bdist_wheel
 
-install: build_vars
+
+install: config
 	$(PYTHON) $(SETUP_PY) install --install-scripts=$(SBIN_DIR) $(INSTALL_PREFIX)
+
 
 uninstall:
 	$(PIP) uninstall -y l3overlay
 
+
 clean:
-	$(RM) .sbin_dir
-	$(RM) .data_root
-	$(RM) .with_init_d
-	$(RM) .with_upstart
+	$(RM) $(CONFIG)
 	$(RM) default/l3overlay
 	$(RM) init.d/l3overlay
 	$(RM) upstart/l3overlay.conf
 	$(RMDIR) build
 	$(RMDIR) dist
-	$(RMDIR) l3overlay.egg-info
+	$(RMDIR) $(NAME).egg-info
 
-.PHONY: all build_vars sdist bdist_wheel install uninstall clean
+
+.PHONY: all config sdist bdist_wheel install uninstall clean
