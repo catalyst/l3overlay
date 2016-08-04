@@ -61,7 +61,7 @@ def var_replace(template, output, config, keys):
         with codecs.open(output, mode="w", encoding="UTF-8") as g:
             text = f.read()
 
-            for key in variables:
+            for key in keys:
                 text = re.sub("__%s__" % config[key.upper()], value, text)
 
             g.write(text)
