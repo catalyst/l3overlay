@@ -28,6 +28,9 @@ import stat
 import re
 
 
+here = os.path.abspath(os.path.dirname(__file__))
+
+
 def config_read(config_file):
     '''
     Read variables from the given file into a dictionary, and return it.
