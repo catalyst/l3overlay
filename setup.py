@@ -61,8 +61,9 @@ def var_replace(template, output, config, keys):
         with codecs.open(output, mode="w", encoding="UTF-8") as g:
             text = f.read()
 
-            for key in keys:
-                text = re.sub("__%s__" % config[key.upper()], value, text)
+            for k in keys:
+                key = k.upper()
+                text = re.sub("__%s__" % key, config[key], text)
 
             g.write(text)
 
@@ -74,6 +75,8 @@ with codecs.open(os.path.join(here, "README.md"), encoding="UTF-8") as f:
 
 # Read the build system configuration.
 config = config_read(os.path.join(here, ".config"))
+
+prefix = config["PREFIX"]
 
 l3overlayd = os.path.join(config["SBIN_DIR"], "l3overlayd")
 
@@ -91,20 +94,21 @@ if with_upstart:
     var_replace(
         os.path.join(here, "upstart", "l3overlay.conf.in"),
         os.path.join(here, "upstart", "l3overlay.conf"),
-        {"L3OVERLAYD": l3overlayd}, ("L3OVERLAYD"),
+        {"L3OVERLAYD": l3overlayd}, ["L3OVERLAYD"],
     )
 
 if with_init_d:
     var_replace(
         os.path.join(here, "init.d", "l3overlay.in"),
         os.path.join(here, "init.d", "l3overlay"),
-        {"L3OVERLAYD": l3overlayd}, ("L3OVERLAYD"),
+        {"L3OVERLAYD": l3overlayd}, ["L3OVERLAYD"],
     )
 
+if with_upstart or with_init_d:
     var_replace(
         os.path.join(here, "default", "l3overlay.in"),
         os.path.join(here, "default", "l3overlay"),
-        config, ("PREFIX"),
+        config, ["PREFIX"],
     )
 
 
@@ -119,21 +123,21 @@ if with_init_d:
 # Map files to installation locations.
 data_files = [
     (
-        os.path.join(data_root, "etc", "l3overlay"),
+        os.path.join(prefix, "etc", "l3overlay"),
         [
             os.path.join(here, "global.conf"),
         ],
     ),
 
     (
-        os.path.join(data_root, "etc", "l3overlay", "overlays"),
+        os.path.join(prefix, "etc", "l3overlay", "overlays"),
         [
             os.path.join(here, "overlays", "example.conf"),
         ],
     ),
 
     (
-        os.path.join(data_root, "etc", "l3overlay", "templates"),
+        os.path.join(prefix, "etc", "l3overlay", "templates"),
         [
             os.path.join(here, "templates", "bird.conf"),
             os.path.join(here, "templates", "ipsec.conf"),
@@ -153,12 +157,12 @@ if with_upstart or with_init_d:
 
 
 # TODO: Get rid of this when l3overlayd gets refactored, and add
-#       a console_scripts entry_points entry into setupscripts.setup().
+#       a console_scripts entry_points entry into setuptools.setup().
 scripts = ['l3overlayd']
 
 
 # Setup the package.
-setupscripts.setup(
+setuptools.setup(
     name='l3overlay',
 
     description='IPsec overlay network manager',
