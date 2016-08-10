@@ -353,25 +353,25 @@ If both are specified, they must both be the same type of IP address. In other w
 
 The subnet mask for the assigned address. If both `inner-address` and `outer-address` are defined with the help of `inner-interface-bridged`, this option will be used as the netmask value for both of them, as they should be part of the same subnet. 
 
-#### inner-interface-bridged
-* Type: **boolean**
-* Required: no
-
-Attaches the inner interface of the static veth to a bridge interface, along with a dummy interface. This allows both `inner-address` and `outer-address` to be used at the same time.
-
-With this option set, `outer-address` goes to the outer interface as normal, but `inner-address` will be assigned to the bridge interface rather than being directly assigned to the inner interface.
-
-#### outer-namespace
+#### inner-namespace
 * Type: **name**
 * Required: no
 
-The name of the network namespace to move the outer interface into. The network namespace must already exist before the overlay is created.
+The name of the network namespace to move the inner interface into. The network namespace must already exist before the overlay is created.
 
-This option can also be used to connect two overlays together, via the static veth pair. To link overlays this way, define `outer-namespace` in just one of the overlays. The overlay which the static veth is defined in will get the inner interface, and the overlay specified in `outer-namespace` will get the outer interface.
+This option can also be used to connect two overlays together, via the static veth pair. To link overlays this way, define `inner-namespace` in just one of the overlays. The overlay which the static veth is defined in will get the outer interface, and the overlay specified in `inner-namespace` will get the inner interface.
 
 Note that this does not do any additional configuration to overlays when they are linked via this option, it is simply a veth pair. To allow traffic to flow in the veth pair, additional work needs to be done.
 
-For a fully configured and routed link between overlays, consider using a `[static-overlay-link]`. 
+For a fully configured and routed link between overlays, consider using a `[static-overlay-link]`.
+
+#### outer-interface-bridged
+* Type: **boolean**
+* Required: no
+
+Attaches the outer interface of the static veth to a bridge interface, along with a dummy interface. This allows both `inner-address` and `outer-address` to be used at the same time.
+
+With this option set, `inner-address` goes to the inner interface as normal, but `outer-address` will be assigned to the bridge interface rather than being directly assigned to the inner interface.
 
 ### [static-overlay-link:*{name}*]
 
