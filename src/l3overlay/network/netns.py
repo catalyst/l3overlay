@@ -20,7 +20,7 @@
 
 import pyroute2
 
-from l3overlay.util import Worker
+from l3overlay.util.worker import Worker
 
 
 class NetNS(Worker):
@@ -33,7 +33,7 @@ class NetNS(Worker):
         '''
         '''
 
-        self().__init__()
+        super().__init__()
 
         self.name = name
 
@@ -65,7 +65,7 @@ class NetNS(Worker):
         self.ipdb = pyroute2.IPDB(nl=netns)
 
 
-    def close(self):
+    def stop(self):
         '''
         Stop the network namespace object.
         '''

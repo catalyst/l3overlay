@@ -20,7 +20,10 @@
 
 import argparse
 import os
+import signal
 import stat
+
+import l3overlay.daemon
 
 
 def main():
@@ -106,7 +109,7 @@ def main():
 
     # Create the daemon object, which tracks l3overlay state.
     # After the daemon object is created, we can log output.
-    daemon = Daemon(args)
+    daemon = l3overlay.daemon.create(args)
 
     # Set up process signal handlers.
     def sigterm(signum, frame):

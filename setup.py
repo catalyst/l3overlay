@@ -147,46 +147,46 @@ data_files = [
 ]
 
 if with_upstart:
-    data_files.append(("/etc/init", ['upstart/l3overlay.conf']))
+    data_files.append((os.path.join("/", "etc", "init"), [os.path.join(here, "upstart", "l3overlay.conf")]))
 
 if with_init_d:
-    data_files.append(("/etc/init.d", ['init.d/l3overlay']))
+    data_files.append((os.path.join("/", "etc", "init.d"), [os.path.join(here, "init.d", "l3overlay")]))
 
 if with_upstart or with_init_d:
-    data_files.append(("/etc/default", ['default/l3overlay']))
+    data_files.append((os.path.join("/", "etc", "default"), [os.path.join(here, "default", "l3overlay")]))
 
 
 # Setup the package.
 setuptools.setup(
-    name='l3overlay',
+    name="l3overlay",
 
-    description='IPsec overlay network manager',
+    description="IPsec overlay network manager",
     long_description=long_description,
 
-    version='1.0.0.dev1',
+    version="1.0.0",
 
-    url='https://github.com/catalyst/l3overlay',
+    url="https://github.com/catalyst/l3overlay",
 
-    author='Callum Dickinson',
-    author_email='callum.dickinson@catalyst.net.nz',
+    author="Callum Dickinson",
+    author_email="callum.dickinson@catalyst.net.nz",
 
-    license='GPLv3+',
+    license="GPLv3+",
 
     classifiers=[
-        'Development Status :: 3 - Alpha',
+        "Development Status :: 5 - Production/Stable",
 
-        'Intended Audience :: System Administrators',
-        'Topic :: System :: Networking',
+        "Intended Audience :: System Administrators",
+        "Topic :: System :: Networking",
 
-        'License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)',
+        "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
 
-        'Programming Language :: Python :: 3.4',
-        'Programming Language :: Python :: 3.5',
+        "Programming Language :: Python :: 3.4",
+        "Programming Language :: Python :: 3.5",
     ],
 
-    keywords='l3overlay ipsec bird routing namespace mesh network',
+    keywords="l3overlay ipsec bird routing namespace mesh network",
 
-    install_requires=['jinja2', 'pyroute2>=0.3.17'],
+    install_requires=["jinja2", "pyroute2>=0.3.17"],
 
     data_files=data_files,
 

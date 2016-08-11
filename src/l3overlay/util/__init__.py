@@ -18,6 +18,7 @@
 #
 
 
+import configparser
 import errno
 import ipaddress
 import jinja2
@@ -153,6 +154,16 @@ def ip_address_get(value):
     '''
 
     return ipaddress.ip_address(value)
+
+
+def ip_address_remote(local):
+    '''
+    For a given local_address (either an integer, IPv4Address or
+    IPv6Address), return the other end of a two-node linknet
+    (/31 for IPv4, /127 for IPv6).
+    '''
+
+    return ipaddress.ip_address(int(local) ^ 1)
 
 
 def ip_address_is_v6(value):
@@ -418,6 +429,25 @@ def pid_exists(pid=None, pid_file=None):
 
 
 #
+## Configuration functions.
+#
+
+
+def config(conf):
+    '''
+    Parse a given configuration file, and return its configuration object.
+    '''
+
+    if not os.path.isfile(conf):
+        raise FileNotFoundError(conf)
+
+    config = configparser.ConfigParser()
+    config.read(conf)
+
+    return config
+
+
+#
 ## Logger functions.
 #
 
@@ -458,4 +488,4 @@ def template_read(dir, file):
     '''
     '''
 
-    return jinja2.Environment(trim_blocks=True,loader=FileSystemLoader(dir)).get_template(file)
+    return jinja2.Environment(trim_blocks=True, loader=jinja2.FileSystemLoader(dir)).get_template(file)

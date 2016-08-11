@@ -19,6 +19,7 @@
 
 
 import configparser
+import math
 import os
 
 from l3overlay import util
@@ -32,8 +33,6 @@ from l3overlay.overlay import firewall
 from l3overlay.overlay import interface
 
 from l3overlay.overlay.interface.mesh_tunnel import MeshTunnel
-
-from l3overlay.overlay.bgp import process
 
 
 class Overlay(Worker):
@@ -54,7 +53,7 @@ class Overlay(Worker):
         self.name = name
 
         # Fields.
-        self.root_dir = os.path.dir(self.daemon.overlay_dir, self.name)
+        self.root_dir = os.path.join(self.daemon.overlay_dir, self.name)
 
         # Overlay network namespace.
         self.netns = netns.get(self.name)
@@ -76,7 +75,7 @@ class Overlay(Worker):
                 for key in section.keys():
                     if key.startswith("node-"):
                         node = section[key].split()
-                        nodes_dict[int(key[5:])] = tuple(
+                        nodes_dict[int(key[5:])] = (
                             util.name_get(node[0]),
                             util.ip_address_get(node[1]),
                         )
@@ -87,7 +86,7 @@ class Overlay(Worker):
                     raise RuntimeError("node list contains duplicates")
 
                 # Get the node dictionary for this node from the list of nodes.
-                self.this_node = next(((node for node in self.nodes if node[0] == util.name_get(section["this-node"])), None)
+                self.this_node = next((node for node in self.nodes if node[0] == util.name_get(section["this-node"])), None)
 
                 if not self.this_node:
                     raise RuntimeError("this node '%s' is missing from node list" % util.name_get(section["this-node"]))
@@ -101,7 +100,7 @@ class Overlay(Worker):
                 # Get the (absolute or relative) path to the fwbuilder script to
                 # configure the firewall in this overlay.
                 if "fwbuilder-script" in section:
-                    self.fwbuilder_script = section["fwbuilder-script"] if os.path.isabs(section["fwbuilder-script"] else os.path.join(self.daemon.fwbuilder_script_dir, section["fwbuilder-script"])
+                    self.fwbuilder_script = section["fwbuilder-script"] if os.path.isabs(section["fwbuilder-script"]) else os.path.join(self.daemon.fwbuilder_script_dir, section["fwbuilder-script"])
                 else:
                     self.fwbuilder_script = None
 
@@ -109,15 +108,15 @@ class Overlay(Worker):
                 for i, node_link in enumerate(self._node_links()):
                     # Check if this link requires a tunnel on this host. If not,
                     # continue.
-                    if link[0] != self.this_node[0]:
+                    if node_link[0] != self.this_node[0]:
                         continue
 
                     # Mesh tunnel interface name, made from the BGP AS number
                     # of this overlay and the node pair number.
-                    name = "m%il%i" % (self.asn, math.floor(index / 2))
+                    name = "m%il%i" % (self.asn, math.floor(i / 2))
 
-                    node_local = link[0]
-                    node_remote = link[1]
+                    node_local = node_link[0]
+                    node_remote = node_link[1]
 
                     physical_local = self.this_node[1]
                     physical_remote = None
@@ -126,16 +125,16 @@ class Overlay(Worker):
                             physical_remote = address
                             break
 
-                    virtual_local = linknet_pool_address_base + i
-                    virtual_remote = util.ip_address_remote(netns_veth_address_local)
+                    virtual_local = self.linknet_pool.network_address + i
+                    virtual_remote = util.ip_address_remote(virtual_local)
 
                     if (virtual_local > self.linknet_pool.broadcast_address or
                             virtual_remote > self.linknet_pool.broadcast_address):
                         raise RuntimeError("overflowed linknet pool %s with node link %s" % (str(self.linknet_pool), str(node_link)))
 
                     self.mesh_tunnels.append(MeshTunnel(
-                        daemon,
-                        overlay,
+                        self.daemon,
+                        self,
                         name,
                         node_local,
                         node_remote,
@@ -153,9 +152,13 @@ class Overlay(Worker):
             elif s.startswith("static"):
                 self.interfaces.append(interface.read(self.daemon, self, section, section))
 
+            # Ignore the default section.
+            elif s == "DEFAULT":
+                continue
+
             # Handle unexpected sections.
             else:
-                raise RuntimeError("unsupported section type '%s'" % section)
+                raise RuntimeError("unsupported section type '%s'" % s)
 
         # Create the overlay's BGP and firewall process objects,
         # once the data structures are complete.
@@ -275,6 +278,6 @@ def read(daemon, conf):
     config = util.config(conf)
 
     name = util.name_get(config["overlay"]["name"])
-    logger = util.logger(self.log, "l3overlay", name)
+    logger = util.logger(daemon.log, daemon.log_level, "l3overlay", name)
 
     return Overlay(logger, daemon, name, config)

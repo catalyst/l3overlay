@@ -1,6 +1,6 @@
 #
 # IPsec overlay network manager (l3overlay)
-# l3overlay/overlay/interface/__init__.py - static interface abstract base class
+# l3overlay/overlay/interface/__init__.py - static interface functions
 #
 # Copyright (c) 2016 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify
@@ -18,8 +18,6 @@
 #
 
 
-import abc
-
 from l3overlay import util
 
 from l3overlay.overlay.interface.dummy import Dummy
@@ -28,63 +26,6 @@ from l3overlay.overlay.interface.tunnel import Tunnel
 from l3overlay.overlay.interface.tuntap import Tuntap
 from l3overlay.overlay.interface.veth import VETH
 from l3overlay.overlay.interface.vlan import VLAN
-
-
-class Interface(metaclass=abc.ABCMeta):
-    '''
-    Abstract base class for an overlay static interface.
-    '''
-
-    def __init__(self, daemon, overlay, name=None):
-        '''
-        Set internal fields for the static interface to use.
-        '''
-
-        self.daemon = daemon
-        self.logger = self.daemon.logger
-        self.root_ipdb = self.daemon.root_ipdb
-
-        self.overlay = overlay
-        self.netns = self.overlay.netns
-        self.ipdb = self.netns.ipdb
-
-        self.name = name
-
-
-    @abc.abstractmethod
-    def is_ipv6(self):
-        '''
-        Returns True if this static interface has an IPv6 address
-        assigned to it.
-        '''
-
-        raise NotImplementedError()
-
-
-    @abc.abstractmethod
-    def start(self):
-        '''
-        Required method to start a static interface.
-        '''
-
-        return
-
-
-    @abc.abstractmethod
-    def stop(self):
-        '''
-        Required method to stop a static interface.
-        '''
-
-        return
-
-
-    def remove(self):
-        '''
-        Optional method to clean up a static interface runtime state.
-        '''
-
-        return
 
 
 def read(daemon, overlay, section, config):

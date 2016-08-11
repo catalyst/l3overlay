@@ -22,10 +22,10 @@ from l3overlay import util
 
 from l3overlay.network.interface import gre
 
-from l3overlay.overlay.interface import Interface
+from l3overlay.overlay.interface.base import Interface
 
 
-class Dummmy(Interface):
+class Dummy(Interface):
     '''
     Used to configure a dummy interface.
     '''

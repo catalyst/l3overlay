@@ -40,7 +40,7 @@ class Process(Worker):
         Set internal fields for the BGP process.
         '''
 
-        self().__init__()
+        super().__init__()
 
         self.log_level = daemon.log_level
 

@@ -26,7 +26,7 @@ from l3overlay.network.interface import bridge
 from l3overlay.network.interface import dummy
 from l3overlay.network.interface import veth
 
-from l3overlay.overlay.interface import Interface
+from l3overlay.overlay.interface.base import Interface
 
 
 class OverlayLink(Interface):

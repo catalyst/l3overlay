@@ -26,7 +26,7 @@ from l3overlay.network.interface import bridge
 from l3overlay.network.interface import veth
 from l3overlay.network.interface import vlan
 
-from l3overlay.overlay.interface import Interface
+from l3overlay.overlay.interface.base import Interface
 
 
 class VLAN(Interface):
@@ -45,7 +45,7 @@ class VLAN(Interface):
         self.id = util.integer_get(config["id"])
         self.physical_interface = util.name_get(config["physical-interface"])
         self.address = util.ip_address_get(config["address"])
-        self.netmask = util.netmask_get(config[["netmask"], util.ip_address_is_v6(self.address))
+        self.netmask = util.netmask_get(config["netmask"], util.ip_address_is_v6(self.address))
 
         self.vlan_name = self.daemon.interface_name(name=name, suffix="vl", limit=12)
         self.root_veth_name = self.daemon.interface_name(name=self.vlan_name, suffix="v")

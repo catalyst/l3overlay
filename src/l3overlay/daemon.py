@@ -44,7 +44,7 @@ class Daemon(Worker):
         '''
 
         # Superclass state.
-        self().__init__()
+        super().__init__()
 
         # Arguments.
         self.args = args
@@ -53,18 +53,19 @@ class Daemon(Worker):
         # to set up.
         self._interface_names = []
         self._gre_keys = {}
+        self.mesh_links = set()
 
         self.root_ipdb = pyroute2.IPDB()
 
         # Load the global configuration file.
         self.global_conf = self.args.global_conf
-        self.global_config = util.conf(global_conf_path)["global"]
+        self.global_config = util.config(self.global_conf)["global"]
 
         # Get the logging parameters and start a logger, so output
         # can be logged as soon as possible.
-        self.log = self.get_value("log", os.path.join(util.path_root(), "var", "log", "l3overlay.log"))
+        self.log = self.value_get("log", os.path.join(util.path_root(), "var", "log", "l3overlay.log"))
         self.log_level = util.enum_get(
-            self.get_value("log-level", "INFO"),
+            self.value_get("log-level", "INFO"),
             ["NOSET", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
         )
         self.logger = util.logger(self.log, self.log_level, "l3overlay")
@@ -72,25 +73,25 @@ class Daemon(Worker):
         # Log exceptions for the rest of the initialisation process.
         try:
             # Get (general) global configuration.
-            self.use_ipsec = util.boolean_get(self.value_get("use-ipsec", False))
-            self.ipsec_manage = util.boolean_get(self.value_get("ipsec-manage", True))
+            self.use_ipsec = util.boolean_get(self.value_get("use-ipsec", "False"))
+            self.ipsec_manage = util.boolean_get(self.value_get("ipsec-manage", "True"))
 
             psk = self.value_get("ipsec-psk")
             self.ipsec_psk = util.hex_get_string(psk, min=6, max=64) if psk else None
 
             # Get required directory paths.
-            self.lib_dir = self.get_value("lib-dir", os.path.join(util.path_root(), "var", "lib", "l3overlay"))
+            self.lib_dir = self.value_get("lib-dir", os.path.join(util.path_root(), "var", "lib", "l3overlay"))
             self.overlay_dir = os.path.join(self.lib_dir, "overlays")
 
 
-            self.fwbuilder_script_dir = self.get_value("fwbuilder-script-dir", util.path_search("fwbuilder_scripts"))
-            self.template_dir = self.get_value("template-dir", util.path_search("templates"))
+            self.fwbuilder_script_dir = self.value_get("fwbuilder-script-dir", util.path_search("fwbuilder_scripts"))
+            self.template_dir = self.value_get("template-dir", util.path_search("templates"))
 
             # Get required file paths.
-            self.pid = self.get_value("pid", os.path.join(util.path_root(), "var", "run", "l3overlayd.pid"))
+            self.pid = self.value_get("pid", os.path.join(util.path_root(), "var", "run", "l3overlayd.pid"))
 
-            self.ipsec_conf = self.get_value("ipsec-conf", os.path.join(util.path_root(), "etc", "ipsec", "l3overlay.conf"))
-            self.ipsec_secrets = self.get_value("ipsec-secrets", os.path.join(util.path_root(), "etc", "ipsec.secrets" if self.ipsec_manage else "ipsec.l3overlay.secrets")
+            self.ipsec_conf = self.value_get("ipsec-conf", os.path.join(util.path_root(), "etc", "ipsec", "l3overlay.conf"))
+            self.ipsec_secrets = self.value_get("ipsec-secrets", os.path.join(util.path_root(), "etc", "ipsec.secrets" if self.ipsec_manage else "ipsec.l3overlay.secrets"))
 
             # Create a list of all the overlay configuration file paths.
             self.overlay_conf_dir = None
@@ -99,7 +100,7 @@ class Daemon(Worker):
             if self.args.overlay_conf:
                 self.overlay_confs = self.args.overlay_conf
             else:
-                self.overlay_conf_dir = self.get_value("overlay-conf-dir", util.path_search("overlays"))
+                self.overlay_conf_dir = self.value_get("overlay-conf-dir", util.path_search("overlays"))
                 for overlay_conf_file in os.listdir(self.overlay_conf_dir):
                     overlay_conf = os.path.join(self.overlay_conf_dir, overlay_conf_file)
                     if os.path.isfile(overlay_conf):
@@ -133,7 +134,7 @@ class Daemon(Worker):
     #
 
 
-    def get_value(self, key, default=None):
+    def value_get(self, key, default=None):
         '''
         Get a key, and check the argument list and global configuration,
         in that order, for a corresponding value.
@@ -251,8 +252,10 @@ class Daemon(Worker):
             digits = len(str(ifname_num))
 
             if suffix:
-                ifname_base = "%s%s" %
-                        (re.sub("[^A-Za-z0-9]", "", name)[:limit - len(suffix) - digits], suffix)
+                ifname_base = "%s%s" % (
+                    re.sub("[^A-Za-z0-9]", "", name)[:limit - len(suffix) - digits],
+                    suffix,
+                )
             else:
                 ifname_base = re.sub("[^A-Za-z0-9]", "", name)[:limit - digits]
 
@@ -279,3 +282,13 @@ class Daemon(Worker):
             self._gre_keys[link] = len(self._gre_keys)
 
         return self._gre_keys[link]
+
+Worker.register(Daemon)
+
+
+def create(args):
+    '''
+    Create a daemon object.
+    '''
+
+    return Daemon(args)

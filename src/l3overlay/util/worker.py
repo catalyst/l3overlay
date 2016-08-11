@@ -181,7 +181,7 @@ class Worker(metaclass=abc.ABCMeta):
         return
 
 
-    @abc.sbstractmethod
+    @abc.abstractmethod
     def stop(self):
         '''
         Stop the worker.
@@ -192,7 +192,7 @@ class Worker(metaclass=abc.ABCMeta):
 
     def remove(self):
         '''
-        Remove the worker runtime state. Optional method.
+        Remove the worker runtime state. Optional abstract method.
         '''
 
         return

@@ -178,7 +178,7 @@ def netns_set(logger, ipdb, name, netns):
     interface object from the network namespace.
     '''
 
-    logger.debug("moving interface '%s' to network namespace '%s'" % name, netns.name))
+    logger.debug("moving interface '%s' to network namespace '%s'" % name, netns.name)
 
     if name not in netns_ipdb.by_name.keys():
         ipdb.interfaces[name].net_ns_fd = netns.name

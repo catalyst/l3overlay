@@ -24,7 +24,7 @@ from l3overlay.network.interface import bridge
 from l3overlay.network.interface import gre
 from l3overlay.network.interface import veth
 
-from l3overlay.overlay.interface import Interface
+from l3overlay.overlay.interface.base import Interface
 
 
 class MeshTunnel(Interface):
@@ -56,6 +56,10 @@ class MeshTunnel(Interface):
         self.bridge_name = "%sbr" % self.name
         self.root_veth_name = "%sv0" % self.name
         self.netns_veth_name = "%sv1" % self.name
+
+        # Add this mesh tunnel's physical links to the
+        # daemon mesh.
+        daemon.mesh_links.add((physical_local, physical_remote))
 
 
     def is_ipv6(self):
@@ -133,5 +137,4 @@ class MeshTunnel(Interface):
 
         self.logger.info("finished stopping mesh tunnel '%s'" % self.name)
 
-
-Interface.register(Tunnel)
+Interface.register(MeshTunnel)

@@ -28,14 +28,14 @@ from l3overlay.util.worker import Worker
 from l3overlay.network import netns
 
 
-def Process(Worker):
+class Process(Worker):
 
     def __init__(self, overlay):
         '''
         Set internal fields for the firewall process.
         '''
 
-        self().__init__()
+        super().__init__()
 
         self.logger = overlay.logger
         self.fwbuilder_script = overlay.fwbuilder_script
