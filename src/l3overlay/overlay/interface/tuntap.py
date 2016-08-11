@@ -47,6 +47,14 @@ class Tuntap(Interface):
         self.tuntap_name = self.daemon.interface_name(self.name)
 
 
+    def is_ipv6(self):
+        '''
+        Returns True if this static tuntap has an IPv6 address
+        assigned to it.
+        '''
+
+        raise util.ip_address_is_v6(self.address)
+
 
     def start(self):
         '''

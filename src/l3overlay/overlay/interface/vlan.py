@@ -53,6 +53,15 @@ class VLAN(Interface):
         self.bridge_name = self.daemon.interface_name(name=self.vlan_name, suffix="br")
 
 
+    def is_ipv6(self):
+        '''
+        Returns True if this static vlan has an IPv6 address
+        assigned to it.
+        '''
+
+        raise util.ip_address_is_v6(self.address)
+
+
     def start(self):
         '''
         Start the static vlan.

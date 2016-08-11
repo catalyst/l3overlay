@@ -42,10 +42,19 @@ class Tunnel(Interface):
         self.local = util.ip_address_get(config["local"])
         self.remote = util.ip_address_get(config["remote"])
         self.address = util.ip_address_get(config["address"])
-        self.netmask = util.netmask_get(config["netmask"], Util.ip_address_is_v6(address))
+        self.netmask = util.netmask_get(config["netmask"], util.ip_address_is_v6(address))
 
         self.tunnel_name = self.daemon.interface_name(self.name)
         self.key = self.daemon.gre_key(self.local, self.remote)
+
+
+    def is_ipv6(self):
+        '''
+        Returns True if this static tunnel has an IPv6 address
+        assigned to it.
+        '''
+
+        raise util.ip_address_is_v6(self.address)
 
 
     def start(self):

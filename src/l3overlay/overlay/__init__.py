@@ -28,6 +28,7 @@ from l3overlay.util.worker import Worker
 from l3overlay.network import netns
 
 from l3overlay.overlay import bgp
+from l3overlay.overlay import firewall
 from l3overlay.overlay import interface
 
 from l3overlay.overlay.interface.mesh_tunnel import MeshTunnel
@@ -56,8 +57,7 @@ class Overlay(Worker):
         self.root_dir = os.path.dir(self.daemon.overlay_dir, self.name)
 
         # Overlay network namespace.
-        self.netns = netns.create(self.name)
-        self.ipdb = self.netns.ipdb
+        self.netns = netns.get(self.name)
 
         # Data structures.
         self.mesh_tunnels = []
@@ -157,9 +157,10 @@ class Overlay(Worker):
             else:
                 raise RuntimeError("unsupported section type '%s'" % section)
 
-        # Create the overlay's BGP process object,
+        # Create the overlay's BGP and firewall process objects,
         # once the data structures are complete.
-        self.bgp_process = process.create(self.daemon, self)
+        self.bgp_process = bgp.create(self.daemon, self)
+        self.firewall_process = firewall.create(self)
 
 
     def _node_links(self):
@@ -206,6 +207,13 @@ class Overlay(Worker):
 
         self.set_starting()
 
+        self.logger.info("starting overlay")
+
+        self.netns.start()
+
+        self.logger.debug("creating overlay root directory")
+        util.directory_create(self.root_dir)
+
         for mesh_tunnel in self.mesh_tunnels:
             mesh_tunnel.start()
 
@@ -214,7 +222,9 @@ class Overlay(Worker):
 
         self.bgp_process.start()
 
-        # fwbuilder-script
+        self.firewall_process.start()
+
+        self.logger.info("finished starting overlay")
 
         self.set_started()
 
@@ -232,6 +242,8 @@ class Overlay(Worker):
 
         self.set_stopping()
 
+        self.logger.info("stopping overlay")
+
         self.bgp_process.stop()
 
         for interface in self.interfaces:
@@ -242,30 +254,27 @@ class Overlay(Worker):
             mesh_tunnel.close()
             mesh_tunnel.remove()
 
-        self.set_stopped()
-
-
-    def remove(self):
-        '''
-        Clean up persistent overlay runtime state.
-        '''
-
-        # Remove the network namespace.
+        self.netns.stop()
         self.netns.remove()
+
+        self.logger.debug("removing overlay root directory")
+        util.directory_remove(self.root_dir)
+
+        self.logger.info("finished stopping overlay")
+
+        self.set_stopped()
 
 Worker.register(Overlay)
 
 
-def read(daemon, config_file):
+def read(daemon, conf):
     '''
     Parse a configuration file, and return an overlay object.
     '''
 
-    config = configparser.ConfigParser()
-    config.read(config_file)
+    config = util.config(conf)
 
     name = util.name_get(config["overlay"]["name"])
+    logger = util.logger(self.log, "l3overlay", name)
 
-    return Overlay(daemon, name, config)
-
-Worker.register(Overlay)
+    return Overlay(logger, daemon, name, config)

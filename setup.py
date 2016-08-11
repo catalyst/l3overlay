@@ -156,11 +156,6 @@ if with_upstart or with_init_d:
     data_files.append(("/etc/default", ['default/l3overlay']))
 
 
-# TODO: Get rid of this when l3overlayd gets refactored, and add
-#       a console_scripts entry_points entry into setuptools.setup().
-scripts = ['l3overlayd']
-
-
 # Setup the package.
 setuptools.setup(
     name='l3overlay',
@@ -195,5 +190,10 @@ setuptools.setup(
 
     data_files=data_files,
 
-    scripts=scripts,
+    packages = setuptools.find_packages(where=os.path.join(here, "src")),
+    package_dir = {"": os.path.join(here, "src")},
+
+    entry_points = {
+        "console_scripts": ["l3overlayd = l3overlay:main"],
+    },
 )

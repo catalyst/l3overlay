@@ -53,7 +53,7 @@ class OverlayLink(Interface):
         self.inner_netns = self.inner_overlay.netns
         self.inner_asn = self.inner_overlay.asn
 
-        self.netmask = util.netmask_get(config["netmask"])
+        self.netmask = util.netmask_get(config["netmask"], util.ip_address_is_v6(self.inner_address))
 
         if (type(self.inner_address) != type(self.outer_address)):
             raise ValueError("inner address '%s' (%s) and outer address '%s' (%s) must be the same type of IP address" % (self.inner_address, str(type(self.inner_address)), self.outer_address, str(type(self.outer_address))))
@@ -62,6 +62,15 @@ class OverlayLink(Interface):
         self.bridge_name = self.daemon.interface_name(self.dummy_name, suffix="br")
         self.outer_name = self.daemon.interface_name(self.dummy_name, suffix="v")
         self.inner_name = self.daemon.interface_name(self.dummy_name, suffix="v")
+
+
+    def is_ipv6(self):
+        '''
+        Returns True if this static overlay link uses an IPv6
+        point-to-point subnet.
+        '''
+
+        return util.ip_address_is_v6(self.outer_address)
 
 
     def start(self):

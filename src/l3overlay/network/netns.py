@@ -20,32 +20,54 @@
 
 import pyroute2
 
-from pyroute2 import IPDB
-from pyroute2 import netns
-from pyroute2 import NetNS
+from l3overlay.util import Worker
 
 
-class NetNS():
+class NetNS(Worker):
     '''
     Wrapper around pyroute2 network interface, to provide
     convenient functions.
     '''
 
-    def __init__(self, netns, ipdb, name):
+    def __init__(self, name):
         '''
         '''
 
-        self.netns = netns
-        self.ipdb = ipdb
+        self().__init__()
+
         self.name = name
 
-        self._closed = False
-        self._removed = False
+        self.netns = None
+        self.ipdb = None
+
+
+    def start(self):
+        '''
+        Start the network namespace object, and create the network
+        namespace if it doesn't exist.
+        '''
+
+        if self.starting() or self.running():
+            raise RuntimeError("Network namespace '%s' started twice" % name)
+
+        self.set_starting()
+
+        if name not in pyroute2.netns.listnetns():
+            try:
+                pyroute2.netns.create(name)
+            except FileExistsError:
+                # Network namespace already exists
+                pass
+            except:
+                raise RuntimeError("unable to create network namespace: %s" % name)
+
+        self.netns = pyroute2.NetNS(name)
+        self.ipdb = pyroute2.IPDB(nl=netns)
 
 
     def close(self):
         '''
-        Close the network namespace runtime state.
+        Stop the network namespace object.
         '''
 
         if self._removed:
@@ -74,36 +96,20 @@ class NetNS():
         self._removed = True
 
 
-def get(name, create=False):
-    '''
-    Check if a network namespace exists, and return a tuple containing its
-    NetNS and IPDB objects. If optional parameter create is true, create the
-    network namespacfe if it doesn't exist, otherwise, raise a RuntimeError if
-    it doesn't exist.
-    '''
+    def Popen(self, *argv, **kwarg):
+        '''
+        Start a process in this network namespace using the Popen interface.
+        '''
 
-    if name not in pyroute2.netns.listnetns():
-        if create:
-            try:
-                pyroute2.netns.create(name)
-            except FileExistsError:
-                # Network namespace already exists
-                pass
-            except:
-                raise RuntimeError("unable to create network namespace: %s" % name)
-        else:
-            raise RuntimeError("no existing network namespace: %s" % name)
+        return pyroute.netns.process.proxy.NSPopen(self.name, *argv, **kwarg)
 
-    netns = pyroute2.NetNS(name)
-    ipdb = pyroute2.IPDB(nl=netns)
-
-    return NetNS(netns, ipdb, name)
+Worker.register(NetNS)
 
 
-def create(name):
+def get(name):
     '''
     Get the network namespace runtime state for the given name, creating it
     if it doesn't exist.
     '''
 
-    return get(name, create=True)
+    return NetNS(name)

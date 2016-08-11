@@ -22,6 +22,7 @@ import abc
 
 from l3overlay import util
 
+from l3overlay.overlay.interface.dummy import Dummy
 from l3overlay.overlay.interface.overlay_link import OverlayLink
 from l3overlay.overlay.interface.tunnel import Tunnel
 from l3overlay.overlay.interface.tuntap import Tuntap
@@ -44,10 +45,20 @@ class Interface(metaclass=abc.ABCMeta):
         self.root_ipdb = self.daemon.root_ipdb
 
         self.overlay = overlay
-        self.ipdb = self.overlay.ipdb
         self.netns = self.overlay.netns
+        self.ipdb = self.netns.ipdb
 
         self.name = name
+
+
+    @abc.abstractmethod
+    def is_ipv6(self):
+        '''
+        Returns True if this static interface has an IPv6 address
+        assigned to it.
+        '''
+
+        raise NotImplementedError()
 
 
     @abc.abstractmethod
@@ -55,6 +66,7 @@ class Interface(metaclass=abc.ABCMeta):
         '''
         Required method to start a static interface.
         '''
+
         return
 
 
@@ -81,7 +93,9 @@ def read(daemon, overlay, section, config):
 
     interface_type, name = util.section_split(section)
 
-    if interface_type == "static-overlay-link":
+    if interface_type == "static-dummy":
+        return Dummy(daemon, overlay, name, config)
+    elif interface_type == "static-overlay-link":
         return OverlayLink(daemon, overlay, name, config)
     elif interface_type == "static-tunnel":
         return Tunnel(daemon, overlay, name, config)

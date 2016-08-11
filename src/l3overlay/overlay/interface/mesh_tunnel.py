@@ -58,6 +58,21 @@ class MeshTunnel(Interface):
         self.netns_veth_name = "%sv1" % self.name
 
 
+    def is_ipv6(self):
+        '''
+        Returns True if this mesh tunnel interface uses an IPv6
+        virtual subnet.
+        '''
+
+        if self.virtual_netmask == 127:
+            return True
+        elif self.virtual_netmask == 31:
+            return False
+        else:
+            raise RuntimeError("unexpected virtual netmask value '%s', expected 127 or 31" %
+                    self.virtual_netmask)
+
+
     def start(self):
         '''
         Start the mesh tunnel.
@@ -103,29 +118,6 @@ class MeshTunnel(Interface):
         bridge_if.up()
 
         self.logger.info("finished starting mesh tunnel '%s'" % self.name)
-
-        ## Add the mesh tunnel to the list of routed interfaces.
-        #logging.debug("adding BGP route for mesh tunnel %s" % gretap_name)
-
-        #mesh_tunnel = {
-        #    'interface': gretap_name,
-
-        #    'local': {
-        #        'name': link[0],
-        #        'address': netns_veth_address_local,
-        #    },
-
-        #    'remote': {
-        #        'name': link[1],
-        #        'address': netns_veth_address_remote,
-        #    },
-        #}
-
-        #if Util.ip_network_is_v6(self.linknet_pool):
-        #    self.bird6_config_add('mesh_tunnels', [mesh_tunnel])
-        #else:
-        #    self.bird_config_add('mesh_tunnels', [mesh_tunnel])
-
 
 
     def stop(self):

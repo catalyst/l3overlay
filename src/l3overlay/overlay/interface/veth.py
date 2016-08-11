@@ -80,11 +80,27 @@ class VETH(Interface):
                 self.logger.debug("setting inner namespace to overlay '%s'" % self.inner_namespace)
             except ValueError:
                 self.logger.debug("setting inner namespace to network namespace '%s'" % self.inner_namespace)
-                self.inner_netns = netns.create(inner_namespace)
+                self.inner_netns = netns.get(inner_namespace)
+                self.inner_netns.start()
                 self.inner_ipdb = self.inner_netns.ipdb
         else:
             self.logger.debug("setting inner namespace to root namespace")
             inner_ipdb = self.daemon.root_ipdb
+
+
+    def is_ipv6(self):
+        '''
+        Returns True if this static veth uses an IPv6
+        point-to-point subnet. Returns False if no addresses
+        are assigned.
+        '''
+
+        if self.outer_address:
+            return util.ip_address_is_v6(self.outer_address)
+        elif self.inner_address:
+            return util.ip_address_is_v6(self.inner_address)
+        else:
+            return False
 
 
     def start(self):
@@ -184,7 +200,8 @@ class VETH(Interface):
         '''
 
         if self.inner_namespace and not self.inner_overlay:
-             self.inner_netns.close()
+             self.inner_netns.stop()
+             self.inner_netns.remove()
 
 
 Interface.register(VETH)
