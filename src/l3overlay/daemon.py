@@ -20,7 +20,6 @@
 
 import os
 import pyroute2
-import stat
 import sys
 
 from l3overlay import ipsec as ipsec_process
