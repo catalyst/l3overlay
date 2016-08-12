@@ -33,7 +33,7 @@ l3overlay_daemon = None
 
 def sigterm(signum, frame):
     '''
-    Shut down the daemon, and exit.
+    Shut down the daemon upon shutdown signal, and exit.
     '''
 
     global l3overlay_daemon
@@ -55,7 +55,7 @@ def sigterm(signum, frame):
 
 def sigint(signum, frame):
     '''
-    Alias to sigterm.
+    Shut down the daemon upon keyboard interrupt, and exit.
     '''
 
     global l3overlay_daemon
