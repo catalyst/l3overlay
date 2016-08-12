@@ -25,6 +25,7 @@ import jinja2
 import logging
 import re
 import os
+import shutil
 import sys
 
 import distutils.spawn
@@ -313,12 +314,13 @@ def directory_create(path, mode=0o777, exist_ok=True):
     os.makedirs(path, mode=mode, exist_ok=exist_ok)
 
 
-def directory_delete(path):
+def directory_remove(path, nonexist_ok=True):
     '''
     Remove the existing directory tree, even if it contains files.
     '''
 
-    shutil.rmtree(path)
+    if not nonexist_ok or os.path.exists(path):
+        shutil.rmtree(path)
 
 
 #
@@ -353,7 +355,7 @@ def pid_create(pid_file, mode=0o666):
 
     old_pid = pid_get(pid_file=pid_file)
 
-    if old_pid:
+    if old_pid and old_pid != os.getpid():
         raise RuntimeError("PID file '%s' locked by process %i" % (pid_file, old_pid))
 
     with open(pid_file, "w") as f:
@@ -445,38 +447,6 @@ def config(conf):
     config.read(conf)
 
     return config
-
-
-#
-## Logger functions.
-#
-
-
-def logger(log, log_level, logger_name, logger_section=None):
-    '''
-    Start the logging system, and return the logger to the program.
-    '''
-
-    logger = logging.getLogger(logger_name)
-    logger.setLevel(log_level)
-
-    lf = str.format(
-        "%(asctime)s %(name)s: [%(levelname)s] <{0}> %(message)s",
-         logger_section,
-    ) if logger_section else "%(asctime)s %(name)s: [%(levelname)s] %(message)s"
-
-    logger_formatter = logging.Formatter(lf)
-
-    if log:
-        directory_create(os.path.dirname(log))
-
-        logger_file_handler = logging.FileHandler(log)
-        logger_file_handler.setFormatter(logger_formatter)
-        logger.addHandler(logger_file_handler)
-
-    logger.debug("started logger")
-
-    return logger
 
 
 #

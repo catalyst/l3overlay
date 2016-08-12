@@ -24,6 +24,8 @@ import os
 
 from l3overlay import util
 
+from l3overlay.util import logger
+
 from l3overlay.util.worker import Worker
 
 from l3overlay.network import netns
@@ -40,7 +42,7 @@ class Overlay(Worker):
     Abstract base class for an overlay static interface.
     '''
 
-    def __init__(self, logger, daemon, name, config):
+    def __init__(self, daemon, name, config):
         '''
         Set overlay runtime state.
         '''
@@ -48,15 +50,17 @@ class Overlay(Worker):
         super().__init__()
 
         # Arguments.
-        self.logger = logger
         self.daemon = daemon
         self.name = name
 
         # Fields.
+        self.logger = logger.create(daemon.log, daemon.log_level, "l3overlay", self.name)
+        self.logger.start()
+
         self.root_dir = os.path.join(self.daemon.overlay_dir, self.name)
 
         # Overlay network namespace.
-        self.netns = netns.get(self.name)
+        self.netns = netns.get(self.logger, self.name)
 
         # Data structures.
         self.mesh_tunnels = []
@@ -205,7 +209,7 @@ class Overlay(Worker):
         Start the overlay.
         '''
 
-        if self.starting() or self.running():
+        if self.is_starting() or self.is_started():
             raise RuntimeError("overlay '%s' started twice" % self.name)
 
         self.set_starting()
@@ -237,10 +241,10 @@ class Overlay(Worker):
         Stop the overlay.
         '''
 
-        if not self.running():
+        if not self.is_started():
             raise RuntimeError("overlay '%s' not yet started" % self.name)
 
-        if self.stopped():
+        if self.is_stopped() or self.is_stopped():
             raise RuntimeError("overlay '%s' stopped twice" % self.name)
 
         self.set_stopping()
@@ -250,11 +254,11 @@ class Overlay(Worker):
         self.bgp_process.stop()
 
         for interface in self.interfaces:
-            interface.close()
+            interface.stop()
             interface.remove()
 
-        for mesh_tunnel in self.mesh_tunnel:
-            mesh_tunnel.close()
+        for mesh_tunnel in self.mesh_tunnels:
+            mesh_tunnel.stop()
             mesh_tunnel.remove()
 
         self.netns.stop()
@@ -267,6 +271,14 @@ class Overlay(Worker):
 
         self.set_stopped()
 
+
+    def remove(self):
+        '''
+        Remove the overlay runtime state.
+        '''
+
+        self.logger.stop()
+
 Worker.register(Overlay)
 
 
@@ -278,6 +290,5 @@ def read(daemon, conf):
     config = util.config(conf)
 
     name = util.name_get(config["overlay"]["name"])
-    logger = util.logger(daemon.log, daemon.log_level, "l3overlay", name)
 
-    return Overlay(logger, daemon, name, config)
+    return Overlay(daemon, name, config)

@@ -20,6 +20,8 @@
 
 from l3overlay import util
 
+from l3overlay.network import interface
+
 from l3overlay.network.interface import bridge
 from l3overlay.network.interface import gre
 from l3overlay.network.interface import veth
@@ -86,12 +88,12 @@ class MeshTunnel(Interface):
 
         tunnel_if = gre.create(
             self.logger,
-            self.ipdb,
+            self.root_ipdb,
             self.name,
-            "gretap",
+            self.physical_local,
             self.physical_remote,
-            self.physical_key,
-            self.daemon.gre_key(physical_local, physical_remote),
+            kind="gretap",
+            key=self.daemon.gre_key(self.physical_local, self.physical_remote),
         )
 
         root_veth_if = veth.create(
@@ -103,12 +105,12 @@ class MeshTunnel(Interface):
 
         netns_veth_if = interface.netns_set(
             self.logger,
-            self.ipdb,
+            self.root_ipdb,
             self.netns_veth_name,
             self.netns,
         )
 
-        bridge_if = bridge.create(self.logger, self.daemon.root_ipdb, self.bridge_name)
+        bridge_if = bridge.create(self.logger, self.root_ipdb, self.bridge_name)
         bridge_if.add_port(tunnel_if)
         bridge_if.add_port(root_veth_if)
 
@@ -132,7 +134,7 @@ class MeshTunnel(Interface):
         self.logger.info("stopping mesh tunnel '%s'" % self.name)
 
         bridge.get(self.logger, self.root_ipdb, self.bridge_name).remove()
-        veth.get(self.logger, self.root_ipdb, self.outer_name).remove()
+        veth.get(self.logger, self.root_ipdb, self.root_veth_name).remove()
         gre.get(self.logger, self.root_ipdb, self.name).remove()
 
         self.logger.info("finished stopping mesh tunnel '%s'" % self.name)

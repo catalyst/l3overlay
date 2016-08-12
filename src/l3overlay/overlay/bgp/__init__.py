@@ -20,6 +20,9 @@
 
 import os
 import pyroute2
+import re
+import signal
+import subprocess
 import socket
 
 from l3overlay import util
@@ -48,7 +51,9 @@ class Process(Worker):
 
         self.logger = overlay.logger
         self.name = overlay.name
+        self.netns = overlay.netns
 
+        self.asn = overlay.asn
         self.linknet_pool = overlay.linknet_pool
 
         self.mesh_tunnels = tuple(overlay.mesh_tunnels)
@@ -81,8 +86,8 @@ class Process(Worker):
         Start the BGP process.
         '''
 
-        if self.starting() or self.running():
-            raise RuntimeError("BGP process started twice")
+        if self.is_starting() or self.is_started():
+            raise RuntimeError("BGP process for overlay '%s' started twice" % self.name)
 
         self.set_starting()
 
@@ -110,7 +115,7 @@ class Process(Worker):
         else:
             bird_config["mesh_tunnels"] = self.mesh_tunnels
 
-        for interface in interfaces:
+        for interface in self.interfaces:
             if interface.is_ipv6():
                 if "interfaces" not in bird6_config:
                     bird6_config["interfaces"] = []
@@ -125,6 +130,7 @@ class Process(Worker):
                 self.bird,
                 self.bird_conf,
                 bird_config,
+                self.bird_log,
                 self.bird_ctl,
                 self.bird_pid,
             )
@@ -134,16 +140,17 @@ class Process(Worker):
                 self.bird6,
                 self.bird6_conf,
                 bird6_config,
+                self.bird6_log,
                 self.bird6_ctl,
                 self.bird6_pid,
             )
 
         self.logger.info("finished starting BGP process")
 
-        self.set_running()
+        self.set_started()
 
 
-    def _start_bird_daemon(self, bird, bird_conf, bird_config, bird_ctl, bird_pid):
+    def _start_bird_daemon(self, bird, bird_conf, bird_config, bird_log, bird_ctl, bird_pid):
         '''
         Start (or reload) a BIRD daemon using the given parameters.
         '''
@@ -166,7 +173,7 @@ class Process(Worker):
             # file.
             self.logger.debug("connecting to the BIRD control socket '%s'" % bird_ctl)
             sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            sock.connect(bird_socket_file)
+            sock.connect(bird_ctl)
 
             data = sock.recv(RECV_MAX).decode("UTF-8")
             if not re.match("0001 BIRD [0-9.]* ready.\n", data):
@@ -174,14 +181,14 @@ class Process(Worker):
                         "unexpected response from BIRD when connecting:\n%s" % data)
 
             self.logger.debug("reloading BIRD configuration")
-            sock.send(bytes("configure \"%s\"\n" % bird_config_file, 'UTF-8'))
+            sock.send(bytes("configure \"%s\"\n" % bird_conf, 'UTF-8'))
 
             data = sock.recv(RECV_MAX).decode("UTF-8")
-            if ("0002-Reading configuration from %s" % bird_config_file not in response or
-                        ("0003 Reconfigured" not in response and
-                                "0004 Reconfiguration in progress" not in response)):
+            if ("0002-Reading configuration from %s" % bird_conf not in data or
+                        ("0003 Reconfigured" not in data and
+                                "0004 Reconfiguration in progress" not in data)):
                 raise RuntimeError(
-                        "unexpected response from BIRD when reloading config:\n%s" % response)
+                        "unexpected response from BIRD when reloading config:\n%s" % data)
 
             sock.close()
 
@@ -204,21 +211,18 @@ class Process(Worker):
         Stop the BGP process.
         '''
 
-        if not self.use_ipsec:
-            return
+        if not self.is_started():
+            raise RuntimeError("BGP process for overlay '%s' not yet started" % self.name)
 
-        if not self.running():
-            raise RuntimeError("BGP process not yet started")
-
-        if self.stopped():
-            raise RuntimeError("BGP process stopped twice")
+        if self.is_stopped() or self.is_stopped():
+            raise RuntimeError("BGP process for overlay '%s' stopped twice" % self.name)
 
         self.set_stopping()
 
         self.logger.info("stopping BGP process")
 
         pid = util.pid_get(pid_file=self.bird_pid)
-        pid6 = util.pid_get(pid_file=seld.bird6_pid)
+        pid6 = util.pid_get(pid_file=self.bird6_pid)
 
         if pid:
             os.kill(pid, signal.SIGTERM)
@@ -229,10 +233,10 @@ class Process(Worker):
         util.directory_remove(self.bird_ctl_dir)
 
         self.logger.debug("removing BIRD configuration directory")
-        util.directory_removee(self.bird_conf_dir)
+        util.directory_remove(self.bird_conf_dir)
 
         self.logger.debug("removing BIRD logging directory")
-        util.directory_removee(self.bird_log_dir)
+        util.directory_remove(self.bird_log_dir)
 
         self.logger.debug("removing BIRD PID file directory")
         util.directory_remove(self.bird_pid_dir)

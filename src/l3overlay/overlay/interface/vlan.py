@@ -73,7 +73,7 @@ class VLAN(Interface):
         physical_if = interface.get(self.logger, self.daemon.root_ipdb, self.physical_interface)
 
         # Create the VLAN interface.
-        vlan_if = vlan.create(self.logger, self.ipdb, self.vlan_name, physical_if, self.id)
+        vlan_if = vlan.create(self.logger, self.netns.ipdb, self.vlan_name, physical_if, self.id)
 
         # Create the veth pair.
         root_veth_if = veth.create(
@@ -84,7 +84,7 @@ class VLAN(Interface):
         )
 
         # Move the netns veth interface to the network namespace.
-        netns_veth_if = interface.netns_set(self.logger, self.ipdb, self.netns_veth_name, self.netns)
+        netns_veth_if = interface.netns_set(self.logger, self.netns.ipdb, self.netns_veth_name, self.netns)
 
         # Add the assigned address for the VLAN to the netns veth
         # interface.
@@ -137,8 +137,8 @@ class VLAN(Interface):
         self.logger.info("stopping static vlan '%s'" % self.name)
 
         bridge.get(self.logger, self.daemon.root_ipdb, self.bridge_name).remove()
-        veth.get(self.logger, self.ipdb, self.root_netns_name).remove()
-        vlan.get(self.logger, self.ipdb, self.vlan_name).remove()
+        veth.get(self.logger, self.netns.ipdb, self.root_netns_name).remove()
+        vlan.get(self.logger, self.netns.ipdb, self.vlan_name).remove()
 
         self.logger.info("finished stopping static vlan '%s'" % self.name)
 

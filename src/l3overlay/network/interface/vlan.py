@@ -77,7 +77,7 @@ def create(logger, ipdb, name, link, id):
         else:
             return VLAN(logger, ipdb, interface, name, interface.link, interface.id)
 
-    interface = ipdb.create(ifname=name, kind="vlan", link=link, vlan_id=id)
+    interface = ipdb.create(ifname=name, kind=IF_TYPE, link=link, vlan_id=id)
     ipdb.commit()
 
     return VLAN(ipdb, interface, name, link, id)

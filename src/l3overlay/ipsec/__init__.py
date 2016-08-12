@@ -68,7 +68,7 @@ class Process(Worker):
         if not self.use_ipsec:
             return
 
-        if self.starting() or self.running():
+        if self.is_starting() or self.is_started():
             raise RuntimeError("IPsec process started twice")
 
         self.set_starting()
@@ -119,7 +119,7 @@ class Process(Worker):
 
         self.logger.info("finished starting IPsec process")
 
-        self.set_running()
+        self.set_started()
 
 
     def stop(self):
@@ -130,10 +130,10 @@ class Process(Worker):
         if not self.use_ipsec:
             return
 
-        if not self.running():
+        if not self.is_started():
             raise RuntimeError("IPsec process not yet started")
 
-        if self.stopped():
+        if self.is_stopped() or self.is_stopped():
             raise RuntimeError("IPsec process stopped twice")
 
         self.set_stopping()

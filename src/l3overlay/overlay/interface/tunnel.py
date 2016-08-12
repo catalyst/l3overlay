@@ -66,7 +66,7 @@ class Tunnel(Interface):
 
         tunnel_if = gre.create(
             self.logger,
-            self.ipdb,
+            self.netns.ipdb,
             self.tunnel_name,
             self.mode,
             self.local,
@@ -78,21 +78,6 @@ class Tunnel(Interface):
 
         self.logger.info("finished starting static tunnel '%s'" % self.name)
 
-        #        static_tunnel = {
-        #            'name': name,
-        #            'interface': tunnel_name,
-        #        }
-
-        #        logging.debug("adding %s to list of static tunnels" % name)
-        #        self.static_tunnels.append(static_tunnel)
-
-        #        logging.debug("adding BGP route for static tunnel %s" % name)
-        #        if Util.ip_address_is_v6(address):
-        #            self.bird6_config_add('tunnels', [static_tunnel])
-        #        else:
-        #            self.bird_config_add('tunnels', [static_tunnel])
-
-
 
     def stop(self):
         '''
@@ -101,7 +86,7 @@ class Tunnel(Interface):
 
         self.logger.info("stopping static tunnel '%s'" % self.name)
 
-        gre.get(self.logger, self.ipdb, self.tunnel_name).remove()
+        gre.get(self.logger, self.netns.ipdb, self.tunnel_name).remove()
 
         self.logger.info("finished stopping static tunnel '%s'" % self.name)
 

@@ -55,7 +55,7 @@ class Interface(object):
             raise RuntimeError("%s '%s' removed and then modified" % (self.description, self.name))
 
         if self.logger:
-            self.logger.debug("assigning IP address '%s/%i' to %s '%s'" % (str(outer_address), self.netmask, self.description, self.name))
+            self.logger.debug("assigning IP address '%s/%i' to %s '%s'" % (str(address), netmask, self.description, self.name))
 
         ip_tuple = (str(address), netmask)
         ip_string = "%s/%i" % ip_tuple
@@ -178,9 +178,9 @@ def netns_set(logger, ipdb, name, netns):
     interface object from the network namespace.
     '''
 
-    logger.debug("moving interface '%s' to network namespace '%s'" % name, netns.name)
+    logger.debug("moving interface '%s' to network namespace '%s'" % (name, netns.name))
 
-    if name not in netns_ipdb.by_name.keys():
+    if name not in netns.ipdb.by_name.keys():
         ipdb.interfaces[name].net_ns_fd = netns.name
         ipdb.commit()
 

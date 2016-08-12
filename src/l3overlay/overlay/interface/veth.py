@@ -66,13 +66,11 @@ class VETH(Interface):
 
         # Get the outer interface network namespace.
         self.outer_netns = self.overlay.netns
-        self.outer_ipdb = self.outer_netns.ipdb
 
         # Get the inner interface network namespace.
         # More complicated than it really should be.
         inner_overlay = None
         inner_netns = None
-        inner_ipdb = None
 
         if self.inner_namespace:
             try:
@@ -80,9 +78,7 @@ class VETH(Interface):
                 self.logger.debug("setting inner namespace to overlay '%s'" % self.inner_namespace)
             except ValueError:
                 self.logger.debug("setting inner namespace to network namespace '%s'" % self.inner_namespace)
-                self.inner_netns = netns.get(inner_namespace)
-                self.inner_netns.start()
-                self.inner_ipdb = self.inner_netns.ipdb
+                self.inner_netns = netns.get(self.logger, inner_namespace)
         else:
             self.logger.debug("setting inner namespace to root namespace")
             inner_ipdb = self.daemon.root_ipdb
@@ -110,10 +106,13 @@ class VETH(Interface):
 
         self.logger.info("starting static veth '%s'" % self.name)
 
+        # Start the inner network namespace object.
+        self.inner_netns.start()
+
         # Create the inner veth interface in the inner namespace,
         # and move the outer veth interface into the overlay namespace.
-        inner_if = veth.create(self.logger, self.inner_ipdb, self.inner_name, self.outer_name)
-        outer_if = interface.netns_set(self.logger, self.inner_ipdb, self.outer_name, outer_netns)
+        inner_if = veth.create(self.logger, self.inner_netns.ipdb, self.inner_name, self.outer_name)
+        outer_if = interface.netns_set(self.logger, self.inner_netns.ipdb, self.outer_name, outer_netns)
 
         # Set the interface to assign the inner address.
         inner_address_if = inner_if
@@ -124,8 +123,8 @@ class VETH(Interface):
         # interface, do so, and make sure the outeraddress gets
         # assigned to the bridge instead.
         if self.outer_interface_bridged:
-            dummy_if = dummy.create(self.logger, self.outer_ipdb, self.dummy_name)
-            bridge_if = bridge.create(self.logger, self.outer_ipdb, self.bridge_name)
+            dummy_if = dummy.create(self.logger, self.outer_netns.ipdb, self.dummy_name)
+            bridge_if = bridge.create(self.logger, self.outer_netns.ipdb, self.bridge_name)
 
             bridge_if.add_port(outer_if)
             bridge_if.add_port(dummy_if)
@@ -153,30 +152,6 @@ class VETH(Interface):
 
         self.logger.info("finished starting static veth '%s'" % self.name)
 
-                # Add the interfaces to the list of routed interfaces.
-                #static_veth = {
-                #    'name': name,
-                #    'inner_interface': inner_name,
-                #    'outer_interface': outer_name,
-                #    'inner_address_interface': inner_address_name,
-                #}
-
-                #if inner_interface_bridged:
-                #    static_veth['dummy_interface'] = dummy_name
-                #    static_veth['bridge_interface'] = bridge_name
-
-                #if outer_namespace:
-                #    static_veth['outer_namespace'] = outer_namespace
-
-                #logging.debug("adding %s to list of static veths" % name)
-                #self.static_veths.append(static_veth)
-
-                #logging.debug("adding BGP route for static veth %s" % name)
-                #if use_ipv6:
-                #    self.bird6_config_add('veths', [static_veth])
-                #else:
-                #    self.bird_config_add('veths', [static_veth])
-
 
     def stop(self):
         '''
@@ -186,22 +161,15 @@ class VETH(Interface):
         self.logger.info("stopping static veth '%s'" % self.name)
 
         if self.outer_interface_bridged:
-            bridge.get(self.logger, self.outer_ipdb, self.bridge_name).remove()
-            vlan.get(self.logger, self.outer_ipdb, self.dummy_name).remove()
+            bridge.get(self.logger, self.outer_netns.ipdb, self.bridge_name).remove()
+            vlan.get(self.logger, self.outer_netns.ipdb, self.dummy_name).remove()
 
-        veth.get(self.logger, self.inner_ipdb, self.inner_name).remove()
-
-        self.logger.info("finished stopping static veth '%s'" % self.name)
-
-
-    def remove(self):
-        '''
-        Clean up the static veth runtime state.
-        '''
+        veth.get(self.logger, self.inner_netns.ipdb, self.inner_name).remove()
 
         if self.inner_namespace and not self.inner_overlay:
              self.inner_netns.stop()
-             self.inner_netns.remove()
+
+        self.logger.info("finished stopping static veth '%s'" % self.name)
 
 
 Interface.register(VETH)

@@ -53,7 +53,10 @@ def create(logger, ipdb, name):
 
     logger.debug("creating %s interface '%s'" % (IF_TYPE, name))
 
-    interface = ipdb.create(ifname=name, type="dummy")
-    ipdb.commit()
+    interface = ipdb.interfaces[name] if name in ipdb.interfaces else None
+
+    if not interface:
+        interface = ipdb.create(ifname=name, kind=IF_TYPE)
+        ipdb.commit()
 
     return Dummy(logger, ipdb, interface, name)

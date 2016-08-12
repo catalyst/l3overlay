@@ -34,12 +34,11 @@ class Interface(metaclass=abc.ABCMeta):
         '''
 
         self.daemon = daemon
-        self.logger = self.daemon.logger
         self.root_ipdb = self.daemon.root_ipdb
 
         self.overlay = overlay
+        self.logger = self.overlay.logger
         self.netns = self.overlay.netns
-        self.ipdb = self.netns.ipdb
 
         self.name = name
 

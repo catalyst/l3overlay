@@ -27,6 +27,8 @@ from l3overlay import ipsec
 from l3overlay import overlay
 from l3overlay import util
 
+from l3overlay.util import logger
+
 from l3overlay.util.worker import Worker
 
 from l3overlay.overlay.interface.overlay_link import OverlayLink
@@ -68,7 +70,8 @@ class Daemon(Worker):
             self.value_get("log-level", "INFO"),
             ["NOSET", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
         )
-        self.logger = util.logger(self.log, self.log_level, "l3overlay")
+        self.logger = logger.create(self.log, self.log_level, "l3overlay")
+        self.logger.start()
 
         # Log exceptions for the rest of the initialisation process.
         try:
@@ -118,11 +121,6 @@ class Daemon(Worker):
             # Create the IPsec process object, which configures
             # and manages IPsec tunnel daemon.
             self.ipsec_process = ipsec.create(self)
-
-            # Break the ideal that all initialisation methods do not do any
-            # creation of things, and create a PID file at the determined
-            # path.
-            util.pid_create(self.pid)
 
         except Exception as e:
             self.logger.exception(e)
@@ -187,7 +185,7 @@ class Daemon(Worker):
         Start the daemon.
         '''
 
-        if self.starting() or self.running():
+        if self.is_starting() or self.is_started():
             raise RuntimeError("daemon started twice")
 
         self.set_starting()
@@ -214,10 +212,10 @@ class Daemon(Worker):
         Stop the daemon.
         '''
 
-        if not self.running():
+        if not self.is_started():
             raise RuntimeError("daemon not yet started")
 
-        if self.stopped():
+        if self.is_stopped() or self.is_stopped():
             raise RuntimeError("daemon stopped twice")
 
         self.set_stopping()
@@ -230,9 +228,22 @@ class Daemon(Worker):
             overlay.remove()
 
         self.logger.debug("removing lib dir '%s'" % self.lib_dir)
-        util.directory_delete(self.lib_dir)
+        util.directory_remove(self.lib_dir)
 
         self.set_stopped()
+
+
+    #
+    ## Daemon 'remove' methods.
+    #
+
+
+    def remove(self):
+        '''
+        Remove the daemon runtime state.
+        '''
+
+        self.logger.stop()
 
 
     #

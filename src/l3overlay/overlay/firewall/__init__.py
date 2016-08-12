@@ -41,7 +41,7 @@ class Process(Worker):
         self.fwbuilder_script = overlay.fwbuilder_script
 
 
-    def start():
+    def start(self):
         '''
         Start the firewall process.
         '''
@@ -54,7 +54,7 @@ class Process(Worker):
             fwbuilder.release()
 
 
-    def stop():
+    def stop(self):
         '''
         Stop the firewall process.
         '''

@@ -70,7 +70,7 @@ def create(logger, ipdb, name, peer_name, remove=True):
         interface = ipdb.interfaces[name]
 
         if interface.kind != IF_TYPE or interface.peer != peer_name:
-            Interface(None, logger, ipdb, interface, name).remove()
+            Interface(None, ipdb, interface, name).remove()
         else:
             return VETH(logger, ipdb, interface, name, peer_name)
 

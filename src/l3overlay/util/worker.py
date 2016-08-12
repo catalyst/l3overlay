@@ -21,6 +21,9 @@
 import abc
 
 
+STATES = ("starting", "started", "stopping", "stopped", "removing", "removed")
+
+
 class Worker(metaclass=abc.ABCMeta):
     '''
     Abstract base class for classes which use a 'start-stop' service
@@ -33,41 +36,25 @@ class Worker(metaclass=abc.ABCMeta):
         Set up worker internal fields and runtime state.
         '''
 
-        self._starting = False
-        self._running = False
-
-        self._stopping = False
-        self._stopped = False
+        self._state = "stopped"
 
 
-    def _error(self):
+    def _assert_state(self):
         '''
-        Raise a RuntimeErorr due to invalid workerstate.
+        Check that the worker state is valid.
         '''
 
-        raise RuntimeError('''invalid worker state (only one state value can be True at a time):
-  Starting: %s
-  Running: %s
-  Stopping: %s
-  Stopped: %s''' % (
-                str(self._starting),
-                str(self._running),
-                str(self._stopping),
-                str(self._stopped)))
+        if self._state not in STATES:
+            raise RuntimeError("invalid worker state '%s', expected one of %s" % (self._state, STATES))
 
 
-    def starting(self):
+    def is_starting(self):
         '''
-        Check if the worker is in 'starting' state.
+        Check if the worker is in the 'starting' state.
         '''
 
-        if self._starting:
-            if not self._running and not self._stopping and self._stopped:
-                return True
-            else:
-                self._error()
-
-        return False
+        self._assert_state()
+        return self._state == "starting"
 
 
     def set_starting(self):
@@ -75,65 +62,51 @@ class Worker(metaclass=abc.ABCMeta):
         Set the worker to 'starting' state.
         '''
 
-        self._starting = True
-        self._running = False
-        self._stopping = False
-        self._stopped = False
+        self._assert_state()
+        self._state = "starting"
 
 
-    def running(self):
+    def is_started(self):
         '''
-        Check if the worker is in 'running' state.
+        Check if the worker is in the 'started' state.
         '''
 
-        if self._running:
-            if not self._starting and not self._stopping and self._stopped:
-                return True
-            else:
-                self._error()
-
-        return False
-
-
-    def set_running(self):
-        '''
-        Set the worker to 'running' state.
-        '''
-
-        self._starting = False
-        self._running = True
-        self._stopping = False
-        self._stopped = False
-
-
-    def started(self):
-        '''
-        Alias to running().
-        '''
-
-        return self.running()
+        self._assert_state()
+        return self._state == "started"
 
 
     def set_started(self):
         '''
-        Alias to set_running().
+        Set the worker to 'started' state.
         '''
 
-        self.set_running()
+        self._assert_state()
+        self._state = "started"
 
 
-    def stopping(self):
+    def is_running(self):
         '''
-        Check if the worker is in 'stopping' state.
+        Check if the worker is in the 'started' state. Alias to is_started().
         '''
 
-        if self._stopping:
-            if not self._starting and not self._running and self._stopped:
-                return True
-            else:
-                self._error()
+        return self.is_started()
 
-        return False
+
+    def set_running(self):
+        '''
+        Set the worker to 'started' state. Alias to set_started().
+        '''
+
+        self.set_started()
+
+
+    def is_stopping(self):
+        '''
+        Check if the worker is in the 'stopping' state.
+        '''
+
+        self._assert_state()
+        return self._state == "stopping"
 
 
     def set_stopping(self):
@@ -141,24 +114,17 @@ class Worker(metaclass=abc.ABCMeta):
         Set the worker to 'stopping' state.
         '''
 
-        self._starting = False
-        self._running = False
-        self._stopping = True
-        self._stopped = False
+        self._assert_state()
+        self._state = "stopping"
 
 
-    def stopped(self):
+    def is_stopped(self):
         '''
-        Check if the worker is in 'stopped' state.
+        Check if the worker is in the 'stopped' state.
         '''
 
-        if self._stopped:
-            if not self._starting and not self._running and self._stopping:
-                return True
-            else:
-                self._error()
-
-        return False
+        self._assert_state()
+        return self._state == "stopped"
 
 
     def set_stopped(self):
@@ -166,10 +132,44 @@ class Worker(metaclass=abc.ABCMeta):
         Set the worker to 'stopped' state.
         '''
 
-        self._starting = False
-        self._running = False
-        self._stopping = False
-        self._stopped = True
+        self._assert_state()
+        self._state = "stopped"
+
+
+    def is_removing(self):
+        '''
+        Check if the worker is in the 'removing' state.
+        '''
+
+        self._assert_state()
+        return self._state == "removing"
+
+
+    def set_removing(self):
+        '''
+        Set the worker to 'removing' state.
+        '''
+
+        self._assert_state()
+        self._state = "removing"
+
+
+    def is_removed(self):
+        '''
+        Check if the worker is in the 'removed' state.
+        '''
+
+        self._assert_state()
+        return self._state == "removed"
+
+
+    def set_removed(self):
+        '''
+        Set the worker to 'removed' state.
+        '''
+
+        self._assert_state()
+        self._state = "removed"
 
 
     @abc.abstractmethod

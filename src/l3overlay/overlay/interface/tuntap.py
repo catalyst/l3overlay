@@ -65,7 +65,7 @@ class Tuntap(Interface):
 
         tuntap_if = tuntap.create(
             self.logger,
-            self.ipdb,
+            self.netns.ipdb,
             self.tuntap_name,
             self.mode,
             self.uid,
@@ -76,22 +76,6 @@ class Tuntap(Interface):
 
         self.logger.info("finished starting static tuntap '%s'" % self.name)
 
-        #        static_tuntap = {
-        #            'name': name,
-        #            'interface': tuntap_name,
-        #            'mode': mode,
-        #        }
-
-        #        logging.debug("adding %s to list of static tuntaps" % name)
-        #        self.static_tuntaps.append(static_tuntap)
-
-        #        logging.debug("adding BGP route for static %s %s" % (mode, name))
-        #        if Util.ip_address_is_v6(address):
-        #            self.bird6_config_add('tuntaps', [static_tuntap])
-        #        else:
-        #            self.bird_config_add('tuntaps', [static_tuntap])
-
-
 
     def stop(self):
         '''
@@ -100,7 +84,7 @@ class Tuntap(Interface):
 
         self.logger.info("stopping static tuntap '%s'" % self.name)
 
-        tuntap.get(self.logger, self.ipdb, self.tuntap_name).remove()
+        tuntap.get(self.logger, self.netns.ipdb, self.tuntap_name).remove()
 
         self.logger.info("finished stopping static tuntap '%s'" % self.name)
 

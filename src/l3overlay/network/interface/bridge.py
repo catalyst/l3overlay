@@ -33,7 +33,7 @@ class Bridge(Interface):
     description = "%s interface" % IF_TYPE
 
 
-    def add_port(interface):
+    def add_port(self, interface):
         '''
         Add the given interface to the list of ports for this bridge.
         '''
@@ -45,7 +45,8 @@ class Bridge(Interface):
             self.logger.debug("adding port for %s '%s' to %s '%s'" % (interface.description, interface.name, self.description, self.name))
 
         if interface.interface.index not in self.interface.ports:
-            self.interface.add_port(interface.interface).commit()
+            self.interface.add_port(interface.interface)
+            self.ipdb.commit()
 
 
 def get(logger, ipdb, name):
@@ -68,7 +69,10 @@ def create(logger, ipdb, name):
 
     logger.debug("creating %s interface '%s'" % (IF_TYPE, name))
 
-    interface = ipdb.create(ifname=name, type="bridge")
-    ipdb.commit()
+    interface = ipdb.interfaces[name] if name in ipdb.interfaces else None
+
+    if not interface:
+        interface = ipdb.create(ifname=name, kind=IF_TYPE)
+        ipdb.commit()
 
     return Bridge(logger, ipdb, interface, name)

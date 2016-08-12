@@ -22,11 +22,89 @@ import argparse
 import os
 import signal
 import stat
+import sys
 
 import l3overlay.daemon
 
 
+args = None
+l3overlay_daemon = None
+
+
+def sigterm(signum, frame):
+    '''
+    Shut down the daemon, and exit.
+    '''
+
+    global l3overlay_daemon
+
+    signal.signal(signal.SIGTERM, signal.SIG_IGN)
+
+    l3overlay_daemon.logger.info("handling SIGINT")
+
+    l3overlay_daemon.logger.debug("stopping daemon")
+    l3overlay_daemon.stop()
+    l3overlay_daemon.remove()
+
+    l3overlay_daemon.logger.debug("removing PID file")
+    util.file_remove(l3overlay_daemon.pid)
+
+    l3overlay_daemon.logger.info("exiting")
+    sys.exit(0)
+
+
+def sigint(signum, frame):
+    '''
+    Alias to sigterm.
+    '''
+
+    global l3overlay_daemon
+
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+    l3overlay_daemon.logger.info("handling SIGINT")
+
+    l3overlay_daemon.logger.debug("stopping daemon")
+    l3overlay_daemon.stop()
+    l3overlay_daemon.remove()
+
+    l3overlay_daemon.logger.debug("removing PID file")
+    util.file_remove(l3overlay_daemon.pid)
+
+    l3overlay_daemon.logger.info("exiting")
+    sys.exit(0)
+
+
+def sighup(signum, frame):
+    '''
+    Shut down the daemon, make a new daemon to reload the configuration,
+    and start the new daemon.
+    '''
+
+    global args
+    global l3overlay_daemon
+
+    signal.signal(signal.SIGHUP, signal.SIG_IGN)
+
+    l3overlay_daemon.logger.info("handling SIGHUP")
+
+    l3overlay_daemon.logger.debug("stopping daemon")
+    l3overlay_daemon.stop()
+    l3overlay_daemon.remove()
+
+    l3overlay_daemon = l3overlay.daemon.create(args)
+
+    util.pid_create(l3overlay_daemon.pid)
+
+    l3overlay_daemon.logger.debug("starting daemon")
+    l3overlay_daemon.start()
+
+    l3overlay_daemon.logger.info("finished handling SIGHUP")
+
+
 def main():
+    global args
+    global l3overlay_daemon
 
     # Parse optional arguments, and return the final values which will be used
     # in l3overlayd configuration.
@@ -99,83 +177,38 @@ def main():
 
     args = argparser.parse_args()
 
-
     # Configure the umask of this process so, by default, it will securely
     # create files.
     os.umask(
         stat.S_IRGRP|stat.S_IWGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IWOTH|stat.S_IXOTH
     )
 
-
     # Create the daemon object, which tracks l3overlay state.
     # After the daemon object is created, we can log output.
-    daemon = l3overlay.daemon.create(args)
+    l3overlay_daemon = l3overlay.daemon.create(args)
 
-    # Set up process signal handlers.
-    def sigterm(signum, frame):
-        '''
-        Shut down the daemon, and exit.
-        '''
+    # On exceptions: log output, and quit.
+    try:
+        # Time to start up the daemon!
+        l3overlay_daemon.start()
 
-        signal.signal(signal.SIGTERM, signal.SIG_IGN)
+        # Create the PID file for this daemon.
+        util.pid_create(l3overlay_daemon.pid)
 
-        daemon.logger.info("handling SIGINT")
+        # Set up process signal handlers.
+        l3overlay_daemon.logger.debug("setting up signal handlers")
+        signal.signal(signal.SIGTERM, sigterm)
+        signal.signal(signal.SIGINT, sigint)
+        signal.signal(signal.SIGHUP, sighup)
 
-        daemon.logger.debug("stopping daemon")
-        daemon.stop()
+        # We're done! Time to block and wait for signals.
+        while True:
+            l3overlay_daemon.logger.debug("waiting for signal")
+            signal.pause()
 
-        daemon.logger.debug("removing PID file")
-        util.file_remove(daemon.pid)
-
-        logger.info("exiting")
-        sys.exit(0)
-
-    def sigint(signum, frame):
-        '''
-        Alias to sigterm.
-        '''
-
-        signal.signal(signal.SIGINT, signal.SIG_IGN)
-
-        daemon.logger.info("handling SIGINT")
-
-        daemon.logger.debug("stopping daemon")
-        daemon.stop()
-
-        daemon.logger.debug("removing PID file")
-        util.file_remove(daemon.pid)
-
-        logger.info("exiting")
-        sys.exit(0)
-
-    def sighup(signum, frame):
-        '''
-        Shut down the daemon, make a new daemon to reload the configuration,
-        and start the new daemon.
-        '''
-
-        signal.signal(signal.SIGHUP, signal.SIG_IGN)
-
-        daemon.logger.info("handling SIGHUP")
-
-        daemon.logger.debug("stopping daemon")
-        daemon.stop()
-
-        daemon = Daemon(args)
-        logger = daemon.logger
-
-        daemon.logger.debug("starting daemon")
-        daemon.start()
-
-        daemon.logger.info("finished handling SIGHUP")
-
-    daemon.logger.debug("setting up signal handlers")
-    signal.signal(signal.SIGTERM, sigterm)
-    signal.signal(signal.SIGINT, sigint)
-    signal.signal(signal.SIGHUP, sighup)
-
-
-    # We're done! Time to block and wait for signals.
-    while True:
-        daemon.logger.debug("waiting for signal")
-        signal.pause()
+    except Exception as e:
+        if not l3overlay_daemon.logger.is_started():
+            l3overlay_daemon.logger.exception(e)
+            sys.exit(1)
+        else:
+            raise
