@@ -24,17 +24,18 @@ import os
 
 from l3overlay import util
 
+from l3overlay.network import netns
+
+from l3overlay.overlay import bgp as bgp_process
+from l3overlay.overlay import firewall as firewall_process
+from l3overlay.overlay import interface
+
+from l3overlay.overlay.interface import bgp
+from l3overlay.overlay.interface import mesh_tunnel
+
 from l3overlay.util import logger
 
 from l3overlay.util.worker import Worker
-
-from l3overlay.network import netns
-
-from l3overlay.overlay import bgp
-from l3overlay.overlay import firewall
-from l3overlay.overlay import interface
-
-from l3overlay.overlay.interface import mesh_tunnel
 
 
 class Overlay(Worker):
@@ -166,8 +167,8 @@ class Overlay(Worker):
 
         # Create the overlay's BGP and firewall process objects,
         # once the data structures are complete.
-        self.bgp_process = bgp.create(self.daemon, self)
-        self.firewall_process = firewall.create(self)
+        self.bgp_process = bgp_process.create(self.daemon, self)
+        self.firewall_process = firewall_process.create(self)
 
 
     def _node_links(self):

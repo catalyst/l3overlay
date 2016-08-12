@@ -23,7 +23,7 @@ import pyroute2
 import stat
 import sys
 
-from l3overlay import ipsec
+from l3overlay import ipsec as ipsec_process
 from l3overlay import overlay
 from l3overlay import util
 
@@ -120,7 +120,7 @@ class Daemon(Worker):
 
             # Create the IPsec process object, which configures
             # and manages IPsec tunnel daemon.
-            self.ipsec_process = ipsec.create(self)
+            self.ipsec_process = ipsec_process.create(self)
 
         except Exception as e:
             self.logger.exception(e)
