@@ -44,12 +44,12 @@ def sigterm(signum, frame):
 
     l3overlay_daemon.logger.debug("stopping daemon")
     l3overlay_daemon.stop()
-    l3overlay_daemon.remove()
 
     l3overlay_daemon.logger.debug("removing PID file")
     util.file_remove(l3overlay_daemon.pid)
 
-    l3overlay_daemon.logger.info("exiting")
+    l3overlay_daemon.remove()
+
     sys.exit(0)
 
 
@@ -66,12 +66,12 @@ def sigint(signum, frame):
 
     l3overlay_daemon.logger.debug("stopping daemon")
     l3overlay_daemon.stop()
-    l3overlay_daemon.remove()
 
     l3overlay_daemon.logger.debug("removing PID file")
     util.file_remove(l3overlay_daemon.pid)
 
-    l3overlay_daemon.logger.info("exiting")
+    l3overlay_daemon.remove()
+
     sys.exit(0)
 
 
