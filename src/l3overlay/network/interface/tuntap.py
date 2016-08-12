@@ -79,7 +79,7 @@ def create(logger, ipdb, name, mode="tap", uid=0, gid=0, ifr=None):
 
     interface = ipdb.create(
         ifname=name,
-        kind="IF_TYPE",
+        kind=IF_TYPE,
         mode=mode,
         uid=uid,
         gid=gid,

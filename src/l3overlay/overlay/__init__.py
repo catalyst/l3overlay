@@ -39,7 +39,7 @@ from l3overlay.overlay.interface.mesh_tunnel import MeshTunnel
 
 class Overlay(Worker):
     '''
-    Abstract base class for an overlay static interface.
+    Overlay management class.
     '''
 
     def __init__(self, daemon, name, config):

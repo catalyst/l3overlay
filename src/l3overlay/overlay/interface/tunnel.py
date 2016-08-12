@@ -68,10 +68,10 @@ class Tunnel(Interface):
             self.logger,
             self.netns.ipdb,
             self.tunnel_name,
-            self.mode,
             self.local,
             self.remote,
-            self.key,
+            kind=self.mode,
+            key=self.key,
         )
         tunnel_if.add_ip(self.address, self.netmask)
         tunnel_if.up()

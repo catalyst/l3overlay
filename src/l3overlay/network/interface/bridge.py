@@ -45,8 +45,7 @@ class Bridge(Interface):
             self.logger.debug("adding port for %s '%s' to %s '%s'" % (interface.description, interface.name, self.description, self.name))
 
         if interface.interface.index not in self.interface.ports:
-            self.interface.add_port(interface.interface)
-            self.ipdb.commit()
+            self.interface.add_port(interface.interface).commit()
 
 
 def get(logger, ipdb, name):

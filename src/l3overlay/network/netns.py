@@ -71,12 +71,6 @@ class NetNS(Worker):
         self.netns = pyroute2.NetNS(self.name)
         self.ipdb = pyroute2.IPDB(nl=self.netns)
 
-        if not self.netns:
-            raise RuntimeError("not netns")
-
-        if not self.ipdb:
-            raise RuntimeError("not ipdb")
-
         self.set_started()
 
 
