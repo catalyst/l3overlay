@@ -22,9 +22,10 @@ import os
 import pyroute2
 import sys
 
-from l3overlay import ipsec as ipsec_process
 from l3overlay import overlay
 from l3overlay import util
+
+from l3overlay.process import ipsec as ipsec_process
 
 from l3overlay.util import logger
 

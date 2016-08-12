@@ -26,12 +26,13 @@ from l3overlay import util
 
 from l3overlay.network import netns
 
-from l3overlay.overlay import bgp as bgp_process
-from l3overlay.overlay import firewall as firewall_process
 from l3overlay.overlay import interface
 
 from l3overlay.overlay.interface import bgp
 from l3overlay.overlay.interface import mesh_tunnel
+
+from l3overlay.overlay.process import bgp as bgp_process
+from l3overlay.overlay.process import firewall as firewall_process
 
 from l3overlay.util import logger
 

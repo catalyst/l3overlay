@@ -1,6 +1,6 @@
 #
 # IPsec overlay network manager (l3overlay)
-# l3overlay/overlay/firewall/__init__.py - firewall process
+# l3overlay/overlay/process/firewall.py - firewall process
 #
 # Copyright (c) 2016 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify
@@ -17,15 +17,11 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-
-import configparser
-import os
+import subprocess
 
 from l3overlay import util
 
 from l3overlay.util.worker import Worker
-
-from l3overlay.network import netns
 
 
 class Process(Worker):

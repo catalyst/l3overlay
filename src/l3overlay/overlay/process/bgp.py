@@ -1,6 +1,6 @@
 #
 # IPsec overlay network manager (l3overlay)
-# l3overlay/overlay/bgp/__init__.py - BGP process manager
+# l3overlay/overlay/process/bgp.py - BGP process manager
 #
 # Copyright (c) 2016 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify
@@ -19,7 +19,6 @@
 
 
 import os
-import pyroute2
 import re
 import signal
 import subprocess

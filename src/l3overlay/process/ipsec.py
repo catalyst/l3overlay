@@ -1,6 +1,6 @@
 #
 # IPsec overlay network manager (l3overlay)
-# l3overlay/ipsec/__init__.py - IPsec process manager
+# l3overlay/ipsec/process/ipsec.py - IPsec process manager
 #
 # Copyright (c) 2016 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify
@@ -18,7 +18,6 @@
 #
 
 
-import os
 import subprocess
 
 from l3overlay import util
@@ -141,10 +140,10 @@ class Process(Worker):
         self.logger.info("stopping IPsec process")
 
         self.logger.debug("removing IPsec configuration file '%s'" % self.ipsec_conf)
-        os.remove(self.ipsec_conf)
+        util.file_remove(self.ipsec_conf)
 
         self.logger.debug("removing IPsec secrets file '%s'" % self.ipsec_secrets)
-        os.remove(self.ipsec_secrets)
+        util.file_remove(self.ipsec_secrets)
 
         if self.ipsec_manage:
             # When we manage IPsec, it is safe to stop it completely.
