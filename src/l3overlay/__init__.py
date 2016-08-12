@@ -207,7 +207,7 @@ def main():
             signal.pause()
 
     except Exception as e:
-        if not l3overlay_daemon.logger.is_started():
+        if l3overlay_daemon.logger.is_started():
             l3overlay_daemon.logger.exception(e)
             sys.exit(1)
         else:
