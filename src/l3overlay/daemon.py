@@ -173,9 +173,9 @@ class Daemon(Worker):
 
         for interface in overlay.interfaces:
             if isinstance(interface, VETH) and interface.inner_namespace in self.overlays:
-                self._overlays_sorted(self.overlays[interface.inner_namespace])
+                self._overlays_sorted(sorted_overlays, self.overlays[interface.inner_namespace])
             elif isinstance(interface, OverlayLink):
-                self._overlays_sorted(self.overlays[interface.inner_overlay_name])
+                self._overlays_sorted(sorted_overlays, self.overlays[interface.inner_overlay_name])
 
         sorted_overlays.append(overlay)
 

@@ -140,3 +140,19 @@ class MeshTunnel(Interface):
         self.logger.info("finished stopping mesh tunnel '%s'" % self.name)
 
 Interface.register(MeshTunnel)
+
+
+def create(daemon, overlay, name,
+            node_local, node_remote,
+            physical_local, physical_remote,
+            virtual_local, virtual_remote):
+    '''
+    Create a mesh tunnel.
+    '''
+
+    return MeshTunnel(
+        daemon, overlay, name,
+        node_local, node_remote,
+        physical_local, physical_remote,
+        virtual_local, virtual_remote,
+    )

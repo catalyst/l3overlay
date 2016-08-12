@@ -34,7 +34,7 @@ from l3overlay.overlay import bgp
 from l3overlay.overlay import firewall
 from l3overlay.overlay import interface
 
-from l3overlay.overlay.interface.mesh_tunnel import MeshTunnel
+from l3overlay.overlay.interface import mesh_tunnel
 
 
 class Overlay(Worker):
@@ -136,7 +136,7 @@ class Overlay(Worker):
                             virtual_remote > self.linknet_pool.broadcast_address):
                         raise RuntimeError("overflowed linknet pool %s with node link %s" % (str(self.linknet_pool), str(node_link)))
 
-                    self.mesh_tunnels.append(MeshTunnel(
+                    self.mesh_tunnels.append(mesh_tunnel.create(
                         self.daemon,
                         self,
                         name,
@@ -221,8 +221,8 @@ class Overlay(Worker):
         self.logger.debug("creating overlay root directory")
         util.directory_create(self.root_dir)
 
-        for mesh_tunnel in self.mesh_tunnels:
-            mesh_tunnel.start()
+        for mt in self.mesh_tunnels:
+            mt.start()
 
         for interface in self.interfaces:
             interface.start()
@@ -257,9 +257,9 @@ class Overlay(Worker):
             interface.stop()
             interface.remove()
 
-        for mesh_tunnel in self.mesh_tunnels:
-            mesh_tunnel.stop()
-            mesh_tunnel.remove()
+        for mt in self.mesh_tunnels:
+            mt.stop()
+            mt.remove()
 
         self.netns.stop()
         self.netns.remove()
