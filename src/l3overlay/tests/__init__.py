@@ -19,23 +19,49 @@
 
 
 import concurrencytest
+import os
 import unittest
 
 import mininet.net
 
 import mininet.node
 
+import mininet.nodelib
+
 import mininet.topo
 
 
 class L3overlayTopo(mininet.topo.Topo):
     '''
+    l3overlay topology object for mininet.
     '''
 
-    def build(self):
+    def build(self, n_routers, n_end_devices):
         '''
+        Build the l3overlay topology object.
+
+        * 1 switch
+        * (n_routers) routers in an l3overlay mesh
+        * (n_routers * n_end_devices) end devices, (n_end_devices) per router
         '''
-        pass
+
+        pid = os.getpid()
+
+        switch = self.addSwitch("p%xs" % pid, cls=mininet.nodelib.LinuxBridge)
+        routers = []
+        end_devices = {}
+
+        for i in range(n_routers):
+            router = self.addHost("p%xr%i" % (pid, i))
+            self.addLink(router, switch)
+            routers.append(router)
+
+        for i, router in enumerate(routers):
+            end_devices[router.name] = []
+            for j in range(n_end_devices):
+                end_device = self.addHost("p%xr%ie%i" % (pid, i, j))
+                self.addLink(end_device, router)
+                end_devices[router.name].append(end_device)
 
 
 class L3overlayTest(unittest.TestCase):
