@@ -35,28 +35,25 @@ class OverlayLink(Interface):
     point-to-point connection between two overlays.
     '''
 
-    def __init__(self, daemon, overlay, name, config):
+    def __init__(self, daemon, overlay, name,
+                outer_address, inner_address, inner_overlay_name, netmask):
         '''
-        Parse the static interface configuration and create
-        internal fields.
+        Set up static overlay link internal state.
         '''
 
         super().__init__(daemon, overlay, name)
 
+        self.outer_address = outer_address
+        self.inner_address = inner_address
+        self.inner_overlay_name = inner_overlay_name
+        self.netmask = netmask
+
         self.outer_overlay_name = overlay.name
-        self.outer_address = util.ip_address_get(config["outer-address"])
         self.outer_asn = overlay.asn
 
-        self.inner_overlay_name = util.name_get(config["inner-overlay-name"])
-        self.inner_address = util.ip_address_get(config["inner-address"])
         self.inner_overlay = daemon.overlays[self.inner_overlay_name]
         self.inner_netns = self.inner_overlay.netns
         self.inner_asn = self.inner_overlay.asn
-
-        self.netmask = util.netmask_get(config["netmask"], util.ip_address_is_v6(self.inner_address))
-
-        if (type(self.inner_address) != type(self.outer_address)):
-            raise ValueError("inner address '%s' (%s) and outer address '%s' (%s) must be the same type of IP address" % (self.inner_address, str(type(self.inner_address)), self.outer_address, str(type(self.outer_address))))
 
         self.dummy_name = self.daemon.interface_name(self.name, limit=13)
         self.bridge_name = self.daemon.interface_name(self.dummy_name, suffix="br")
@@ -123,5 +120,34 @@ class OverlayLink(Interface):
 
         self.logger.info("finished stopping static overlay link '%s'" % self.name)
 
-
 Interface.register(OverlayLink)
+
+
+def read(daemon, overlay, name, config):
+    '''
+    Create a static overlay link from the given configuration object.
+    '''
+
+    outer_address = util.ip_address_get(config["outer-address"])
+    inner_address = util.ip_address_get(config["inner-address"])
+    inner_overlay_name = util.name_get(config["inner-overlay-name"])
+    netmask = util.netmask_get(config["netmask"], util.ip_address_is_v6(inner_address))
+
+    if (type(inner_address) != type(outer_address)):
+        raise ValueError("inner address '%s' (%s) and outer address '%s' (%s) must be the same type of IP address" %
+                (inner_address, str(type(nner_address)),
+                    outer_address, str(type(outer_address))))
+
+    return OverlayLink(daemon, overlay, name,
+            outer_address, inner_address, inner_overlay_name, netmask)
+
+
+def write(overlay_link, config):
+    '''
+    Write the static overlay link to the given configuration object.
+    '''
+
+    config["outer-address"] = str(overlay_link.outer_address)
+    config["inner-address"] = str(overlay_link.inner_address)
+    config["inner-overlay-name"] = overlay_link.inner_overlay_name
+    config["netmask"] = str(overlay_link.netmask)

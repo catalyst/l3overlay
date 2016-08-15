@@ -30,16 +30,16 @@ class Dummy(Interface):
     Used to configure a dummy interface.
     '''
 
-    def __init__(self, daemon, overlay, name, config):
+    def __init__(self, daemon, overlay, name,
+            address, netmask):
         '''
-        Parse the static interface configuration and create
-        internal fields.
+        Set up static dummy internal state.
         '''
 
         super().__init__(daemon, overlay, name)
 
-        self.address = util.ip_address_get(config["address"])
-        self.netmask = util.netmask_get(config["netmask"], util.ip_address_is_v6(address))
+        self.address = address
+        self.netmask = netmask
 
         self.dummy_name = self.daemon.interface_name(self.name)
 
@@ -82,5 +82,25 @@ class Dummy(Interface):
 
         self.logger.info("finished stopping static dummy '%s'" % self.name)
 
-
 Interface.register(Dummy)
+
+
+def read(daemon, overlay, name, config):
+    '''
+    Create a static dummy from the given configuration object.
+    '''
+
+    address = util.ip_address_get(config["address"])
+    netmask = util.netmask_get(config["netmask"], util.ip_address_is_v6(address))
+
+    return Dummy(daemon, overlay, name,
+            address, netmask)
+
+
+def write(dummy, config):
+    '''
+    Write the static dummy to the given configuration object.
+    '''
+
+    config["address"] = str(dummy.address)
+    config["netmask"] = str(dummy.netmask)

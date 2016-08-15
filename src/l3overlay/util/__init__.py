@@ -506,16 +506,17 @@ def pid_exists(pid=None, pid_file=None):
 #
 
 
-def config(conf):
+def config(conf=None):
     '''
     Parse a given configuration file, and return its configuration object.
     '''
 
-    if not os.path.isfile(conf):
-        raise FileNotFoundError(conf)
-
     config = configparser.ConfigParser()
-    config.read(conf)
+
+    if conf:
+        if not os.path.isfile(conf):
+            raise FileNotFoundError(conf)
+        config.read(conf)
 
     return config
 

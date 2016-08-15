@@ -30,19 +30,19 @@ class Tuntap(Interface):
     Used to configure a TUN/TAP interface.
     '''
 
-    def __init__(self, daemon, overlay, name, config):
+    def __init__(self, daemon, overlay, name,
+            mode, uid, gid, address, netmask):
         '''
-        Parse the static interface configuration and create
-        internal fields.
+        Set up static tuntap internal state.
         '''
 
         super().__init__(daemon, overlay, name)
 
-        self.mode = util.enum_get(config["mode"], ["tun", "tap"])
-        self.uid = util.integer_get(config["uid"])
-        self.gid = util.integer_get(config["gid"])
-        self.address = util.ip_address_get(config["address"])
-        self.netmask = util.netmask_get(config["netmask"], util.ip_address_is_v6(address))
+        self.mode = mode
+        self.uid = uid
+        self.gid = gid
+        self.address = address
+        self.netmask = netmask
 
         self.tuntap_name = self.daemon.interface_name(self.name)
 
@@ -88,5 +88,31 @@ class Tuntap(Interface):
 
         self.logger.info("finished stopping static tuntap '%s'" % self.name)
 
-
 Interface.register(Tuntap)
+
+
+def read(daemon, overlay, name, config):
+    '''
+    Create a static tuntap from the given configuration object.
+    '''
+
+    mode = util.enum_get(config["mode"], ["tun", "tap"])
+    uid = util.integer_get(config["uid"])
+    gid = util.integer_get(config["gid"])
+    address = util.ip_address_get(config["address"])
+    netmask = util.netmask_get(config["netmask"], util.ip_address_is_v6(address))
+
+    return Tuntap(daemon, overlay, name,
+            mode, uid, gid, address, netmask)
+
+
+def write(tuntap, config):
+    '''
+    Write the static tuntap to the given configuration object.
+    '''
+
+    config["mode"] = tuntap.mode.lower()
+    config["uid"] = str(tuntap.uid)
+    config["gid"] = str(tuntap.gid)
+    config["address"] = str(tuntap.address)
+    config["netmask"] = str(tuntap.netmask)

@@ -35,29 +35,19 @@ class VETH(Interface):
     Used to configure a veth pair interface.
     '''
 
-    def __init__(self, daemon, overlay, name, config):
+    def __init__(self, daemon, overlay, name,
+                inner_address, outer_address, inner_namespace, outer_interface_bridged):
         '''
-        Parse the static interface configuration and create
-        internal fields.
+        Set up static veth internal state.
         '''
 
         super().__init__(daemon, overlay, name)
 
-        self.inner_address = util.ip_address_get(config["inner-address"]) if "inner-address" in config else None
-        self.outer_address = util.ip_address_get(config["outer-address"]) if "outer-address" in config else None
-        self.inner_namespace = util.name_get(config["inner-namespace"]) if "inner-namespace" in config else None
-        self.outer_interface_bridged = util.boolean_get(config["outer-interface-bridged"]) if "outer-interface-bridged" in config else False
-
-        if self.outer_address:
-            self.netmask = util.netmask_get(config["netmask"], util.ip_address_is_v6(self.outer_address))
-        elif self.inner_address:
-            self.netmask = util.netmask_get(config["netmask"], util.ip_address_is_v6(self.inner_address))
-        else:
-            self.netmask = None
-
-        if self.inner_address and self.outer_address:
-            if type(self.inner_address) != type(self.outer_address):
-                raise ValueError("inner-address '%s' (%s) and outer-address '%s' (%s) must be the same type of IP address" % (str(self.inner_address), str(type(self.inner_address)), str(self.outer_address), str(type(self.outer_address))))
+        self.inner_address = inner_address
+        self.outer_address = outer_address
+        self.inner_namespace = inner_namespace
+        self.outer_interface_bridged = outer_interface_bridged
+        self.netmask = netmask
 
         self.dummy_name = self.daemon.interface_name(self.name, limit=12)
         self.bridge_name = self.daemon.interface_name(self.dummy_name, suffix="br")
@@ -179,3 +169,41 @@ class VETH(Interface):
         self.logger.info("finished stopping static veth '%s'" % self.name)
 
 Interface.register(VETH)
+
+
+def read(daemon, overlay, name, config):
+    '''
+    Create a static veth from the given configuration object.
+    '''
+
+    inner_address = util.ip_address_get(config["inner-address"]) if "inner-address" in config else None
+    outer_address = util.ip_address_get(config["outer-address"]) if "outer-address" in config else None
+    inner_namespace = util.name_get(config["inner-namespace"]) if "inner-namespace" in config else None
+    outer_interface_bridged = util.boolean_get(config["outer-interface-bridged"]) if "outer-interface-bridged" in config else False
+
+    netmask = None
+    if outer_address:
+        netmask = util.netmask_get(config["netmask"], util.ip_address_is_v6(outer_address))
+    elif inner_address:
+        netmask = util.netmask_get(config["netmask"], util.ip_address_is_v6(inner_address))
+
+    if inner_address and outer_address:
+        if type(inner_address) != type(outer_address):
+            raise ValueError("inner-address '%s' (%s) and outer-address '%s' (%s) must be the same type of IP address" %
+                    (str(inner_address), str(type(inner_address)),
+                        str(outer_address), str(type(outer_address))))
+
+    return VETH(daemon, overlay, name,
+            inner_address, outer_address, inner_namespace, outer_interface_bridged, netmask)
+
+
+def write(veth, config):
+    '''
+    Write the static veth to the given configuration object.
+    '''
+
+    config["inner-address"] = str(veth.inner_address)
+    config["outer-address"] = str(veth.outer_address)
+    config["inner-namespace"] = veth.inner_namespace
+    config["outer-interface-bridged"] = str(veth.outer_interface_bridged).lower()
+    config["netmask"] = str(tveth.netmask)

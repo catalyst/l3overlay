@@ -34,18 +34,18 @@ class VLAN(Interface):
     Used to configure a IEEE 802.1Q VLAN interface.
     '''
 
-    def __init__(self, daemon, overlay, name, config):
+    def __init__(self, daemon, overlay, name,
+                id, physical_interface, address, netmask):
         '''
-        Parse the static interface configuration and create
-        internal fields.
+        Set up static vlan internal state.
         '''
 
         super().__init__(daemon, overlay, name)
 
-        self.id = util.integer_get(config["id"])
-        self.physical_interface = util.name_get(config["physical-interface"])
-        self.address = util.ip_address_get(config["address"])
-        self.netmask = util.netmask_get(config["netmask"], util.ip_address_is_v6(self.address))
+        self.id = id
+        self.physical_interface = physical_interface
+        self.address = address
+        self.netmask = netmask
 
         self.vlan_name = self.daemon.interface_name(name=name, suffix="vl", limit=12)
         self.root_veth_name = self.daemon.interface_name(name=self.vlan_name, suffix="v")
@@ -108,26 +108,6 @@ class VLAN(Interface):
 
         self.logger.info("finished starting static vlan '%s'" % self.name)
 
-        # Add the veth interface connected to the VLAN to the list of 
-        # routed interfaces.
-        # static_vlan = {
-        #     'name': name,
-        #     'interface': netns_veth_name,
-        #     'vlan_interface': vlan_name,
-        #     'root_interface': root_veth_name,
-        #     'bridge_interface': bridge_name,
-        # }
-
-        # logging.debug("adding %s to list of static VLANs" % name)
-        # self.static_vlans.append(static_vlan)
-
-        # logging.debug("adding BGP route for static VLAN %s" % name)
-        # if Util.ip_address_is_v6(address):
-        #     self.bird6_config_add('vlans', [static_vlan])
-        # else:
-        #     self.bird_config_add('vlans', [static_vlan])
-
-
 
     def stop(self):
         '''
@@ -142,5 +122,29 @@ class VLAN(Interface):
 
         self.logger.info("finished stopping static vlan '%s'" % self.name)
 
-
 Interface.register(VLAN)
+
+
+def read(daemon, overlay, name, config):
+    '''
+    Create a static vlan from the given configuration object.
+    '''
+
+    id = util.integer_get(config["id"])
+    physical_interface = util.name_get(config["physical-interface"])
+    address = util.ip_address_get(config["address"])
+    netmask = util.netmask_get(config["netmask"], util.ip_address_is_v6(address))
+
+    return VLAN(daemon, overlay, name,
+            id, physical_interface, address, netmask)
+
+
+def write(vlan, config):
+    '''
+    Write the static vlan to the given configuration object.
+    '''
+
+    config["id"] = str(vlan.id)
+    config["physical-interface"] = vlan.physical_interface
+    config["address"] = str(vlan.address)
+    config["netmask"] = str(vlan.netmask)

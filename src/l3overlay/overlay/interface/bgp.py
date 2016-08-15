@@ -28,26 +28,24 @@ class BGP(Interface):
     Used to configure a static BGP protocol.
     '''
 
-    def __init__(self, daemon, overlay, name, config):
+    def __init__(self, daemon, overlay, name,
+            neighbor, local, local_asn, neighbor_asn, bfd, ttl_security, import_prefixes):
         '''
-        Parse the static bgp configuration and create
-        internal fields.
+        Set up static bgp internal state.
         '''
 
         super().__init__(daemon, overlay, name)
 
-        self.neighbor = util.ip_address_get(config["neighbor"])
-        self.local = util.ip_address_get(config["local"]) if "local" in config else None
+        self.neighbor = neighbor
+        self.local = local
 
-        self.local_asn = util.integer_get(config["local-asn"]) if "local-asn" in config else overlay.asn
-        self.neighbor_asn = util.integer_get(config["neighbor-asn"]) if "neighbor-asn" in config else overlay.asn
+        self.lcoal_asn = local_asn
+        self.neighbor_asn = neighbor_asn
 
-        self.bfd = util.boolean_get(config["bfd"]) if "bfd" in config else False
-        self.ttl_security = util.boolean_get(config["ttl-security"]) if "ttl-security" in config else False
+        self.bfd = bfd
+        self.ttl_security = ttl_security
 
-        self.description = config["description"] if "description" in config else None
-
-        self.import_prefixes = [util.bird_prefix_get(v) for k, v in config.items() if k.startswith("import-prefix")]
+        self.import_prefixes = tuple(import_prefixes)
 
 
     def is_ipv6(self):
@@ -75,3 +73,52 @@ class BGP(Interface):
         return
 
 Interface.register(BGP)
+
+
+def read(daemon, overlay, name, config):
+    '''
+    Create a static bgp from the given configuration object.
+    '''
+
+    neighbor = util.ip_address_get(config["neighbor"])
+    local = util.ip_address_get(config["local"]) if "local" in config else None
+
+    local_asn = util.integer_get(config["local-asn"]) if "local-asn" in config else overlay.asn
+    neighbor_asn = util.integer_get(config["neighbor-asn"]) if "neighbor-asn" in config else overlay.asn
+
+    bfd = util.boolean_get(config["bfd"]) if "bfd" in config else False
+    ttl_security = util.boolean_get(config["ttl-security"]) if "ttl-security" in config else False
+
+    description = config["description"] if "description" in config else None
+
+    import_prefixes = [util.bird_prefix_get(v) for k, v in config.items() if k.startswith("import-prefix")]
+
+    return BGP(daemon, overlay, name,
+            neighbor, local, local_asn, neighbor_asn, bfd, ttl_security, import_prefixes)
+
+
+def write(bgp, config):
+    '''
+    Write the static bgp to the given configuration object.
+    '''
+
+    config["neighbor"] = str(bgp.neighbor)
+    if bgp.local:
+        config["local"] = str(bgp.local)
+
+    if bgp.local_asn:
+        config["local-asn"] = str(bgp.local_asn)
+    if bgp.neighbor_asn:
+        config["neighbor-asn"] = str(bgp.neighbor_asn)
+
+    if bgp.bfd:
+        config["bfd"] = str(bgp.bfd).lower()
+    if bgp.ttl_security:
+        config["ttl-security"] = str(bgp.ttl_security).lower()
+
+    if bgp.description:
+        config["description"] = bgp.description
+
+    if bgp.import_prefixes:
+        for i, import_prefix in enumerate(bgp.import_prefixes):
+            config["import-prefix-%i" % (i+1)] = import_prefix

@@ -20,13 +20,13 @@
 
 from l3overlay import util
 
-from l3overlay.overlay.interface.bgp import BGP
-from l3overlay.overlay.interface.dummy import Dummy
-from l3overlay.overlay.interface.overlay_link import OverlayLink
-from l3overlay.overlay.interface.tunnel import Tunnel
-from l3overlay.overlay.interface.tuntap import Tuntap
-from l3overlay.overlay.interface.veth import VETH
-from l3overlay.overlay.interface.vlan import VLAN
+from l3overlay.overlay.interface import bgp
+from l3overlay.overlay.interface import dummy
+from l3overlay.overlay.interface import overlay_link
+from l3overlay.overlay.interface import tunnel
+from l3overlay.overlay.interface import tuntap
+from l3overlay.overlay.interface import veth
+from l3overlay.overlay.interface import vlan
 
 
 def read(daemon, overlay, section, config):
@@ -36,19 +36,19 @@ def read(daemon, overlay, section, config):
     interface_type, name = util.section_split(section)
 
     if interface_type == "static-bgp":
-        return BGP(daemon, overlay, name, config)
+        return bgp.read(daemon, overlay, name, config)
     elif interface_type == "static-dummy":
-        return Dummy(daemon, overlay, name, config)
+        return dummy.read(daemon, overlay, name, config)
     elif interface_type == "static-overlay-link":
-        return OverlayLink(daemon, overlay, name, config)
+        return overlay_link.read(daemon, overlay, name, config)
     elif interface_type == "static-tunnel":
-        return Tunnel(daemon, overlay, name, config)
+        return tunnel.read(daemon, overlay, name, config)
     elif interface_type == "static-tuntap":
-        return Tuntap(daemon, overlay, name, config)
+        return tuntap.read(daemon, overlay, name, config)
     elif interface_type == "static-veth":
-        return VETH(daemon, overlay, name, config)
+        return veth.read(daemon, overlay, name, config)
     elif interface_type == "static-vlan":
-        return VLAN(daemon, overlay, name, config)
+        return vlan.read(daemon, overlay, name, config)
     elif name.startswith("static"):
         raise RuntimeError("unsupported static interface type '%s' with name '%s'" % (interface_type, name))
     else:

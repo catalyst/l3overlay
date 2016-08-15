@@ -30,19 +30,19 @@ class Tunnel(Interface):
     Used to configure a GRE/GRETAP tunnel interface.
     '''
 
-    def __init__(self, daemon, overlay, name, config):
+    def __init__(self, daemon, overlay, name,
+                mode, local, remote, address, netmask):
         '''
-        Parse the static interface configuration and create
-        internal fields.
+        Set up static tunnel internal state.
         '''
 
         super().__init__(daemon, overlay, name)
 
-        self.mode = util.enum_get(config["mode"], ["gre", "gretap"])
-        self.local = util.ip_address_get(config["local"])
-        self.remote = util.ip_address_get(config["remote"])
-        self.address = util.ip_address_get(config["address"])
-        self.netmask = util.netmask_get(config["netmask"], util.ip_address_is_v6(address))
+        self.mode = mode
+        self.local = local
+        self.remote = remote
+        self.address = address
+        self.netmask = netmask
 
         self.tunnel_name = self.daemon.interface_name(self.name)
         self.key = self.daemon.gre_key(self.local, self.remote)
@@ -90,5 +90,31 @@ class Tunnel(Interface):
 
         self.logger.info("finished stopping static tunnel '%s'" % self.name)
 
-
 Interface.register(Tunnel)
+
+
+def read(daemon, overlay, name, config):
+    '''
+    Create a static tunnel from the given configuration object.
+    '''
+
+    mode = util.enum_get(config["mode"], ["gre", "gretap"])
+    local = util.ip_address_get(config["local"])
+    remote = util.ip_address_get(config["remote"])
+    address = util.ip_address_get(config["address"])
+    netmask = util.netmask_get(config["netmask"], util.ip_address_is_v6(address))
+
+    return Tunnel(daemon, overlay, name,
+            mode, local, remote, address, netmask)
+
+
+def write(tunnel, config):
+    '''
+    Write the static tunnel to the given configuration object.
+    '''
+
+    config["mode"] = tunnel.mode.lower()
+    config["local"] = str(tunnel.local)
+    config["remote"] = str(tunnel.remote)
+    config["address"] = str(tunnel.address)
+    config["netmask"] = str(tunnel.netmask)
