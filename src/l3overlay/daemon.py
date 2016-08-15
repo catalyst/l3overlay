@@ -26,14 +26,14 @@ import sys
 from l3overlay import overlay
 from l3overlay import util
 
+from l3overlay.overlay.interface.overlay_link import OverlayLink
+from l3overlay.overlay.interface.veth import VETH
+
 from l3overlay.process import ipsec as ipsec_process
 
 from l3overlay.util import logger
 
 from l3overlay.util.worker import Worker
-
-from l3overlay.overlay.interface.overlay_link import OverlayLink
-from l3overlay.overlay.interface.veth import VETH
 
 
 class Daemon(Worker):
@@ -54,8 +54,8 @@ class Daemon(Worker):
 
         # Internal fields which don't require the global configuration
         # to set up.
-        self._interface_names = []
         self._gre_keys = {}
+        self._interface_names = set()
         self.mesh_links = set()
 
         self.root_ipdb = pyroute2.IPDB()
@@ -257,6 +257,20 @@ class Daemon(Worker):
     #
 
 
+    def gre_key(self, local, remote):
+        '''
+        Return a unique (to this daemon) key value for the given
+        (local, remote) link.
+        '''
+
+        link = (local, remote)
+
+        if link not in self._gre_keys:
+            self._gre_keys[link] = len(self._gre_keys)
+
+        return self._gre_keys[link]
+
+
     def interface_name(self, name, suffix=None, limit=15):
         '''
         Returns a valid, unique (to this daemon daemon) interface name
@@ -283,22 +297,8 @@ class Daemon(Worker):
 
             ifname_num += 1
 
-        self._interface_names.append(ifname)
+        self._interface_names.add(ifname)
         return ifname
-
-
-    def gre_key(self, local, remote):
-        '''
-        Return a unique (to this daemon) key value for the given
-        (local, remote) link.
-        '''
-
-        link = (local, remote)
-
-        if link not in self._gre_keys:
-            self._gre_keys[link] = len(self._gre_keys)
-
-        return self._gre_keys[link]
 
 Worker.register(Daemon)
 
