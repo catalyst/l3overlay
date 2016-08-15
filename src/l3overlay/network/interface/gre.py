@@ -51,7 +51,7 @@ def get(logger, ipdb, name):
         interface = ipdb.interfaces[name]
 
         if interface.kind not in IF_TYPES:
-            raise RuntimeError("interface of type '%s', expected '%s': %s" % (interface.kind, str.join("/", IF_TYPES), name))
+            raise RuntimeError("found interface of type '%s', expected '%s': %s" % (interface.kind, str.join("/", IF_TYPES), name))
 
         return GRE(logger, ipdb, interface, name, interface.kind)
     else:

@@ -53,7 +53,7 @@ def get(logger, ipdb, name):
         interface = ipdb.interfaces[name]
 
         if interface.kind != IF_TYPE:
-            raise RuntimeError("interface of type '%s', expected '%s': %s" % (interface.kind, IF_TYPE, name))
+            raise RuntimeError("found interface of type '%s', expected '%s': %s" % (interface.kind, IF_TYPE, name))
 
         return VLAN(ipdb, interface, name, interface.peer)
     else:

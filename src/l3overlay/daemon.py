@@ -112,12 +112,11 @@ class Daemon(Worker):
 
             # Create the application state for each overlay. and sort
             # the list of overlays into the correct execution order.
-            self.overlays = []
+            self.overlays = {}
 
             for overlay_conf in self.overlay_confs:
-                self.overlays.append(overlay.read(self, overlay_conf))
-
-            self.overlays_sorted()
+                o = overlay.read(self, overlay_conf)
+                self.overlays[o.name] = o
 
             # Create the IPsec process object, which configures
             # and manages IPsec tunnel daemon.
@@ -126,6 +125,42 @@ class Daemon(Worker):
         except Exception as e:
             self.logger.exception(e)
             sys.exit(1)
+
+
+    #
+    ## Daemon helper methods.
+    #
+
+
+    def overlays_list_sorted(self):
+        '''
+        Resolve inter-overlay dependencies, and place a sorted list
+        of overlays, where there would be no dependency issues upon
+        starting them, in place of the existing list.
+        '''
+
+        os = self.overlays.copy()
+        sos = []
+
+        while os:
+            Daemon._overlays_list_sorted(os, sos, os.popitem()[1])
+
+        return sos
+
+
+    @staticmethod
+    def _overlays_list_sorted(os, sos, o):
+        '''
+        Recursive helper method to overlays_list_sorted.
+        '''
+
+        for i in o.interfaces:
+            if isinstance(i, VETH) and i.inner_namespace in os:
+                Daemon._overlays_list_sorted(os, sos, os.pop(i.inner_namespace))
+            elif isinstance(i, OverlayLink):
+                Daemon._overlays_list_sorted(os, sos, os.pop(i.inner_overlay_name))
+
+        sos.append(o)
 
 
     #
@@ -152,35 +187,6 @@ class Daemon(Worker):
             return default
 
 
-    def overlays_sorted(self):
-        '''
-        Resolve inter-overlay dependencies, and place a sorted list
-        of overlays, where there would be no dependency issues upon
-        starting them, in place of the existing list.
-        '''
-
-        sorted_overlays = []
-
-        for overlay in self.overlays:
-            self._overlays_sorted(sorted_overlays, overlay)
-
-        self.overlays = sorted_overlays
-            
-
-    def _overlays_sorted(self, sorted_overlays, overlay):
-        '''
-        Recursive helper method to overlays_sorted.
-        '''
-
-        for interface in overlay.interfaces:
-            if isinstance(interface, VETH) and interface.inner_namespace in self.overlays:
-                self._overlays_sorted(sorted_overlays, self.overlays[interface.inner_namespace])
-            elif isinstance(interface, OverlayLink):
-                self._overlays_sorted(sorted_overlays, self.overlays[interface.inner_overlay_name])
-
-        sorted_overlays.append(overlay)
-
-
     def start(self):
         '''
         Start the daemon.
@@ -194,8 +200,8 @@ class Daemon(Worker):
         self.logger.debug("creating lib dir '%s'" % self.lib_dir)
         util.directory_create(self.lib_dir)
 
-        for overlay in self.overlays:
-            overlay.start()
+        for o in self.overlays_list_sorted():
+            o.start()
 
         self.ipsec_process.start()
 
@@ -223,9 +229,9 @@ class Daemon(Worker):
         self.ipsec_process.stop()
         self.ipsec_process.remove()
 
-        for overlay in self.overlays:
-            overlay.stop()
-            overlay.remove()
+        for o in self.overlays_list_sorted().reverse():
+            o.stop()
+            o.remove()
 
         self.logger.debug("removing lib dir '%s'" % self.lib_dir)
         util.directory_remove(self.lib_dir)

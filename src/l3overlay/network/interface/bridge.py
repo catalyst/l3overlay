@@ -56,7 +56,12 @@ def get(logger, ipdb, name):
     logger.debug("getting runtime state for %s interface '%s'" % (IF_TYPE, name))
 
     if name in ipdb.by_name.keys():
-        return Bridge(logger, ipdb, ipdb.interfaces[name], name)
+        interface = ipdb.interfaces[name]
+
+        if interface.kind != IF_TYPE:
+            raise RuntimeError("found interface of type '%s', expected '%s': %s" % (interface.kind, IF_TYPE, name))
+
+        return Bridge(logger, ipdb, interface, name)
     else:
         raise RuntimeError("unable to find %s interface in IPDB: %s" % (IF_TYPE, name))
 
@@ -68,10 +73,15 @@ def create(logger, ipdb, name):
 
     logger.debug("creating %s interface '%s'" % (IF_TYPE, name))
 
-    interface = ipdb.interfaces[name] if name in ipdb.interfaces else None
+    if name in ipdb.by_name.keys():
+        interface = ipdb.interfaces[name]
 
-    if not interface:
-        interface = ipdb.create(ifname=name, kind=IF_TYPE)
-        ipdb.commit()
+        if interface.kind != IF_TYPE:
+            Interface(None, ipdb, interface, name).remove()
+        else:
+            return Bridge(logger, ipdb, interface, name)
+
+    interface = ipdb.create(ifname=name, kind=IF_TYPE)
+    ipdb.commit()
 
     return Bridge(logger, ipdb, interface, name)

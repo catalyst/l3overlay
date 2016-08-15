@@ -77,9 +77,9 @@ class VETH(Interface):
                 self.inner_netns = self.daemon.overlays[self.inner_namespace].netns
                 self.inner_ipdb = None
                 self.logger.debug("setting inner namespace to overlay '%s'" % self.inner_namespace)
-            except ValueError:
+            except KeyError:
                 self.logger.debug("setting inner namespace to network namespace '%s'" % self.inner_namespace)
-                self.inner_netns = netns.get(self.logger, inner_namespace)
+                self.inner_netns = netns.get(self.logger, self.inner_namespace)
                 self.inner_ipdb = None
         else:
             self.logger.debug("setting inner namespace to root namespace")
