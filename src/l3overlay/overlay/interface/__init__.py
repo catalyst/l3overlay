@@ -31,6 +31,7 @@ from l3overlay.overlay.interface import vlan
 
 def read(daemon, overlay, section, config):
     '''
+    Read an interface from the given configuration object.
     '''
 
     interface_type, name = util.section_split(section)
@@ -52,4 +53,40 @@ def read(daemon, overlay, section, config):
     elif name.startswith("static"):
         raise RuntimeError("unsupported static interface type '%s' with name '%s'" % (interface_type, name))
     else:
-        raise RuntimeError("unknown section type: %s" % section)
+        raise RuntimeError("unsupported section type '%s'" % section)
+
+
+def write(interface, config):
+    '''
+    Write an interface to the given configuration object.
+    '''
+
+    section = None
+    interface_class = None
+
+    if isinstance(interface, bgp.BGP):
+        section = util.section_header("static-bgp", interface.name)
+        interface_class = bgp
+    elif isinstance(interface, dummy.Dummy):
+        section = util.section_header("static-dummy", interface.name)
+        interface_class = dummy
+    elif isinstance(interface, overlay_link.OverlayLink):
+        section = util.section_header("static-overlay-link", interface.name)
+        interface_class = overlay_link
+    elif isinstance(interface, tunnel.Tunnel):
+        section = util.section_header("static-tunnel", interface.name)
+        interface_class = tunnel
+    elif isinstance(interface, tuntap.Tuntap):
+        section = util.section_header("static-tuntap", interface.name)
+        interface_class = tuntap
+    elif isinstance(interface, veth.VETH):
+        section = util.section_header("static-veth", interface.name)
+        interface_class = veth
+    elif isinstance(interface, vlan.VLAN):
+        section = util.section_header("static-vlan", interface.name)
+        interface_class = vlan
+    else:
+        raise RuntimeError("unsupported interface type '%s'" % str(type(interface)))
+
+    config[section] = {}
+    interface_class.write(interface, config[section])

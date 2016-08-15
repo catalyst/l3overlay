@@ -115,6 +115,14 @@ def name_get(value):
     return name
 
 
+def section_header(type, name):
+    '''
+    Build a section header from the given type and name.
+    '''
+
+    return "%s:%s" % (type, name)
+
+
 def section_split(section):
     '''
     Get the section type and name from the given section header.
