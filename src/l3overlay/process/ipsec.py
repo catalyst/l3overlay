@@ -35,6 +35,8 @@ class Process(Worker):
         Set internal fields for the IPsec process.
         '''
 
+        super().__init__()
+
         self.logger = daemon.logger
 
         self.use_ipsec = daemon.use_ipsec
@@ -51,10 +53,10 @@ class Process(Worker):
 
         # Create a dictionary which maps the name of the IPsec
         # connection to a tuple containing the local and remote addresses.
-        self.mesh_conns = dict.fromkeys(
+        self.mesh_conns = dict(zip(
             ["%s-%s" % (m[0], m[1]) for m in daemon.mesh_links],
             daemon.mesh_links,
-        )
+        ))
 
         self.ipsec = util.command_path("ipsec")
 

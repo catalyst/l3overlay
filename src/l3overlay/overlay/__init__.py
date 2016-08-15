@@ -69,8 +69,8 @@ class Overlay(Worker):
         self.interfaces = []
 
         # Read overlay configuration.
-        for s, section in config.items():
-            if s.startswith("overlay"):
+        for header, section in config.items():
+            if header.startswith("overlay"):
                 # Determine whether or not to allow this overlay to start.
                 self.enabled = util.boolean_get(section["enabled"]) if "enabled" in config else True
 
@@ -150,11 +150,11 @@ class Overlay(Worker):
                     ))
 
             # Read static interfaces.
-            elif s.startswith("static"):
-                self.interfaces.append(interface.read(self.daemon, self, section, section))
+            elif header.startswith("static"):
+                self.interfaces.append(interface.read(self.daemon, self, header, section))
 
             # Ignore the default section.
-            elif s == "DEFAULT":
+            elif header == "DEFAULT":
                 continue
 
             # Handle unexpected sections.

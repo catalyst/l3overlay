@@ -45,15 +45,15 @@ class VETH(Interface):
 
         self.inner_address = util.ip_address_get(config["inner-address"]) if "inner-address" in config else None
         self.outer_address = util.ip_address_get(config["outer-address"]) if "outer-address" in config else None
-        self.inner_namespace = util.name_get(config["inner-namespace"]) if "outer-namespace" in config else None
+        self.inner_namespace = util.name_get(config["inner-namespace"]) if "inner-namespace" in config else None
         self.outer_interface_bridged = util.boolean_get(config["outer-interface-bridged"]) if "outer-interface-bridged" in config else False
 
-        if self.inner_address:
-            use_ipv6 = util.ip_address_is_v6(inner_address)
-        elif self.outer_address:
-            use_ipv6 = util.ip_address_is_v6(outer_address)
-
-        self.netmask = util.netmask_get(config["netmask"], use_ipv6)
+        if self.outer_address:
+            self.netmask = util.netmask_get(config["netmask"], util.ip_address_is_v6(self.outer_address))
+        elif self.inner_address:
+            self.netmask = util.netmask_get(config["netmask"], util.ip_address_is_v6(self.inner_address))
+        else:
+            self.netmask = None
 
         if self.inner_address and self.outer_address:
             if type(self.inner_address) != type(self.outer_address):
@@ -75,13 +75,16 @@ class VETH(Interface):
         if self.inner_namespace:
             try:
                 self.inner_netns = self.daemon.overlays[self.inner_namespace].netns
+                self.inner_ipdb = None
                 self.logger.debug("setting inner namespace to overlay '%s'" % self.inner_namespace)
             except ValueError:
                 self.logger.debug("setting inner namespace to network namespace '%s'" % self.inner_namespace)
                 self.inner_netns = netns.get(self.logger, inner_namespace)
+                self.inner_ipdb = None
         else:
             self.logger.debug("setting inner namespace to root namespace")
-            inner_ipdb = self.daemon.root_ipdb
+            self.inner_netns = None
+            self.inner_ipdb = self.daemon.root_ipdb
 
 
     def is_ipv6(self):
@@ -106,22 +109,19 @@ class VETH(Interface):
 
         self.logger.info("starting static veth '%s'" % self.name)
 
-        # Start the inner network namespace object.
-        self.inner_netns.start()
+        inner_if_ipdb = None
+        if self.inner_namespace:
+            self.inner_netns.start()
+            inner_if_ipdb = self.inner_netns.ipdb
+        else:
+            inner_if_ipdb = self.inner_ipdb
 
-        # Create the inner veth interface in the inner namespace,
-        # and move the outer veth interface into the overlay namespace.
-        inner_if = veth.create(self.logger, self.inner_netns.ipdb, self.inner_name, self.outer_name)
-        outer_if = interface.netns_set(self.logger, self.inner_netns.ipdb, self.outer_name, outer_netns)
+        inner_if = veth.create(self.logger, inner_if_ipdb, self.inner_name, self.outer_name)
+        outer_if = interface.netns_set(self.logger, inner_if_ipdb, self.outer_name, self.outer_netns)
 
-        # Set the interface to assign the inner address.
+        self.logger.debug("setting inner veth interface '%s' as the inner address interface" % self.inner_name)
         inner_address_if = inner_if
 
-        # Set the interface to assign the outer address.
-        #
-        # If the outer veth interface is to be bridged to a dummy
-        # interface, do so, and make sure the outeraddress gets
-        # assigned to the bridge instead.
         if self.outer_interface_bridged:
             dummy_if = dummy.create(self.logger, self.outer_netns.ipdb, self.dummy_name)
             bridge_if = bridge.create(self.logger, self.outer_netns.ipdb, self.bridge_name)
@@ -135,18 +135,16 @@ class VETH(Interface):
             self.logger.debug("setting outer veth interface '%s' as the outer address interface" % self.outer_name)
             outer_address_if = outer_if
 
-        # Assign IP addresses to the interfaces, if configured.
         if self.inner_address:
             inner_address_if.add_ip(self.inner_address, self.netmask)
 
         if self.outer_address:
             outer_address_if.add_ip(self.outer_address, self.netmask)
 
-        # Bring up all interfaces.
         outer_if.up()
         inner_if.up()
 
-        if outer_interface_bridged:
+        if self.outer_interface_bridged:
             dummy_if.up()
             bridge_if.up()
 
@@ -160,16 +158,21 @@ class VETH(Interface):
 
         self.logger.info("stopping static veth '%s'" % self.name)
 
+        inner_if_ipdb = None
+        if self.inner_namespace:
+            inner_if_ipdb = self.inner_netns.ipdb
+        else:
+            inner_if_ipdb = self.inner_ipdb
+
         if self.outer_interface_bridged:
             bridge.get(self.logger, self.outer_netns.ipdb, self.bridge_name).remove()
             vlan.get(self.logger, self.outer_netns.ipdb, self.dummy_name).remove()
 
-        veth.get(self.logger, self.inner_netns.ipdb, self.inner_name).remove()
+        veth.get(self.logger, inner_if_ipdb, self.inner_name).remove()
 
         if self.inner_namespace and not self.inner_overlay:
              self.inner_netns.stop()
 
         self.logger.info("finished stopping static veth '%s'" % self.name)
-
 
 Interface.register(VETH)

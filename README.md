@@ -357,7 +357,7 @@ The subnet mask for the assigned address. If both `inner-address` and `outer-add
 * Type: **name**
 * Required: no
 
-The name of the network namespace to move the inner interface into. The network namespace must already exist before the overlay is created.
+The name of the network namespace to move the inner interface into. The network namespace will be created if it does not already exist, but it will not be deleted once the static veth pair is shut down.
 
 This option can also be used to connect two overlays together, via the static veth pair. To link overlays this way, define `inner-namespace` in just one of the overlays. The overlay which the static veth is defined in will get the outer interface, and the overlay specified in `inner-namespace` will get the inner interface.
 

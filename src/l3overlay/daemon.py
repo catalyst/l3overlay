@@ -20,6 +20,7 @@
 
 import os
 import pyroute2
+import re
 import sys
 
 from l3overlay import overlay
@@ -93,7 +94,7 @@ class Daemon(Worker):
             # Get required file paths.
             self.pid = self.value_get("pid", os.path.join(util.path_root(), "var", "run", "l3overlayd.pid"))
 
-            self.ipsec_conf = self.value_get("ipsec-conf", os.path.join(util.path_root(), "etc", "ipsec", "l3overlay.conf"))
+            self.ipsec_conf = self.value_get("ipsec-conf", os.path.join(util.path_root(), "etc", "ipsec.d", "l3overlay.conf"))
             self.ipsec_secrets = self.value_get("ipsec-secrets", os.path.join(util.path_root(), "etc", "ipsec.secrets" if self.ipsec_manage else "ipsec.l3overlay.secrets"))
 
             # Create a list of all the overlay configuration file paths.
@@ -196,7 +197,6 @@ class Daemon(Worker):
         for overlay in self.overlays:
             overlay.start()
 
-        self.ipsec_process = ipsec.create(self)
         self.ipsec_process.start()
 
         self.set_started()

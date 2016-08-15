@@ -39,7 +39,7 @@ class BGP(Interface):
         self.neighbor = util.ip_address_get(config["neighbor"])
         self.local = util.ip_address_get(config["local"]) if "local" in config else None
 
-        self.local_asn = util.integer_get(config["local-asn"] if "local-asn" in config else overlay.asn
+        self.local_asn = util.integer_get(config["local-asn"]) if "local-asn" in config else overlay.asn
         self.neighbor_asn = util.integer_get(config["neighbor-asn"]) if "neighbor-asn" in config else overlay.asn
 
         self.bfd = util.boolean_get(config["bfd"]) if "bfd" in config else False
@@ -47,7 +47,7 @@ class BGP(Interface):
 
         self.description = config["description"] if "description" in config else None
 
-        self.import_prefixes = [util.bird_prefix_get(value) if key.startswith("import-prefix") for key, value in config[section].items()]
+        self.import_prefixes = [util.bird_prefix_get(v) for k, v in config.items() if k.startswith("import-prefix")]
 
 
     def is_ipv6(self):
@@ -56,7 +56,7 @@ class BGP(Interface):
         assigned to its neighbor address.
         '''
 
-        raise util.ip_address_is_v6(self.neighbor)
+        return util.ip_address_is_v6(self.neighbor)
 
 
     def start(self):
