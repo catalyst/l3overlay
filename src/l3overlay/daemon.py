@@ -229,7 +229,7 @@ class Daemon(Worker):
         self.ipsec_process.stop()
         self.ipsec_process.remove()
 
-        for o in self.overlays_list_sorted().reverse():
+        for o in reversed(self.overlays_list_sorted()):
             o.stop()
             o.remove()
 

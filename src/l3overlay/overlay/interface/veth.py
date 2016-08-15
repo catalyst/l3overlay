@@ -74,15 +74,18 @@ class VETH(Interface):
 
         if self.inner_namespace:
             try:
-                self.inner_netns = self.daemon.overlays[self.inner_namespace].netns
+                self.inner_overlay = self.daemon.overlays[self.inner_namespace]
+                self.inner_netns = self.inner_overlay.netns
                 self.inner_ipdb = None
                 self.logger.debug("setting inner namespace to overlay '%s'" % self.inner_namespace)
             except KeyError:
                 self.logger.debug("setting inner namespace to network namespace '%s'" % self.inner_namespace)
+                self.inner_overlay = None
                 self.inner_netns = netns.get(self.logger, self.inner_namespace)
                 self.inner_ipdb = None
         else:
             self.logger.debug("setting inner namespace to root namespace")
+            self.inner_overlay = None
             self.inner_netns = None
             self.inner_ipdb = self.daemon.root_ipdb
 
@@ -166,7 +169,7 @@ class VETH(Interface):
 
         if self.outer_interface_bridged:
             bridge.get(self.logger, self.outer_netns.ipdb, self.bridge_name).remove()
-            vlan.get(self.logger, self.outer_netns.ipdb, self.dummy_name).remove()
+            dummy.get(self.logger, self.outer_netns.ipdb, self.dummy_name).remove()
 
         veth.get(self.logger, inner_if_ipdb, self.inner_name).remove()
 
