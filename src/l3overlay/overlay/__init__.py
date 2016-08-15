@@ -70,7 +70,7 @@ class Overlay(Worker):
 
         # Read overlay configuration.
         for header, section in config.items():
-            if header.startswith("overlay"):
+            if header == "overlay":
                 # Determine whether or not to allow this overlay to start.
                 self.enabled = util.boolean_get(section["enabled"]) if "enabled" in config else True
 
