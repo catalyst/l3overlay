@@ -20,6 +20,7 @@
 
 from l3overlay import util
 
+from l3overlay.overlay.interface.bgp import BGP
 from l3overlay.overlay.interface.dummy import Dummy
 from l3overlay.overlay.interface.overlay_link import OverlayLink
 from l3overlay.overlay.interface.tunnel import Tunnel
@@ -34,7 +35,9 @@ def read(daemon, overlay, section, config):
 
     interface_type, name = util.section_split(section)
 
-    if interface_type == "static-dummy":
+    if interface_type == "static-bgp":
+        return BGP(daemon, overlay, name, config)
+    elif interface_type == "static-dummy":
         return Dummy(daemon, overlay, name, config)
     elif interface_type == "static-overlay-link":
         return OverlayLink(daemon, overlay, name, config)

@@ -26,6 +26,14 @@ import socket
 
 from l3overlay import util
 
+from l3overlay.overlay.interface.bgp import BGP
+from l3overlay.overlay.interface.dummy import Dummy
+from l3overlay.overlay.interface.overlay_link import OverlayLink
+from l3overlay.overlay.interface.tunnel import Tunnel
+from l3overlay.overlay.interface.tuntap import Tuntap
+from l3overlay.overlay.interface.veth import VETH
+from l3overlay.overlay.interface.vlan import VLAN
+
 from l3overlay.util.worker import Worker
 
 
@@ -57,7 +65,6 @@ class Process(Worker):
 
         self.mesh_tunnels = tuple(overlay.mesh_tunnels)
         self.interfaces = tuple(overlay.interfaces)
-        self.bgps = tuple(overlay.bgps)
 
         self.bird_ctl_dir = os.path.join(overlay.root_dir, "run", "bird")
         self.bird_conf_dir = os.path.join(overlay.root_dir, "etc", "bird")
@@ -78,6 +85,23 @@ class Process(Worker):
 
         self.bird = util.command_path("bird")
         self.bird6 = util.command_path("bird6")
+
+
+    def bird_config_add(self, bird_config, key, value):
+        '''
+        Add a value to a list stored at the given key in
+        the given BIRD configuration dictionary.
+        '''
+
+        if key in bird_config:
+            if not isinstance(bird_config[key], list):
+                bird_config[key] = [bird_config[key]]
+            if isinstance(value, list):
+                bird_config[key].extend(value)
+            else:
+                bird_config[key].append(value)
+        else:
+            bird_config[key] = [value]
 
 
     def start(self):
@@ -115,14 +139,26 @@ class Process(Worker):
             bird_config["mesh_tunnels"] = self.mesh_tunnels
 
         for interface in self.interfaces:
+            bc = None
             if interface.is_ipv6():
-                if "interfaces" not in bird6_config:
-                    bird6_config["interfaces"] = []
-                bird6_config["interfaces"].append(interface)
+                bc = bird6_config
             else:
-                if "interfaces" not in bird_config:
-                    bird_config["interfaces"] = []
-                bird_config["interfaces"].append(interface)
+                bc = bird_config
+
+            if isinstance(interface, BGP):
+                self.bird_config_add(bc, "bgps", interface)
+            elif isinstance(interface, Dummy):
+                self.bird_config_add(bc, "dummies", interface)
+            elif isinstance(interface, OverlayLink):
+                self.bird_config_add(bc, "overlay_links", interface)
+            elif isinstance(interface, Tunnel):
+                self.bird_config_add(bc, "tunnels", interface)
+            elif isinstance(interface, Tuntap):
+                self.bird_config_add(bc, "tuntaps", interface)
+            elif isinstance(interface, VETH):
+                self.bird_config_add(bc, "veths", interface)
+            elif isinstance(interface, VLAN):
+                self.bird_config_add(bc, "vlans", interface)
 
         if bird_config:
             self._start_bird_daemon(

@@ -67,7 +67,6 @@ class Overlay(Worker):
         # Data structures.
         self.mesh_tunnels = []
         self.interfaces = []
-        self.bgps = []
 
         # Read overlay configuration.
         for s, section in config.items():
@@ -149,10 +148,6 @@ class Overlay(Worker):
                         virtual_local,
                         virtual_remote,
                     ))
-
-            # Read static BGP protocols.
-            elif s.startswith("static-bgp"):
-                self.bgps.append(bgp.read(self.daemon, self, section, section))
 
             # Read static interfaces.
             elif s.startswith("static"):

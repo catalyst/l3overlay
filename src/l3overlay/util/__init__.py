@@ -115,13 +115,29 @@ def name_get(value):
     return name
 
 
-def section_name_get(section_type, section):
+def section_split(section):
     '''
-    Get the unique name for a configuration section by passing in the
-    section type and the raw section data.
+    Get the section type and name from the given section header.
     '''
 
-    return name_get(re.sub("^%s:" % section_type, '', section))
+    parts = section.split(":")
+    return (name_get(parts[0]), name_get(parts[1]))
+
+
+def section_type_get(section):
+    '''
+    Get the section type from the given section header.
+    '''
+
+    return section_split(section)[0]
+
+
+def section_name_get(section):
+    '''
+    Get the section name from the given section header.
+    '''
+
+    return section_split(section)[1]
 
 
 def ip_network_get(value):
@@ -228,6 +244,61 @@ def netmask_get(value, use_ipv6=False):
         raise ValueError("valid CIDR netmask %i, must be within range 0 < x < 128" % cidr)
 
     return cidr
+
+
+def bird_prefix_get(value):
+    '''
+    Check that a string is a BIRD prefix, and return it. Raise a
+    ValueError if the string is not a valid BIRD prefix.
+    This method allows the use of prefix patterns that are allowed to be
+    used in sets of prefixes in BIRD filters.
+    Check the BIRD documentation here for more information on BIRD
+    prefixes:
+    http://bird.network.cz/?get_doc&f=bird-5.html#ss5.2
+    '''
+
+    prefix = re.split("/", value)
+
+    # Get the IP address and convert it to an IP address object using
+    # Util.ip_address_get, to ensure it is a real IP address.
+    try:
+        address = ip_address_get(prefix[0])
+    except ValueError:
+        raise ValueError("invalid BIRD prefix '%s', invalid address segment" % value)
+
+    # Check for a valid netmask in the netmask segment.
+    try:
+        netmask = Util.netmask_get(re.match("[0-9][0-9]*", prefix[1]).group(), Util.ip_address_is_v6(address))
+    except ValueError:
+        raise ValueError("invalid BIRD prefix '%s', invalid netmask segment" % value)
+
+    # The interesting part about BIRD prefixes, syntatically, is in the
+    # netmask segment, which can not just be CIDR numbers, but can also be
+    # special expressions, depending on the range of subnets required.
+    #
+    # This expression can take the following forms:
+    # 10.192.0.0/16+ - match all subprefixes of 10.192.0.0/16
+    # 10.192.0.0/16- - match all superprefixes of 10.192.0.0/16
+    # 10.192.0.0/16{20,24} - match all subprefixes of 10.192.0.0/16 which
+    #                        have a prefix length of between 20 to 24.
+    #
+    # This part checks that the syntax for those expressions is correct.
+    expr = re.sub("^%i" % netmask, "", prefix[1])
+
+    if expr:
+        if not re.match("^[+-]$", expr) and re.match("^\{[0-9][0-9]*,[0-9][0-9]*\}$", expr):
+            netmasks = re.findall("[0-9][0-9]*", expr)
+
+            for n in netmask:
+                try:
+                    netmask = Util.netmask_get(n, Util.ip_address_is_v6(address))
+                except ValueError:
+                    raise ValueError("invalid BIRD prefix '%s', invalid netmask %i in expression segment" % (value, n))
+        else:
+            raise ValueError("invalid BIRD prefix '%s', invalid expression segment" % value)
+
+    # All checks have passed. Return the value unmodified.
+    return value
 
 
 def list_get(string, pattern='\s*,\s*'):

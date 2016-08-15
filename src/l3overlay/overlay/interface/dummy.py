@@ -41,6 +41,8 @@ class Dummy(Interface):
         self.address = util.ip_address_get(config["address"])
         self.netmask = util.netmask_get(config["netmask"], util.ip_address_is_v6(address))
 
+        self.dummy_name = self.daemon.interface_name(self.name)
+
 
     def is_ipv6(self):
         '''
@@ -61,7 +63,7 @@ class Dummy(Interface):
         dummy_if = dummy.create(
             self.logger,
             self.netns.ipdb,
-            self.name,
+            self.dummy_name,
         )
         dummy_if.add_ip(self.address, self.netmask)
         dummy_if.up()
@@ -76,7 +78,7 @@ class Dummy(Interface):
 
         self.logger.info("stopping static dummy '%s'" % self.name)
 
-        dummy.get(self.logger, self.netns.ipdb, self.name).remove()
+        dummy.get(self.logger, self.netns.ipdb, self.dummy_name).remove()
 
         self.logger.info("finished stopping static dummy '%s'" % self.name)
 
