@@ -260,7 +260,7 @@ def bird_prefix_get(value):
     prefix = re.split("/", value)
 
     # Get the IP address and convert it to an IP address object using
-    # Util.ip_address_get, to ensure it is a real IP address.
+    # ip_address_get, to ensure it is a real IP address.
     try:
         address = ip_address_get(prefix[0])
     except ValueError:
@@ -268,7 +268,7 @@ def bird_prefix_get(value):
 
     # Check for a valid netmask in the netmask segment.
     try:
-        netmask = Util.netmask_get(re.match("[0-9][0-9]*", prefix[1]).group(), Util.ip_address_is_v6(address))
+        netmask = netmask_get(re.match("[0-9][0-9]*", prefix[1]).group(), ip_address_is_v6(address))
     except ValueError:
         raise ValueError("invalid BIRD prefix '%s', invalid netmask segment" % value)
 
@@ -291,7 +291,7 @@ def bird_prefix_get(value):
 
             for n in netmask:
                 try:
-                    netmask = Util.netmask_get(n, Util.ip_address_is_v6(address))
+                    netmask = netmask_get(n, ip_address_is_v6(address))
                 except ValueError:
                     raise ValueError("invalid BIRD prefix '%s', invalid netmask %i in expression segment" % (value, n))
         else:
