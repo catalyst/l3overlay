@@ -48,7 +48,7 @@ class Overlay(Worker):
                 enabled, asn, linknet_pool, fwbuilder_script_file, nodes, this_node,
                 interfaces):
         '''
-        Set overlay runtime state.
+        Set up the overlay internal fields.
         '''
 
         super().__init__()
@@ -184,7 +184,7 @@ class Overlay(Worker):
         '''
 
         if self.is_starting() or self.is_started():
-            raise RuntimeError("overlay '%s' started twice" % self.name)
+            raise RuntimeError("overlay started twice")
 
         self.set_starting()
 
@@ -216,10 +216,10 @@ class Overlay(Worker):
         '''
 
         if not self.is_started():
-            raise RuntimeError("overlay '%s' not yet started" % self.name)
+            raise RuntimeError("overlay not yet started")
 
         if self.is_stopped() or self.is_stopped():
-            raise RuntimeError("overlay '%s' stopped twice" % self.name)
+            raise RuntimeError("overlay stopped twice")
 
         self.set_stopping()
 
@@ -251,7 +251,17 @@ class Overlay(Worker):
         Remove the overlay runtime state.
         '''
 
+        if self.is_removed():
+            raise RuntimeError("overlay removed twice")
+
+        if not self.is_stopped():
+            raise RuntimeError("overlay not yet stopped")
+
+        self.set_removing()
+
         self.logger.stop()
+
+        self.set_removed()
 
 Worker.register(Overlay)
 
@@ -304,3 +314,24 @@ def read(log, log_level, conf):
     except Exception as e:
         lg.exception(e)
         sys.exit(1)
+
+
+def write(overlay, config):
+    '''
+    Write an overlay to the given configuration object.
+    '''
+
+    config["overlay"] = {}
+    section = config["overlay"]
+
+    section["enabled"] = str(overlay.enabled).lower()
+    section["asn"] = str(overlay.asn)
+    section["linknet-pool"] = str(overlay.linknet_pool)
+    section["fwbuilder-script"] = overlay.fwbuilder_script_file
+
+    section["this-node"] = "%s %s" % (overlay.this_node[0], str(overlay.this_node[1]))
+    for i, n in enumerate(overlay.nodes):
+        section["node-%i" % i] = "%s %s" % (n[0], str(n[1]))
+
+    for i in overlay.interfaces:
+        interface.write(i, config)

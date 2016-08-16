@@ -43,7 +43,8 @@ class Daemon(Worker):
 
     def __init__(self, logger,
             log, log_level, use_ipsec, ipsec_manage, ipsec_psk,
-            lib_dir, overlay_dir, fwbuilder_script_dir, template_dir,
+            lib_dir, overlay_dir,
+            fwbuilder_script_dir, overlay_conf_dir, template_dir,
             pid, ipsec_conf, ipsec_secrets,
             overlays):
         '''
@@ -64,6 +65,7 @@ class Daemon(Worker):
         self.lib_dir = lib_dir
         self.overlay_dir = overlay_dir
         self.fwbuilder_script_dir = fwbuilder_script_dir
+        self.overlay_conf_dir = overlay_conf_dir
         self.template_dir = template_dir
 
         self.pid = pid
@@ -71,6 +73,32 @@ class Daemon(Worker):
         self.ipsec_secrets = ipsec_secrets
 
         self.overlays = overlays.copy()
+
+
+    def setup(self):
+        '''
+        Set up daemon runtime state.
+        '''
+
+        if self.is_setup():
+            raise RuntimeError("daemon setup twice")
+
+        self._gre_keys = {}
+        self._interface_names = set()
+
+        self.mesh_links = set()
+        self.root_ipdb = pyroute2.IPDB()
+
+        for o in self.overlays.values():
+            try:
+                o.setup(self)
+            except Exception as e:
+                o.logger.exception(e)
+                sys.exit(1)
+
+        self.ipsec_process = ipsec_process.create(self)
+
+        self.set_setup()
 
 
     def overlays_list_sorted(self):
@@ -104,28 +132,6 @@ class Daemon(Worker):
         sos.append(o)
 
 
-    def setup(self):
-        '''
-        Set up daemon runtime state.
-        '''
-
-        if self.is_setup():
-            raise RuntimeError("daemon setup twice")
-
-        self._gre_keys = {}
-        self._interface_names = set()
-
-        self.mesh_links = set()
-        self.root_ipdb = pyroute2.IPDB()
-
-        for o in self.overlays.values():
-            o.setup(self)
-
-        self.ipsec_process = ipsec_process.create(self)
-
-        self.set_setup()
-
-
     def start(self):
         '''
         Start the daemon.
@@ -140,7 +146,11 @@ class Daemon(Worker):
         util.directory_create(self.lib_dir)
 
         for o in self.overlays_list_sorted():
-            o.start()
+            try:
+                o.start(self)
+            except Exception as e:
+                o.logger.exception(e)
+                sys.exit(1)
 
         self.ipsec_process.start()
 
@@ -164,7 +174,11 @@ class Daemon(Worker):
         self.ipsec_process.remove()
 
         for o in reversed(self.overlays_list_sorted()):
-            o.stop()
+            try:
+                o.stop()
+            except Exception as e:
+                o.logger.exception(e)
+                sys.exit(1)
             o.remove()
 
         self.logger.debug("removing lib dir '%s'" % self.lib_dir)
@@ -178,7 +192,17 @@ class Daemon(Worker):
         Remove the daemon runtime state.
         '''
 
+        if self.is_removed():
+            raise RuntimeError("daemon removed twice")
+
+        if not self.is_stopped():
+            raise RuntimeError("daemon not yet stopped")
+
+        self.set_removing()
+
         self.logger.stop()
+
+        self.set_removed()
 
 
     def gre_key(self, local, remote):
@@ -262,7 +286,7 @@ class ValueReader(object):
 
 def read(args):
     '''
-    Create a daemon object.
+    Create a daemon object using the given arguments.
     '''
 
     # Load the global configuration file, and create a ValueReader
@@ -298,6 +322,7 @@ def read(args):
         overlay_dir = os.path.join(lib_dir, "overlays")
 
         fwbuilder_script_dir = reader.get("fwbuilder-script-dir", util.path_search("fwbuilder_scripts"))
+        overlay_conf_dir = reader.get("overlay-conf-dir", util.path_search("overlays")) if not args.overlay_conf else None
         template_dir = reader.get("template-dir", util.path_search("templates"))
 
         # Get required file paths.
@@ -307,17 +332,17 @@ def read(args):
         ipsec_secrets = reader.get("ipsec-secrets", os.path.join(util.path_root(), "etc", "ipsec.secrets" if ipsec_manage else "ipsec.l3overlay.secrets"))
 
         # Create a list of all the overlay configuration file paths.
-        overlay_conf_dir = None
         overlay_confs = []
 
-        if args.overlay_conf:
-            overlay_confs.extend(args.overlay_conf)
-        else:
-            overlay_conf_dir = reader.get("overlay-conf-dir", util.path_search("overlays"))
+        if overlay_conf_dir:
             for overlay_conf_file in os.listdir(overlay_conf_dir):
                 overlay_conf = os.path.join(overlay_conf_dir, overlay_conf_file)
                 if os.path.isfile(overlay_conf):
                    overlay_confs.append(overlay_conf)
+        elif args.overlay_conf:
+            overlay_confs.extend(args.overlay_conf)
+        else:
+            raise RuntimeError("no overlay configuration files found")
 
         # Create the application state for each overlay.
         overlays = {}
@@ -330,7 +355,8 @@ def read(args):
         return Daemon(
             lg,
             log, log_level, use_ipsec, ipsec_manage, ipsec_psk,
-            lib_dir, overlay_dir, fwbuilder_script_dir, template_dir,
+            lib_dir, overlay_dir,
+            fwbuilder_script_dir, overlay_conf_dir, template_dir,
             pid, ipsec_conf, ipsec_secrets,
             overlays,
         )
@@ -338,3 +364,37 @@ def read(args):
     except Exception as e:
         lg.exception(e)
         sys.exit(1)
+
+
+def write(daemon, global_conf, overlay_conf_dir):
+    '''
+    Write a daemon's global configuration to the given file,
+    and overlay configurations to the given directory.
+    '''
+
+    global_config = util.config()
+
+    global_config["log"] = daemon.log
+    global_config["log-level"] = daemon.log_level
+
+    global_config["use-ipsec"] = str(daemon.use_ipsec).lower()
+    global_config["ipsec-manage"] = str(daemon.ipsec_manage).lower()
+    global_config["ipsec-psk"] = daemon.ipsec_psk
+
+    global_config["lib-dir"] = daemon.lib_dir
+    global_config["overlay-dir"] = daemon.overlay_dir
+
+    global_config["fwbuilder-script-dir"] = daemon.fwbuilder_script_dir
+    if daemon.overlay_conf_dir:
+        global_config["overlay-conf-dir"] = daemon.overlay_conf_dir
+    global_config["template-dir"] = daemon.template_dir
+
+    global_config["ipsec-conf"] = daemon.ipsec_conf
+    global_config["ipsec-secrets"] = daemon.ipsec_secrets
+
+    global_config.write(global_conf)
+
+    for o in daemon.overlays.values():
+        overlay_config = util.config()
+        o.write(overlay_config)
+        overlay_config.write(os.path.join(overlay_conf_dir, "%s.conf" % o.name))
