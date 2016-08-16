@@ -147,7 +147,7 @@ class Daemon(Worker):
 
         for o in self.overlays_list_sorted():
             try:
-                o.start(self)
+                o.start()
             except Exception as e:
                 o.logger.exception(e)
                 sys.exit(1)
