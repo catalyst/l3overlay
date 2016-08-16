@@ -36,7 +36,7 @@ class VETH(Interface):
     '''
 
     def __init__(self, daemon, overlay, name,
-                inner_address, outer_address, inner_namespace, outer_interface_bridged):
+                inner_address, outer_address, inner_namespace, outer_interface_bridged, netmask):
         '''
         Set up static veth internal state.
         '''

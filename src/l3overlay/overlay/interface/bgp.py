@@ -39,7 +39,7 @@ class BGP(Interface):
         self.neighbor = neighbor
         self.local = local
 
-        self.lcoal_asn = local_asn
+        self.local_asn = local_asn
         self.neighbor_asn = neighbor_asn
 
         self.bfd = bfd
