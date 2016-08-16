@@ -118,7 +118,7 @@ class Daemon(Worker):
         self.mesh_links = set()
         self.root_ipdb = pyroute2.IPDB()
 
-        for o in self.overlays:
+        for o in self.overlays.values():
             o.setup(self)
 
         self.ipsec_process = ipsec_process.create(self)
@@ -281,8 +281,8 @@ def read(args):
     )
 
     # Start the logger.
-    logger = logger.create(log, log_level, "l3overlay")
-    logger.start()
+    lg = logger.create(log, log_level, "l3overlay")
+    lg.start()
 
     # Log exceptions for the rest of the initialisation process.
     try:
@@ -304,7 +304,7 @@ def read(args):
         pid = reader.get("pid", os.path.join(util.path_root(), "var", "run", "l3overlayd.pid"))
 
         ipsec_conf = reader.get("ipsec-conf", os.path.join(util.path_root(), "etc", "ipsec.d", "l3overlay.conf"))
-        ipsec_secrets = reader.get("ipsec-secrets", os.path.join(util.path_root(), "etc", "ipsec.secrets" if self.ipsec_manage else "ipsec.l3overlay.secrets"))
+        ipsec_secrets = reader.get("ipsec-secrets", os.path.join(util.path_root(), "etc", "ipsec.secrets" if ipsec_manage else "ipsec.l3overlay.secrets"))
 
         # Create a list of all the overlay configuration file paths.
         overlay_conf_dir = None
@@ -328,7 +328,7 @@ def read(args):
 
         # Return a set up daemon object.
         return Daemon(
-            logger,
+            lg,
             log, log_level, use_ipsec, ipsec_manage, ipsec_psk,
             lib_dir, overlay_dir, fwbuilder_script_dir, template_dir,
             pid, ipsec_conf, ipsec_secrets,
@@ -336,5 +336,5 @@ def read(args):
         )
 
     except Exception as e:
-        logger.exception(e)
+        lg.exception(e)
         sys.exit(1)

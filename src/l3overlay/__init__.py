@@ -92,7 +92,8 @@ def sighup(signum, frame):
     l3overlay_daemon.stop()
     l3overlay_daemon.remove()
 
-    l3overlay_daemon = l3overlay.daemon.create(args)
+    l3overlay_daemon = l3overlay.daemon.read(args)
+    l3overlay_daemon.setup()
 
     util.pid_create(l3overlay_daemon.pid)
 
@@ -185,7 +186,8 @@ def main():
 
     # Create the daemon object, which tracks l3overlay state.
     # After the daemon object is created, we can log output.
-    l3overlay_daemon = l3overlay.daemon.create(args)
+    l3overlay_daemon = l3overlay.daemon.read(args)
+    l3overlay_daemon.setup()
 
     # On exceptions: log output, and quit.
     try:

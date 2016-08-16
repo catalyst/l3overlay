@@ -39,13 +39,24 @@ class BGP(Interface):
         self.neighbor = neighbor
         self.local = local
 
-        self.local_asn = local_asn
-        self.neighbor_asn = neighbor_asn
+        self._local_asn = local_asn
+        self._neighbor_asn = neighbor_asn
 
         self.bfd = bfd
         self.ttl_security = ttl_security
 
         self.import_prefixes = tuple(import_prefixes)
+
+
+    def setup(self, daemon, overlay):
+        '''
+        Set up static bgp runtime state.
+        '''
+
+        super().setup(daemon, overlay)
+
+        self.local_asn = self._local_asn if self._local_asn else overlay.asn
+        self.neighbor_asn = self._neighbor_asn if self._neighbor_asn else overlay.asn
 
 
     def is_ipv6(self):
@@ -83,8 +94,8 @@ def read(logger, name, config):
     neighbor = util.ip_address_get(config["neighbor"])
     local = util.ip_address_get(config["local"]) if "local" in config else None
 
-    local_asn = util.integer_get(config["local-asn"]) if "local-asn" in config else overlay.asn
-    neighbor_asn = util.integer_get(config["neighbor-asn"]) if "neighbor-asn" in config else overlay.asn
+    local_asn = util.integer_get(config["local-asn"]) if "local-asn" in config else None
+    neighbor_asn = util.integer_get(config["neighbor-asn"]) if "neighbor-asn" in config else None
 
     bfd = util.boolean_get(config["bfd"]) if "bfd" in config else False
     ttl_security = util.boolean_get(config["ttl-security"]) if "ttl-security" in config else False

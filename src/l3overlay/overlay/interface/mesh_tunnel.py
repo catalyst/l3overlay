@@ -66,7 +66,7 @@ class MeshTunnel(Interface):
         self.root_veth_name = "%sv0" % self.name
         self.netns_veth_name = "%sv1" % self.name
 
-        self.daemon.mesh_links.add((physical_local, physical_remote))
+        self.daemon.mesh_links.add((self.physical_local, self.physical_remote))
 
 
     def is_ipv6(self):

@@ -78,7 +78,10 @@ class Overlay(Worker):
         self.daemon = daemon
 
         # Configure fields which use the daemon object.
-        self.fwbuilder_script = self.fwbuilder_script if os.path.isabs(self.fwbuilder_script_file) else os.path.join(self.daemon.fwbuilder_script_dir, self.fwbuilder_script_file)
+        if self.fwbuilder_script_file:
+            self.fwbuilder_script = self.fwbuilder_script if os.path.isabs(self.fwbuilder_script_file) else os.path.join(self.daemon.fwbuilder_script_dir, self.fwbuilder_script_file)
+        else:
+            self.fwbuilder_script = None
 
         self.root_dir = os.path.join(self.daemon.overlay_dir, self.name)
 
@@ -116,7 +119,7 @@ class Overlay(Worker):
                 raise RuntimeError("overflowed linknet pool %s with node link %s" % (str(self.linknet_pool), str(node_link)))
 
             self.mesh_tunnels.append(mesh_tunnel.create(
-                logger,
+                self.logger,
                 name,
                 node_local,
                 node_remote,
@@ -258,16 +261,19 @@ def read(log, log_level, conf):
     Parse a configuration file, and return an overlay object.
     '''
 
-    lg = logger.create(log, log_level, "l3overlay", self.name)
+    # Get the overlay configuration.
+    config = util.config(conf)
+    section = config["overlay"]
+
+    # Fetch just enough configuration to start an overlay logger.
+    name = util.name_get(section["name"])
+
+    lg = logger.create(log, log_level, "l3overlay", name)
     lg.start()
 
+    # Log exceptions to the overlay logger from now on.
     try:
-        config = util.config(conf)
-        section = config["overlay"]
-
         # Global overlay configuration.
-        name = util.name_get(section["name"])
-
         enabled = util.boolean_get(section["enabled"]) if "enabled" in section else True
         asn = util.integer_get(section["asn"])
         linknet_pool = util.ip_network_get(section["linknet-pool"])
@@ -275,7 +281,7 @@ def read(log, log_level, conf):
         fwbuilder_script_file = section["fwbuilder-script"] if "fwbuilder-script" in section else None
 
         # Generate the list of nodes, sorted numerically.
-        ns = {util.integer_get(k):v.split(" ") for k, v in section.items() if k.startswith("node-")}
+        ns = {util.integer_get(k[5:]):v.split(" ") for k, v in section.items() if k.startswith("node-")}
         nodes = [(util.name_get(ns[k][0]), util.ip_address_get(ns[k][1])) for k in sorted(ns.keys())]
 
         if len(nodes) != len(set(nodes)):

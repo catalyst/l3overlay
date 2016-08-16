@@ -193,13 +193,12 @@ class Worker(metaclass=abc.ABCMeta):
         self._state = "removed"
 
 
-    @abc.abstractmethod
     def setup(self):
         '''
         Set up worker runtime state.
         '''
 
-        return
+        pass
 
 
     @abc.abstractmethod
@@ -208,7 +207,7 @@ class Worker(metaclass=abc.ABCMeta):
         Start the worker.
         '''
 
-        return
+        pass
 
 
     @abc.abstractmethod
@@ -217,7 +216,7 @@ class Worker(metaclass=abc.ABCMeta):
         Stop the worker.
         '''
 
-        return
+        pass
 
 
     def remove(self):
@@ -225,5 +224,5 @@ class Worker(metaclass=abc.ABCMeta):
         Remove the worker runtime state. Optional abstract method.
         '''
 
-        return
+        pass
 
