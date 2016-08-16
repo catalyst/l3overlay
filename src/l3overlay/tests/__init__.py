@@ -22,6 +22,10 @@ import concurrencytest
 import os
 import unittest
 
+from l3overlay import util
+
+from l3overlay.daemon import Daemon
+
 import mininet.net
 
 import mininet.node
@@ -67,6 +71,54 @@ class L3overlayTopo(mininet.topo.Topo):
 class L3overlayTest(unittest.TestCase):
     '''
     '''
+
+    def daemon(self, os, use_ipsec=True):
+        '''
+        '''
+
+        d = # daemon number
+
+        daemon_dir =
+
+        log = os.path.join(daemon_dir, "l3overlay.log")
+        logger = util.logger(log, "l3overlay-%i" % d)
+
+        lib_dir = os.path.join(daemon_dir, "lib")
+
+        fwbuilder_script_dir = os.path.join(daemon_dir, "fwbuilder-scripts")
+        overlay_dir = os.path.join(daemon_dir, "overlays")
+        template_dir = os.path.join(daemon_dir, "templates")
+
+        pid_dir = os.path.join(daemon_dir, "run")
+        pid = os.path.join(pid_dir, "l3overlayd.pid")
+
+        ipsec_conf =
+        ipsec_secrets =
+
+        overlays = {o.name:o for o in os}
+
+        return Daemon(
+            logger,   # logger
+            log,      # log
+            "DEBUG",  # log_level
+
+            use_ipsec, # use_ipsec
+            True,      # ipsec_manage
+
+            lib_dir,                           # lib_dir
+            os.path.join(lib_dir, "overlays"), # overlay_dir
+
+            fwbuilder_script_dir, # fwbuilder_script_dir
+            overlay_conf_dir,     # overlay_conf_dir
+            template_dir,         # template_dir
+
+            pid,            # pid
+            ipsec_conf,     # ipsec_conf
+            ipsec_secrets,  # ipsec_secrets
+
+            overlays, # overlays
+        )
+            
 
     def setUp(self):
         '''
