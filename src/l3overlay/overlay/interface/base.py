@@ -28,19 +28,25 @@ class Interface(metaclass=abc.ABCMeta):
     Abstract base class for an overlay static interface.
     '''
 
-    def __init__(self, daemon, overlay, name=None):
+    def __init__(self, logger, name=None):
         '''
         Set internal fields for the static interface to use.
+        '''
+
+        self.logger = logger
+        self.name = name
+
+
+    def setup(self, daemon, overlay):
+        '''
+        Set static interface runtime state.
         '''
 
         self.daemon = daemon
         self.root_ipdb = self.daemon.root_ipdb
 
         self.overlay = overlay
-        self.logger = self.overlay.logger
         self.netns = self.overlay.netns
-
-        self.name = name
 
 
     @abc.abstractmethod

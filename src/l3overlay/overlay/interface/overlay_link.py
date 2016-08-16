@@ -35,23 +35,31 @@ class OverlayLink(Interface):
     point-to-point connection between two overlays.
     '''
 
-    def __init__(self, daemon, overlay, name,
+    def __init__(self, logger, name,
                 outer_address, inner_address, inner_overlay_name, netmask):
         '''
         Set up static overlay link internal state.
         '''
 
-        super().__init__(daemon, overlay, name)
+        super().__init__(logger, name)
 
         self.outer_address = outer_address
         self.inner_address = inner_address
         self.inner_overlay_name = inner_overlay_name
         self.netmask = netmask
 
+
+    def setup(self, daemon, overlay):
+        '''
+        Set up overlay link runtime state.
+        '''
+
+        super().setup(daemon, overlay)
+
         self.outer_overlay_name = overlay.name
         self.outer_asn = overlay.asn
 
-        self.inner_overlay = daemon.overlays[self.inner_overlay_name]
+        self.inner_overlay = self.daemon.overlays[self.inner_overlay_name]
         self.inner_netns = self.inner_overlay.netns
         self.inner_asn = self.inner_overlay.asn
 
@@ -123,7 +131,7 @@ class OverlayLink(Interface):
 Interface.register(OverlayLink)
 
 
-def read(daemon, overlay, name, config):
+def read(logger, name, config):
     '''
     Create a static overlay link from the given configuration object.
     '''
@@ -138,7 +146,7 @@ def read(daemon, overlay, name, config):
                 (inner_address, str(type(nner_address)),
                     outer_address, str(type(outer_address))))
 
-    return OverlayLink(daemon, overlay, name,
+    return OverlayLink(logger, name,
             outer_address, inner_address, inner_overlay_name, netmask)
 
 

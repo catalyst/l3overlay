@@ -33,9 +33,10 @@ class Worker(metaclass=abc.ABCMeta):
 
     def __init__(self):
         '''
-        Set up worker internal fields and runtime state.
+        Set up worker internal fields.
         '''
 
+        self._setup = False
         self._state = "stopped"
 
 
@@ -44,8 +45,28 @@ class Worker(metaclass=abc.ABCMeta):
         Check that the worker state is valid.
         '''
 
+        if not isinstance(self._setup, bool):
+            raise RuntimeError("invalid setup state '%s', expected True/False" % self._setup)
+
         if self._state not in STATES:
             raise RuntimeError("invalid worker state '%s', expected one of %s" % (self._state, STATES))
+
+
+    def is_setup(self):
+        '''
+        Check if the worker has had 'setup()' called yet.
+        '''
+
+        self._assert_state()
+        return self._setup
+
+
+    def set_setup(self):
+        '''
+        Set the worker to be set up.
+        '''
+
+        self._setup = True
 
 
     def is_starting(self):
@@ -170,6 +191,15 @@ class Worker(metaclass=abc.ABCMeta):
 
         self._assert_state()
         self._state = "removed"
+
+
+    @abc.abstractmethod
+    def setup(self):
+        '''
+        Set up worker runtime state.
+        '''
+
+        return
 
 
     @abc.abstractmethod

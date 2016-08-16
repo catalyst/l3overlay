@@ -28,13 +28,13 @@ class BGP(Interface):
     Used to configure a static BGP protocol.
     '''
 
-    def __init__(self, daemon, overlay, name,
+    def __init__(self, logger, name,
             neighbor, local, local_asn, neighbor_asn, bfd, ttl_security, import_prefixes):
         '''
-        Set up static bgp internal state.
+        Set up static bgp internal fields.
         '''
 
-        super().__init__(daemon, overlay, name)
+        super().__init__(logger, name)
 
         self.neighbor = neighbor
         self.local = local
@@ -75,7 +75,7 @@ class BGP(Interface):
 Interface.register(BGP)
 
 
-def read(daemon, overlay, name, config):
+def read(logger, name, config):
     '''
     Create a static bgp from the given configuration object.
     '''
@@ -93,7 +93,7 @@ def read(daemon, overlay, name, config):
 
     import_prefixes = [util.bird_prefix_get(v) for k, v in config.items() if k.startswith("import-prefix")]
 
-    return BGP(daemon, overlay, name,
+    return BGP(logger, name,
             neighbor, local, local_asn, neighbor_asn, bfd, ttl_security, import_prefixes)
 
 

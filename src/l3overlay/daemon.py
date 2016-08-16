@@ -41,95 +41,36 @@ class Daemon(Worker):
     Daemon class for overlay management.
     '''
 
-    def __init__(self, args):
+    def __init__(self, logger,
+            log, log_level, use_ipsec, ipsec_manage, ipsec_psk,
+            lib_dir, overlay_dir, fwbuilder_script_dir, template_dir,
+            pid, ipsec_conf, ipsec_secrets,
+            overlays):
         '''
-        Set up daemon internal fields and runtime state.
+        Set up daemon internal fields.
         '''
 
-        # Superclass state.
         super().__init__()
 
-        # Arguments.
-        self.args = args
+        self.logger = logger
 
-        # Internal fields which don't require the global configuration
-        # to set up.
-        self._gre_keys = {}
-        self._interface_names = set()
-        self.mesh_links = set()
+        self.log = log
+        self.log_level = log_level
 
-        self.root_ipdb = pyroute2.IPDB()
+        self.use_ipsec = use_ipsec
+        self.ipsec_manage = ipsec_manage
+        self.ipsec_psk = ipsec_psk
 
-        # Load the global configuration file.
-        self.global_conf = self.args.global_conf
-        self.global_config = util.config(self.global_conf)["global"]
+        self.lib_dir = lib_dir
+        self.overlay_dir = overlay_dir
+        self.fwbuilder_script_dir = fwbuilder_script_dir
+        self.template_dir = template_dir
 
-        # Get the logging parameters and start a logger, so output
-        # can be logged as soon as possible.
-        self.log = self.value_get("log", os.path.join(util.path_root(), "var", "log", "l3overlay.log"))
-        self.log_level = util.enum_get(
-            self.value_get("log-level", "INFO"),
-            ["NOSET", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-        )
-        self.logger = logger.create(self.log, self.log_level, "l3overlay")
-        self.logger.start()
+        self.pid = pid
+        self.ipsec_conf = ipsec_conf
+        self.ipsec_secrets = ipsec_secrets
 
-        # Log exceptions for the rest of the initialisation process.
-        try:
-            # Get (general) global configuration.
-            self.use_ipsec = util.boolean_get(self.value_get("use-ipsec", "False"))
-            self.ipsec_manage = util.boolean_get(self.value_get("ipsec-manage", "True"))
-
-            psk = self.value_get("ipsec-psk")
-            self.ipsec_psk = util.hex_get_string(psk, min=6, max=64) if psk else None
-
-            # Get required directory paths.
-            self.lib_dir = self.value_get("lib-dir", os.path.join(util.path_root(), "var", "lib", "l3overlay"))
-            self.overlay_dir = os.path.join(self.lib_dir, "overlays")
-
-
-            self.fwbuilder_script_dir = self.value_get("fwbuilder-script-dir", util.path_search("fwbuilder_scripts"))
-            self.template_dir = self.value_get("template-dir", util.path_search("templates"))
-
-            # Get required file paths.
-            self.pid = self.value_get("pid", os.path.join(util.path_root(), "var", "run", "l3overlayd.pid"))
-
-            self.ipsec_conf = self.value_get("ipsec-conf", os.path.join(util.path_root(), "etc", "ipsec.d", "l3overlay.conf"))
-            self.ipsec_secrets = self.value_get("ipsec-secrets", os.path.join(util.path_root(), "etc", "ipsec.secrets" if self.ipsec_manage else "ipsec.l3overlay.secrets"))
-
-            # Create a list of all the overlay configuration file paths.
-            self.overlay_conf_dir = None
-            self.overlay_confs = []
-
-            if self.args.overlay_conf:
-                self.overlay_confs = self.args.overlay_conf
-            else:
-                self.overlay_conf_dir = self.value_get("overlay-conf-dir", util.path_search("overlays"))
-                for overlay_conf_file in os.listdir(self.overlay_conf_dir):
-                    overlay_conf = os.path.join(self.overlay_conf_dir, overlay_conf_file)
-                    if os.path.isfile(overlay_conf):
-                        self.overlay_confs.append(overlay_conf)
-
-            # Create the application state for each overlay. and sort
-            # the list of overlays into the correct execution order.
-            self.overlays = {}
-
-            for overlay_conf in self.overlay_confs:
-                o = overlay.read(self, overlay_conf)
-                self.overlays[o.name] = o
-
-            # Create the IPsec process object, which configures
-            # and manages IPsec tunnel daemon.
-            self.ipsec_process = ipsec_process.create(self)
-
-        except Exception as e:
-            self.logger.exception(e)
-            sys.exit(1)
-
-
-    #
-    ## Daemon helper methods.
-    #
+        self.overlays = overlays.copy()
 
 
     def overlays_list_sorted(self):
@@ -163,28 +104,26 @@ class Daemon(Worker):
         sos.append(o)
 
 
-    #
-    ## Daemon 'start' methods.
-    #
-
-
-    def value_get(self, key, default=None):
+    def setup(self):
         '''
-        Get a key, and check the argument list and global configuration,
-        in that order, for a corresponding value.
-
-        If one is not found, return default.
+        Set up daemon runtime state.
         '''
 
-        arg_key = key.lower().replace("-", "_")
-        config_key = key.lower().replace("_", "-")
+        if self.is_setup():
+            raise RuntimeError("daemon setup twice")
 
-        if arg_key in self.args.__dict__:
-            return self.args.__dict__[arg_key]
-        elif config_key in self.global_config:
-            return self.global_config[config_key]
-        else:
-            return default
+        self._gre_keys = {}
+        self._interface_names = set()
+
+        self.mesh_links = set()
+        self.root_ipdb = pyroute2.IPDB()
+
+        for o in self.overlays:
+            o.setup(self)
+
+        self.ipsec_process = ipsec_process.create(self)
+
+        self.set_setup()
 
 
     def start(self):
@@ -206,11 +145,6 @@ class Daemon(Worker):
         self.ipsec_process.start()
 
         self.set_started()
-
-
-    #
-    ## Daemon 'stop' methods.
-    #
 
 
     def stop(self):
@@ -239,22 +173,12 @@ class Daemon(Worker):
         self.set_stopped()
 
 
-    #
-    ## Daemon 'remove' methods.
-    #
-
-
     def remove(self):
         '''
         Remove the daemon runtime state.
         '''
 
         self.logger.stop()
-
-
-    #
-    ## Overlay helper methods.
-    #
 
 
     def gre_key(self, local, remote):
@@ -303,9 +227,114 @@ class Daemon(Worker):
 Worker.register(Daemon)
 
 
-def create(args):
+class ValueReader(object):
+    '''
+    Helper class for the read() method.
+    '''
+
+    def __init__(self, args, config):
+        '''
+        Set up value reader internal state.
+        '''
+
+        self.args = args
+        self.config = config
+
+
+    def get(self, key, default=None):
+        '''
+        Get a key, and check the argument list and global configuration,
+        in that order, for a corresponding value.
+
+        If one is not found, return default.
+        '''
+
+        arg_key = key.lower().replace("-", "_")
+        config_key = key.lower().replace("_", "-")
+
+        if arg_key in self.args.__dict__:
+            return self.args.__dict__[arg_key]
+        elif config_key in self.config:
+            return self.config[config_key]
+        else:
+            return default
+
+
+def read(args):
     '''
     Create a daemon object.
     '''
 
-    return Daemon(args)
+    # Load the global configuration file, and create a ValueReader
+    # based on the given arguments and global configuration.
+    global_conf = args.global_conf
+    global_config = util.config(global_conf)["global"]
+
+    reader = ValueReader(args, global_config)
+
+    # Get enough configuration to start a logger.
+    log = reader.get("log", os.path.join(util.path_root(), "var", "log", "l3overlay.log"))
+
+    log_level = util.enum_get(
+        reader.get("log-level", "INFO"),
+        ["NOSET", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+    )
+
+    # Start the logger.
+    logger = logger.create(log, log_level, "l3overlay")
+    logger.start()
+
+    # Log exceptions for the rest of the initialisation process.
+    try:
+        # Get (general) global configuration.
+        use_ipsec = util.boolean_get(reader.get("use-ipsec", "False"))
+        ipsec_manage = util.boolean_get(reader.get("ipsec-manage", "True"))
+
+        _psk = reader.get("ipsec-psk")
+        ipsec_psk = util.hex_get_string(_psk, min=6, max=64) if _psk else None
+
+        # Get required directory paths.
+        lib_dir = reader.get("lib-dir", os.path.join(util.path_root(), "var", "lib", "l3overlay"))
+        overlay_dir = os.path.join(lib_dir, "overlays")
+
+        fwbuilder_script_dir = reader.get("fwbuilder-script-dir", util.path_search("fwbuilder_scripts"))
+        template_dir = reader.get("template-dir", util.path_search("templates"))
+
+        # Get required file paths.
+        pid = reader.get("pid", os.path.join(util.path_root(), "var", "run", "l3overlayd.pid"))
+
+        ipsec_conf = reader.get("ipsec-conf", os.path.join(util.path_root(), "etc", "ipsec.d", "l3overlay.conf"))
+        ipsec_secrets = reader.get("ipsec-secrets", os.path.join(util.path_root(), "etc", "ipsec.secrets" if self.ipsec_manage else "ipsec.l3overlay.secrets"))
+
+        # Create a list of all the overlay configuration file paths.
+        overlay_conf_dir = None
+        overlay_confs = []
+
+        if args.overlay_conf:
+            overlay_confs.extend(args.overlay_conf)
+        else:
+            overlay_conf_dir = reader.get("overlay-conf-dir", util.path_search("overlays"))
+            for overlay_conf_file in os.listdir(overlay_conf_dir):
+                overlay_conf = os.path.join(overlay_conf_dir, overlay_conf_file)
+                if os.path.isfile(overlay_conf):
+                   overlay_confs.append(overlay_conf)
+
+        # Create the application state for each overlay.
+        overlays = {}
+
+        for overlay_conf in overlay_confs:
+            o = overlay.read(log, log_level, overlay_conf)
+            overlays[o.name] = o
+
+        # Return a set up daemon object.
+        return Daemon(
+            logger,
+            log, log_level, use_ipsec, ipsec_manage, ipsec_psk,
+            lib_dir, overlay_dir, fwbuilder_script_dir, template_dir,
+            pid, ipsec_conf, ipsec_secrets,
+            overlays,
+        )
+
+    except Exception as e:
+        logger.exception(e)
+        sys.exit(1)

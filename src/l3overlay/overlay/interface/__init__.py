@@ -29,7 +29,7 @@ from l3overlay.overlay.interface import veth
 from l3overlay.overlay.interface import vlan
 
 
-def read(daemon, overlay, section, config):
+def read(logger, section, config):
     '''
     Read an interface from the given configuration object.
     '''
@@ -37,19 +37,19 @@ def read(daemon, overlay, section, config):
     interface_type, name = util.section_split(section)
 
     if interface_type == "static-bgp":
-        return bgp.read(daemon, overlay, name, config)
+        return bgp.read(logger, name, config)
     elif interface_type == "static-dummy":
-        return dummy.read(daemon, overlay, name, config)
+        return dummy.read(logger, name, config)
     elif interface_type == "static-overlay-link":
-        return overlay_link.read(daemon, overlay, name, config)
+        return overlay_link.read(logger, name, config)
     elif interface_type == "static-tunnel":
-        return tunnel.read(daemon, overlay, name, config)
+        return tunnel.read(logger, name, config)
     elif interface_type == "static-tuntap":
-        return tuntap.read(daemon, overlay, name, config)
+        return tuntap.read(logger, name, config)
     elif interface_type == "static-veth":
-        return veth.read(daemon, overlay, name, config)
+        return veth.read(logger, name, config)
     elif interface_type == "static-vlan":
-        return vlan.read(daemon, overlay, name, config)
+        return vlan.read(logger, name, config)
     elif name.startswith("static"):
         raise RuntimeError("unsupported static interface type '%s' with name '%s'" % (interface_type, name))
     else:

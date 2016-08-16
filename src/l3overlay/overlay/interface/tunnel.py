@@ -30,19 +30,27 @@ class Tunnel(Interface):
     Used to configure a GRE/GRETAP tunnel interface.
     '''
 
-    def __init__(self, daemon, overlay, name,
+    def __init__(self, logger, name,
                 mode, local, remote, address, netmask):
         '''
-        Set up static tunnel internal state.
+        Set up static tunnel internal fields.
         '''
 
-        super().__init__(daemon, overlay, name)
+        super().__init__(logger, name)
 
         self.mode = mode
         self.local = local
         self.remote = remote
         self.address = address
         self.netmask = netmask
+
+
+    def setup(self, daemon, overlay):
+        '''
+        Set up static tunnel runtime state.
+        '''
+
+        super().setup(daemon, overlay)
 
         self.tunnel_name = self.daemon.interface_name(self.name)
         self.key = self.daemon.gre_key(self.local, self.remote)
@@ -93,7 +101,7 @@ class Tunnel(Interface):
 Interface.register(Tunnel)
 
 
-def read(daemon, overlay, name, config):
+def read(logger, name, config):
     '''
     Create a static tunnel from the given configuration object.
     '''
@@ -104,7 +112,7 @@ def read(daemon, overlay, name, config):
     address = util.ip_address_get(config["address"])
     netmask = util.netmask_get(config["netmask"], util.ip_address_is_v6(address))
 
-    return Tunnel(daemon, overlay, name,
+    return Tunnel(logger, name,
             mode, local, remote, address, netmask)
 
 

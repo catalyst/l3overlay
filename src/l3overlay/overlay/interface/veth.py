@@ -35,19 +35,27 @@ class VETH(Interface):
     Used to configure a veth pair interface.
     '''
 
-    def __init__(self, daemon, overlay, name,
+    def __init__(self, logger, name,
                 inner_address, outer_address, inner_namespace, outer_interface_bridged, netmask):
         '''
-        Set up static veth internal state.
+        Set up static veth internal fields.
         '''
 
-        super().__init__(daemon, overlay, name)
+        super().__init__(logger, name)
 
         self.inner_address = inner_address
         self.outer_address = outer_address
         self.inner_namespace = inner_namespace
         self.outer_interface_bridged = outer_interface_bridged
         self.netmask = netmask
+
+
+    def setup(self, daemon, overlay):
+        '''
+        Set up static veth runtime state.
+        '''
+
+        super().setup(daemon, overlay)
 
         self.dummy_name = self.daemon.interface_name(self.name, limit=12)
         self.bridge_name = self.daemon.interface_name(self.dummy_name, suffix="br")
@@ -171,7 +179,7 @@ class VETH(Interface):
 Interface.register(VETH)
 
 
-def read(daemon, overlay, name, config):
+def read(logger, name, config):
     '''
     Create a static veth from the given configuration object.
     '''
@@ -193,7 +201,7 @@ def read(daemon, overlay, name, config):
                     (str(inner_address), str(type(inner_address)),
                         str(outer_address), str(type(outer_address))))
 
-    return VETH(daemon, overlay, name,
+    return VETH(logger, name,
             inner_address, outer_address, inner_namespace, outer_interface_bridged, netmask)
 
 

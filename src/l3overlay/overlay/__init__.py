@@ -44,127 +44,101 @@ class Overlay(Worker):
     Overlay management class.
     '''
 
-    def __init__(self, daemon, name, config):
+    def __init__(self, logger, name,
+                enabled, asn, linknet_pool, fwbuilder_script_file, nodes, this_node,
+                interfaces):
         '''
         Set overlay runtime state.
         '''
 
         super().__init__()
 
-        # Arguments.
-        self.daemon = daemon
+        self.logger = logger
         self.name = name
 
-        # Fields.
-        self.logger = logger.create(daemon.log, daemon.log_level, "l3overlay", self.name)
-        self.logger.start()
+        self.enabled = enabled
+        self.asn = asn
+        self.linknet_pool = linknet_pool
+        self.fwbuilder_script_file = fwbuilder_script_file
+        self.nodes = nodes
+        self.this_node = this_node
+
+        self.interfaces = tuple(interfaces)
+
+
+    def setup(self, daemon):
+        '''
+        Set up the overlay runtime state.
+        '''
+
+        if self.is_setup():
+            raise RuntimeError("overlay '%s' setup twice" % self.name)
+
+        # Set arguments.
+        self.daemon = daemon
+
+        # Configure fields which use the daemon object.
+        self.fwbuilder_script = self.fwbuilder_script if os.path.isabs(self.fwbuilder_script_file) else os.path.join(self.daemon.fwbuilder_script_dir, self.fwbuilder_script_file)
 
         self.root_dir = os.path.join(self.daemon.overlay_dir, self.name)
 
         # Overlay network namespace.
         self.netns = netns.get(self.logger, self.name)
 
-        # Data structures.
+        # Create the mesh tunnel interfaces.
         self.mesh_tunnels = []
-        self.interfaces = []
 
-        # Read overlay configuration.
-        for header, section in config.items():
-            if header == "overlay":
-                # Determine whether or not to allow this overlay to start.
-                self.enabled = util.boolean_get(section["enabled"]) if "enabled" in config else True
-
-                # Generate the list of nodes, sorted numerically.
-                nodes_dict = {}
-
-                for key in section.keys():
-                    if key.startswith("node-"):
-                        node = section[key].split()
-                        nodes_dict[int(key[5:])] = (
-                            util.name_get(node[0]),
-                            util.ip_address_get(node[1]),
-                        )
-
-                self.nodes = [nodes_dict[key] for key in sorted(nodes_dict.keys())]
-
-                if len(self.nodes) != len(set(self.nodes)):
-                    raise RuntimeError("node list contains duplicates")
-
-                # Get the node dictionary for this node from the list of nodes.
-                self.this_node = next((node for node in self.nodes if node[0] == util.name_get(section["this-node"])), None)
-
-                if not self.this_node:
-                    raise RuntimeError("this node '%s' is missing from node list" % util.name_get(section["this-node"]))
-
-                # Used to configure the overlay's BGP AS number. 
-                self.asn = util.integer_get(section["asn"])
-
-                # Used for determining the available point-to-point subnets for the mesh tunnels.
-                self.linknet_pool = util.ip_network_get(section["linknet-pool"])
-
-                # Get the (absolute or relative) path to the fwbuilder script to
-                # configure the firewall in this overlay.
-                if "fwbuilder-script" in section:
-                    self.fwbuilder_script = section["fwbuilder-script"] if os.path.isabs(section["fwbuilder-script"]) else os.path.join(self.daemon.fwbuilder_script_dir, section["fwbuilder-script"])
-                else:
-                    self.fwbuilder_script = None
-
-                # Create the mesh tunnel interfaces.
-                for i, node_link in enumerate(self._node_links()):
-                    # Check if this link requires a tunnel on this host. If not,
-                    # continue.
-                    if node_link[0] != self.this_node[0]:
-                        continue
-
-                    # Mesh tunnel interface name, made from the BGP AS number
-                    # of this overlay and the node pair number.
-                    name = "m%il%i" % (self.asn, math.floor(i / 2))
-
-                    node_local = node_link[0]
-                    node_remote = node_link[1]
-
-                    physical_local = self.this_node[1]
-                    physical_remote = None
-                    for node, address in self.nodes:
-                        if node == node_remote:
-                            physical_remote = address
-                            break
-
-                    virtual_local = self.linknet_pool.network_address + i
-                    virtual_remote = util.ip_address_remote(virtual_local)
-
-                    if (virtual_local > self.linknet_pool.broadcast_address or
-                            virtual_remote > self.linknet_pool.broadcast_address):
-                        raise RuntimeError("overflowed linknet pool %s with node link %s" % (str(self.linknet_pool), str(node_link)))
-
-                    self.mesh_tunnels.append(mesh_tunnel.create(
-                        self.daemon,
-                        self,
-                        name,
-                        node_local,
-                        node_remote,
-                        physical_local,
-                        physical_remote,
-                        virtual_local,
-                        virtual_remote,
-                    ))
-
-            # Read static interfaces.
-            elif header.startswith("static"):
-                self.interfaces.append(interface.read(self.daemon, self, header, section))
-
-            # Ignore the default section.
-            elif header == "DEFAULT":
+        for i, node_link in enumerate(self._node_links()):
+            # Check if this link requires a tunnel on this host. If not,
+            # continue.
+            if node_link[0] != self.this_node[0]:
                 continue
 
-            # Handle unexpected sections.
-            else:
-                raise RuntimeError("unsupported section type '%s'" % s)
+            # Mesh tunnel interface name, made from the BGP AS number
+            # of this overlay and the node pair number.
+            name = "m%il%i" % (self.asn, math.floor(i / 2))
+
+            node_local = node_link[0]
+            node_remote = node_link[1]
+
+            physical_local = self.this_node[1]
+            physical_remote = None
+            for node, address in self.nodes:
+                if node == node_remote:
+                    physical_remote = address
+                    break
+
+            virtual_local = self.linknet_pool.network_address + i
+            virtual_remote = util.ip_address_remote(virtual_local)
+
+            if (virtual_local > self.linknet_pool.broadcast_address or
+                    virtual_remote > self.linknet_pool.broadcast_address):
+                raise RuntimeError("overflowed linknet pool %s with node link %s" % (str(self.linknet_pool), str(node_link)))
+
+            self.mesh_tunnels.append(mesh_tunnel.create(
+                logger,
+                name,
+                node_local,
+                node_remote,
+                physical_local,
+                physical_remote,
+                virtual_local,
+                virtual_remote,
+            ))
+
+        # Set up each interface with this overlay as the context.
+        for mt in self.mesh_tunnels:
+            mt.setup(self.daemon, self)
+
+        for i in self.interfaces:
+            i.setup(self.daemon, self)
 
         # Create the overlay's BGP and firewall process objects,
         # once the data structures are complete.
         self.bgp_process = bgp_process.create(self.daemon, self)
         self.firewall_process = firewall_process.create(self)
+
+        self.set_setup()
 
 
     def _node_links(self):
@@ -279,13 +253,48 @@ class Overlay(Worker):
 Worker.register(Overlay)
 
 
-def read(daemon, conf):
+def read(log, log_level, conf):
     '''
     Parse a configuration file, and return an overlay object.
     '''
 
-    config = util.config(conf)
+    lg = logger.create(log, log_level, "l3overlay", self.name)
+    lg.start()
 
-    name = util.name_get(config["overlay"]["name"])
+    try:
+        config = util.config(conf)
+        section = config["overlay"]
 
-    return Overlay(daemon, name, config)
+        # Global overlay configuration.
+        name = util.name_get(section["name"])
+
+        enabled = util.boolean_get(section["enabled"]) if "enabled" in section else True
+        asn = util.integer_get(section["asn"])
+        linknet_pool = util.ip_network_get(section["linknet-pool"])
+
+        fwbuilder_script_file = section["fwbuilder-script"] if "fwbuilder-script" in section else None
+
+        # Generate the list of nodes, sorted numerically.
+        ns = {util.integer_get(k):v.split(" ") for k, v in section.items() if k.startswith("node-")}
+        nodes = [(util.name_get(ns[k][0]), util.ip_address_get(ns[k][1])) for k in sorted(ns.keys())]
+
+        if len(nodes) != len(set(nodes)):
+            raise RuntimeError("node list contains duplicates")
+
+        # Get the node object for this node from the list of nodes.
+        this_node = next((n for n in nodes if n[0] == util.name_get(section["this-node"])), None)
+
+        if not this_node:
+            raise RuntimeError("this node '%s' is missing from node list" %
+                    util.name_get(section["this-node"]))
+
+        # Static interfaces.
+        interfaces = [interface.read(lg, h, s) for h, s in config.items() if h.startswith("static")]
+
+        # Return overlay object.
+        return Overlay(lg, name,
+            enabled, asn, linknet_pool, fwbuilder_script_file, nodes, this_node, interfaces)
+
+    except Exception as e:
+        lg.exception(e)
+        sys.exit(1)

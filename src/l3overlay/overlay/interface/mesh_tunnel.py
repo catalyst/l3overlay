@@ -34,16 +34,15 @@ class MeshTunnel(Interface):
     Used to configure a mesh tunnel interface.
     '''
 
-    def __init__(self, daemon, overlay, name,
+    def __init__(self, logger, name,
             node_local, node_remote,
             physical_local, physical_remote,
             virtual_local, virtual_remote):
         '''
-        Parse the mesh tunnel interface configuration and create
-        internal fields.
+        Set up mesh tunnel internal fields.
         '''
 
-        super().__init__(daemon, overlay, name)
+        super().__init__(logger, name)
 
         self.node_local = node_local
         self.node_remote = node_remote
@@ -55,13 +54,19 @@ class MeshTunnel(Interface):
         self.virtual_remote = virtual_remote
         self.virtual_netmask = 127 if util.ip_address_is_v6(self.virtual_local) else 31
 
+
+    def setup(self, daemon, overlay):
+        '''
+        Set up mesh tunnel runtime state.
+        '''
+
+        super().setup(daemon, overlay)
+
         self.bridge_name = "%sbr" % self.name
         self.root_veth_name = "%sv0" % self.name
         self.netns_veth_name = "%sv1" % self.name
 
-        # Add this mesh tunnel's physical links to the
-        # daemon mesh.
-        daemon.mesh_links.add((physical_local, physical_remote))
+        self.daemon.mesh_links.add((physical_local, physical_remote))
 
 
     def is_ipv6(self):
@@ -142,7 +147,7 @@ class MeshTunnel(Interface):
 Interface.register(MeshTunnel)
 
 
-def create(daemon, overlay, name,
+def create(logger, name,
             node_local, node_remote,
             physical_local, physical_remote,
             virtual_local, virtual_remote):
@@ -151,7 +156,7 @@ def create(daemon, overlay, name,
     '''
 
     return MeshTunnel(
-        daemon, overlay, name,
+        logger, name,
         node_local, node_remote,
         physical_local, physical_remote,
         virtual_local, virtual_remote,
