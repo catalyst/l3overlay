@@ -125,23 +125,23 @@ data_files = [
     (
         os.path.join(prefix, "etc", "l3overlay"),
         [
-            os.path.join(here, "global.conf"),
+            os.path.join(here, "l3overlay", "global.conf"),
         ],
     ),
 
     (
         os.path.join(prefix, "etc", "l3overlay", "overlays"),
         [
-            os.path.join(here, "overlays", "example.conf"),
+            os.path.join(here, "l3overlay", "overlays", "example.conf"),
         ],
     ),
 
     (
         os.path.join(prefix, "etc", "l3overlay", "templates"),
         [
-            os.path.join(here, "templates", "bird.conf"),
-            os.path.join(here, "templates", "ipsec.conf"),
-            os.path.join(here, "templates", "ipsec.secrets"),
+            os.path.join(here, "l3overlay", "templates", "bird.conf"),
+            os.path.join(here, "l3overlay", "templates", "ipsec.conf"),
+            os.path.join(here, "l3overlay", "templates", "ipsec.secrets"),
         ],
     ),
 ]
