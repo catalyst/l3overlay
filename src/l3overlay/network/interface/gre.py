@@ -40,12 +40,15 @@ class GRE(Interface):
         self.description = "%s interface" % self.kind
 
 
-def get(logger, ipdb, name):
+def get(dry_run, logger, ipdb, name):
     '''
     Return a gre/gretap interface object for the given interface name.
     '''
 
     logger.debug("getting runtime state for %s interface '%s'" % (str.join("/", IF_TYPES), name))
+
+    if dry_run:
+        return GRE(logger, ipdb, None, name, None)
 
     if name in ipdb.by_name.keys():
         interface = ipdb.interfaces[name]
@@ -58,13 +61,16 @@ def get(logger, ipdb, name):
         raise RuntimeError("unable to find %s interface in IPDB: %s" % (str.join("/", IF_TYPES), name))
 
 
-def create(logger, ipdb, name,
+def create(dry_run, logger, ipdb, name,
         local, remote, kind="gre", ttl=16, key=None, ikey=None, okey=None, iflags=32, oflags=32):
     '''
     Create a gre/gretap interface object, using a given interface name.
     '''
 
     logger.debug("creating %s interface '%s'" % (kind, name))
+
+    if dry_run:
+        return GRE(logger, ipdb, None, name, kind)
 
     if name in ipdb.by_name.keys():
         interface = ipdb.interfaces[name]

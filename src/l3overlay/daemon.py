@@ -41,7 +41,7 @@ class Daemon(Worker):
     Daemon class for overlay management.
     '''
 
-    def __init__(self, logger,
+    def __init__(self, dry_run, logger,
             log, log_level, use_ipsec, ipsec_manage, ipsec_psk,
             lib_dir, overlay_dir,
             fwbuilder_script_dir, overlay_conf_dir, template_dir,
@@ -53,6 +53,7 @@ class Daemon(Worker):
 
         super().__init__()
 
+        self.dry_run = dry_run
         self.logger = logger
 
         self.log = log
@@ -89,7 +90,7 @@ class Daemon(Worker):
         self.mesh_links = set()
         self.root_ipdb = pyroute2.IPDB()
 
-        for o in self.overlays.values():
+        for o in self.overlays_list_sorted():
             try:
                 o.setup(self)
             except Exception as e:
@@ -112,7 +113,7 @@ class Daemon(Worker):
         sos = []
 
         while os:
-            Daemon._overlays_list_sorted(os, sos, os.popitem()[1])
+            Daemon._overlays_list_sorted(os, sos, os.pop(sorted(os.keys())[0]))
 
         return sos
 
@@ -276,9 +277,9 @@ class ValueReader(object):
         arg_key = key.lower().replace("-", "_")
         config_key = key.lower().replace("_", "-")
 
-        if arg_key in self.args.__dict__:
-            return self.args.__dict__[arg_key]
-        elif config_key in self.config:
+        if arg_key in self.args:
+            return self.args[arg_key]
+        elif self.config and config_key in self.config:
             return self.config[config_key]
         else:
             return default
@@ -289,10 +290,10 @@ def read(args):
     Create a daemon object using the given arguments.
     '''
 
-    # Load the global configuration file, and create a ValueReader
-    # based on the given arguments and global configuration.
-    global_conf = args.global_conf
-    global_config = util.config(global_conf)["global"]
+    # Load the global configuration file (if specified),
+    # and create a ValueReader based on that and the given arguments.
+    global_conf = args["global_conf"] if "global_conf" in args else None
+    global_config = util.config(global_conf)["global"] if global_conf else None
 
     reader = ValueReader(args, global_config)
 
@@ -311,8 +312,10 @@ def read(args):
     # Log exceptions for the rest of the initialisation process.
     try:
         # Get (general) global configuration.
-        use_ipsec = util.boolean_get(reader.get("use-ipsec", "False"))
-        ipsec_manage = util.boolean_get(reader.get("ipsec-manage", "True"))
+        dry_run = util.boolean_get(reader.get("dry-run", "false"))
+
+        use_ipsec = util.boolean_get(reader.get("use-ipsec", "false"))
+        ipsec_manage = util.boolean_get(reader.get("ipsec-manage", "true"))
 
         _psk = reader.get("ipsec-psk")
         ipsec_psk = util.hex_get_string(_psk, min=6, max=64) if _psk else None
@@ -322,7 +325,7 @@ def read(args):
         overlay_dir = os.path.join(lib_dir, "overlays")
 
         fwbuilder_script_dir = reader.get("fwbuilder-script-dir", util.path_search("fwbuilder_scripts"))
-        overlay_conf_dir = reader.get("overlay-conf-dir", util.path_search("overlays")) if not args.overlay_conf else None
+        overlay_conf_dir = reader.get("overlay-conf-dir", util.path_search("overlays")) if "overlay_conf" not in args else None
         template_dir = reader.get("template-dir", util.path_search("templates"))
 
         # Get required file paths.
@@ -353,7 +356,7 @@ def read(args):
 
         # Return a set up daemon object.
         return Daemon(
-            lg,
+            dry_run, lg,
             log, log_level, use_ipsec, ipsec_manage, ipsec_psk,
             lib_dir, overlay_dir,
             fwbuilder_script_dir, overlay_conf_dir, template_dir,

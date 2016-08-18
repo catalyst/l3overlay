@@ -33,12 +33,15 @@ class Dummy(Interface):
     description = "%s interface" % IF_TYPE
 
 
-def get(logger, ipdb, name):
+def get(dry_run, logger, ipdb, name):
     '''
     Return a dummy interface object for the given interface name.
     '''
 
     logger.debug("getting runtime state for %s interface '%s'" % (IF_TYPE, name))
+
+    if dry_run:
+        return Dummy(logger, ipdb, None, name)
 
     if name in ipdb.by_name.keys():
         interface = ipdb.interfaces[name]
@@ -51,12 +54,15 @@ def get(logger, ipdb, name):
         raise RuntimeError("unable to find %s interface in IPDB: %s" % (IF_TYPE, name))
 
 
-def create(logger, ipdb, name):
+def create(dry_run, logger, ipdb, name):
     '''
     Create a dummy interface object, using a given interface name.
     '''
 
     logger.debug("creating %s interface '%s'" % (IF_TYPE, name))
+
+    if dry_run:
+        return Dummy(logger, ipdb, None, name)
 
     if name in ipdb.by_name.keys():
         interface = ipdb.interfaces[name]

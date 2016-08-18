@@ -62,7 +62,7 @@ class Tunnel(Interface):
         assigned to it.
         '''
 
-        raise util.ip_address_is_v6(self.address)
+        return util.ip_address_is_v6(self.address)
 
 
     def start(self):
@@ -73,6 +73,7 @@ class Tunnel(Interface):
         self.logger.info("starting static tunnel '%s'" % self.name)
 
         tunnel_if = gre.create(
+            self.dry_run,
             self.logger,
             self.netns.ipdb,
             self.tunnel_name,
@@ -94,7 +95,7 @@ class Tunnel(Interface):
 
         self.logger.info("stopping static tunnel '%s'" % self.name)
 
-        gre.get(self.logger, self.netns.ipdb, self.tunnel_name).remove()
+        gre.get(self.dry_run, self.logger, self.netns.ipdb, self.tunnel_name).remove()
 
         self.logger.info("finished stopping static tunnel '%s'" % self.name)
 

@@ -61,7 +61,7 @@ class Tuntap(Interface):
         assigned to it.
         '''
 
-        raise util.ip_address_is_v6(self.address)
+        return util.ip_address_is_v6(self.address)
 
 
     def start(self):
@@ -72,6 +72,7 @@ class Tuntap(Interface):
         self.logger.info("starting static tuntap '%s'" % self.name)
 
         tuntap_if = tuntap.create(
+            self.dry_run,
             self.logger,
             self.netns.ipdb,
             self.tuntap_name,
@@ -92,7 +93,7 @@ class Tuntap(Interface):
 
         self.logger.info("stopping static tuntap '%s'" % self.name)
 
-        tuntap.get(self.logger, self.netns.ipdb, self.tuntap_name).remove()
+        tuntap.get(self.dry_run, self.logger, self.netns.ipdb, self.tuntap_name).remove()
 
         self.logger.info("finished stopping static tuntap '%s'" % self.name)
 

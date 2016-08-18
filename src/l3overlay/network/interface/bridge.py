@@ -33,7 +33,7 @@ class Bridge(Interface):
     description = "%s interface" % IF_TYPE
 
 
-    def add_port(self, interface):
+    def add_port(self, added_if):
         '''
         Add the given interface to the list of ports for this bridge.
         '''
@@ -42,18 +42,22 @@ class Bridge(Interface):
             raise RuntimeError("%s '%s' removed and then modified" % (self.description, self.name))
 
         if self.logger:
-            self.logger.debug("adding port for %s '%s' to %s '%s'" % (interface.description, interface.name, self.description, self.name))
+            self.logger.debug("adding port for %s '%s' to %s '%s'" %
+                    (added_if.description, added_if.name, self.description, self.name))
 
-        if interface.interface.index not in self.interface.ports:
-            self.interface.add_port(interface.interface).commit()
+        if self.interface and added_if.interface.index not in self.interface.ports:
+            self.interface.add_port(added_if.interface).commit()
 
 
-def get(logger, ipdb, name):
+def get(dry_run, logger, ipdb, name):
     '''
     Return a bridge interface object for the given interface name.
     '''
 
     logger.debug("getting runtime state for %s interface '%s'" % (IF_TYPE, name))
+
+    if dry_run:
+        return Bridge(logger, ipdb, None, name)
 
     if name in ipdb.by_name.keys():
         interface = ipdb.interfaces[name]
@@ -66,12 +70,15 @@ def get(logger, ipdb, name):
         raise RuntimeError("unable to find %s interface in IPDB: %s" % (IF_TYPE, name))
 
 
-def create(logger, ipdb, name):
+def create(dry_run, logger, ipdb, name):
     '''
     Create a bridge interface object, using a given interface name.
     '''
 
     logger.debug("creating %s interface '%s'" % (IF_TYPE, name))
+
+    if dry_run:
+        return Bridge(logger, ipdb, None, name)
 
     if name in ipdb.by_name.keys():
         interface = ipdb.interfaces[name]
@@ -84,4 +91,4 @@ def create(logger, ipdb, name):
     interface = ipdb.create(ifname=name, kind=IF_TYPE)
     ipdb.commit()
 
-    return Bridge(logger, ipdb, interface, name)
+    return Bridge(dry_run, logger, ipdb, interface, name)

@@ -55,10 +55,10 @@ class VLAN(Interface):
 
         super().setup(daemon, overlay)
 
-        self.vlan_name = self.daemon.interface_name(name=name, suffix="vl", limit=12)
-        self.root_veth_name = self.daemon.interface_name(name=self.vlan_name, suffix="v")
-        self.netns_veth_name = self.daemon.interface_name(name=self.vlan_name, suffix="v")
-        self.bridge_name = self.daemon.interface_name(name=self.vlan_name, suffix="br")
+        self.vlan_name = self.daemon.interface_name(self.name, suffix="vl", limit=12)
+        self.root_veth_name = self.daemon.interface_name(self.vlan_name, suffix="v")
+        self.netns_veth_name = self.daemon.interface_name(self.vlan_name, suffix="v")
+        self.bridge_name = self.daemon.interface_name(self.vlan_name, suffix="br")
 
 
     def is_ipv6(self):
@@ -67,7 +67,7 @@ class VLAN(Interface):
         assigned to it.
         '''
 
-        raise util.ip_address_is_v6(self.address)
+        return util.ip_address_is_v6(self.address)
 
 
     def start(self):
@@ -78,13 +78,26 @@ class VLAN(Interface):
         self.logger.info("starting static vlan '%s'" % self.name)
 
         # Find the physical interface.
-        physical_if = interface.get(self.logger, self.daemon.root_ipdb, self.physical_interface)
+        physical_if = interface.get(
+            self.dry_run,
+            self.logger,
+            self.daemon.root_ipdb,
+            self.physical_interface,
+        )
 
         # Create the VLAN interface.
-        vlan_if = vlan.create(self.logger, self.netns.ipdb, self.vlan_name, physical_if, self.id)
+        vlan_if = vlan.create(
+            self.dry_run,
+            self.logger,
+            self.netns.ipdb,
+            self.vlan_name,
+            physical_if, 
+            self.id,
+        )
 
         # Create the veth pair.
         root_veth_if = veth.create(
+            self.dry_run,
             self.logger,
             self.daemon.root_ipdb,
             self.root_veth_name,
@@ -92,7 +105,13 @@ class VLAN(Interface):
         )
 
         # Move the netns veth interface to the network namespace.
-        netns_veth_if = interface.netns_set(self.logger, self.netns.ipdb, self.netns_veth_name, self.netns)
+        netns_veth_if = interface.netns_set(
+            self.dry_run,
+            self.logger,
+            self.netns.ipdb,
+            self.netns_veth_name,
+            self.netns,
+        )
 
         # Add the assigned address for the VLAN to the netns veth
         # interface.
@@ -100,7 +119,12 @@ class VLAN(Interface):
 
         # Create a bridge for the physical interface to connect to the
         # network namespace via the veth pair.
-        bridge_if = bridge.create(self.daemon.root_ipdb, self.bridge_name)
+        bridge_if = bridge.create(
+            self.dry_run,
+            self.logger,
+            self.daemon.root_ipdb,
+            self.bridge_name,
+        )
 
         # Add the physical interface and the root veth interface to the
         # bridge.
@@ -124,9 +148,9 @@ class VLAN(Interface):
 
         self.logger.info("stopping static vlan '%s'" % self.name)
 
-        bridge.get(self.logger, self.daemon.root_ipdb, self.bridge_name).remove()
-        veth.get(self.logger, self.netns.ipdb, self.root_netns_name).remove()
-        vlan.get(self.logger, self.netns.ipdb, self.vlan_name).remove()
+        bridge.get(self.dry_run, self.logger, self.daemon.root_ipdb, self.bridge_name).remove()
+        veth.get(self.dry_run, self.logger, self.netns.ipdb, self.root_veth_name).remove()
+        vlan.get(self.dry_run, self.logger, self.netns.ipdb, self.vlan_name).remove()
 
         self.logger.info("finished stopping static vlan '%s'" % self.name)
 

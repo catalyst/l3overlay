@@ -32,6 +32,7 @@ class VLAN(Interface):
 
     def __init__(self, logger, ipdb, interface, name, link, id):
         '''
+        Set up vlan interface internal fields.
         '''
 
         super().__init__(logger, ipdb, interface, name)
@@ -42,12 +43,15 @@ class VLAN(Interface):
         self.description = "%s interface" % IF_TYPE
 
 
-def get(logger, ipdb, name):
+def get(dry_run, logger, ipdb, name):
     '''
     Return a vlan interface object for the given interface name.
     '''
 
     logger.debug("getting runtime state for %s interface '%s'" % (IF_TYPE, name))
+
+    if dry_run:
+        return VLAN(logger, ipdb, None, name, None, None)
 
     if name in ipdb.by_name.keys():
         interface = ipdb.interfaces[name]
@@ -60,12 +64,16 @@ def get(logger, ipdb, name):
         raise RuntimeError("unable to find %s interface in IPDB: %s" % (IF_TYPE, name))
 
 
-def create(logger, ipdb, name, link, id):
+def create(dry_run, logger, ipdb, name, link, id):
     '''
     Create a vlan interface object, using a given interface name.
     '''
 
     logger.debug("creating %s interface '%s'" % (IF_TYPE, name))
+
+
+    if dry_run:
+        return VLAN(logger, ipdb, None, name, link, id)
 
     if name in ipdb.by_name.keys():
         interface = ipdb.interfaces[name]

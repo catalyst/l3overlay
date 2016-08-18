@@ -43,6 +43,7 @@ class Interface(metaclass=abc.ABCMeta):
         '''
 
         self.daemon = daemon
+        self.dry_run = self.daemon.dry_run
         self.root_ipdb = self.daemon.root_ipdb
 
         self.overlay = overlay

@@ -78,6 +78,8 @@ class Overlay(Worker):
         self.daemon = daemon
 
         # Configure fields which use the daemon object.
+        self.dry_run = self.daemon.dry_run
+
         if self.fwbuilder_script_file:
             self.fwbuilder_script = self.fwbuilder_script if os.path.isabs(self.fwbuilder_script_file) else os.path.join(self.daemon.fwbuilder_script_dir, self.fwbuilder_script_file)
         else:
@@ -86,7 +88,7 @@ class Overlay(Worker):
         self.root_dir = os.path.join(self.daemon.overlay_dir, self.name)
 
         # Overlay network namespace.
-        self.netns = netns.get(self.logger, self.name)
+        self.netns = netns.get(self.dry_run, self.logger, self.name)
 
         # Create the mesh tunnel interfaces.
         self.mesh_tunnels = []

@@ -19,10 +19,13 @@
 
 
 import pyroute2
+import subprocess
 
 import pyroute2.netns
 
 import pyroute2.netns.process.proxy
+
+from l3overlay import util
 
 from l3overlay.util.worker import Worker
 
@@ -33,11 +36,14 @@ class NetNS(Worker):
     convenient functions.
     '''
 
-    def __init__(self, logger, name):
+    def __init__(self, dry_run, logger, name):
         '''
+        Set up network namespace internal fields.
         '''
 
         super().__init__()
+
+        self.dry_run = dry_run
 
         self.logger = logger
         self.name = name
@@ -59,17 +65,18 @@ class NetNS(Worker):
 
         self.logger.debug("starting network namespace '%s'" % self.name)
 
-        if self.name not in pyroute2.netns.listnetns():
-            try:
-                pyroute2.netns.create(self.name)
-            except FileExistsError:
-                # Network namespace already exists
-                pass
-            except:
-                raise RuntimeError("unable to create network namespace: %s" % self.name)
+        if not self.dry_run:
+            if self.name not in pyroute2.netns.listnetns():
+                try:
+                    pyroute2.netns.create(self.name)
+                except FileExistsError:
+                    # Network namespace already exists
+                    pass
+                except:
+                    raise RuntimeError("unable to create network namespace: %s" % self.name)
 
-        self.netns = pyroute2.NetNS(self.name)
-        self.ipdb = pyroute2.IPDB(nl=self.netns)
+            self.netns = pyroute2.NetNS(self.name)
+            self.ipdb = pyroute2.IPDB(nl=self.netns)
 
         self.set_started()
 
@@ -88,8 +95,10 @@ class NetNS(Worker):
         self.set_stopping()
 
         self.logger.debug("stopping network namespace '%s'" % self.name)
-        self.ipdb.release()
-        self.netns.close()
+
+        if not self.dry_run:
+            self.ipdb.release()
+            self.netns.close()
 
         self.set_stopped()
 
@@ -108,7 +117,9 @@ class NetNS(Worker):
         self.set_removing()
 
         self.logger.debug("removing network namespace '%s'" % self.name)
-        pyroute2.netns.remove(self.name)
+
+        if not self.dry_run:
+            pyroute2.netns.remove(self.name)
 
         self.set_removed()
 
@@ -121,15 +132,29 @@ class NetNS(Worker):
         if not self.is_started():
             raise RuntimeError("network namespace '%s' not yet started" % self.name)
 
-        return pyroute2.netns.process.proxy.NSPopen(self.name, *argv, **kwarg)
+        if self.dry_run:
+            # Create a dummy NSPopen object with a
+            # stub release() method, to be API compatible
+            # with the real deal.
+            class NSPopen(subprocess.Popen):
+                def release(self):
+                    pass
+
+            return NSPopen(
+                [util.command_path("true")],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        else:
+            return pyroute2.netns.process.proxy.NSPopen(self.name, *argv, **kwarg)
 
 Worker.register(NetNS)
 
 
-def get(logger, name):
+def get(dry_run, logger, name):
     '''
     Get the network namespace runtime state for the given name, creating it
     if it doesn't exist.
     '''
 
-    return NetNS(logger, name)
+    return NetNS(dry_run, logger, name)

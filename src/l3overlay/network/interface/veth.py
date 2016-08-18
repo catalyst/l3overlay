@@ -41,12 +41,15 @@ class VETH(Interface):
         self.description = "%s interface" % IF_TYPE
 
 
-def get(logger, ipdb, name):
+def get(dry_run, logger, ipdb, name):
     '''
     Return a veth interface object for the given interface name.
     '''
 
     logger.debug("getting runtime state for %s interface '%s'" % (IF_TYPE, name))
+
+    if dry_run:
+        return VETH(logger, ipdb, None, name, None)
 
     if name in ipdb.by_name.keys():
         interface = ipdb.interfaces[name]
@@ -59,12 +62,15 @@ def get(logger, ipdb, name):
         raise RuntimeError("unable to find %s interface in IPDB: %s" % (IF_TYPE, name))
 
 
-def create(logger, ipdb, name, peer_name, remove=True):
+def create(dry_run, logger, ipdb, name, peer_name, remove=True):
     '''
     Create a veth pair interface object, using a given interface name.
     '''
 
     logger.debug("creating %s pair '%s' and '%s'" % (IF_TYPE, name, peer_name))
+
+    if dry_run:
+        return VETH(logger, ipdb, None, name, peer_name)
 
     if name in ipdb.by_name.keys():
         interface = ipdb.interfaces[name]
@@ -72,7 +78,7 @@ def create(logger, ipdb, name, peer_name, remove=True):
         if interface.kind != IF_TYPE or interface.peer != peer_name:
             Interface(None, ipdb, interface, name).remove()
         else:
-            return VETH(logger, ipdb, interface, name, peer_name)
+            return VETH(logger, ipdb, interface, name, interface.peer)
 
     interface = ipdb.create(ifname=name, kind="veth", peer=peer_name)
     ipdb.commit()

@@ -38,6 +38,7 @@ class Interface(object):
         '''
 
         self.logger = logger
+
         self.ipdb = ipdb
         self.interface = interface
         self.name = name
@@ -60,10 +61,8 @@ class Interface(object):
         ip_tuple = (str(address), netmask)
         ip_string = "%s/%i" % ip_tuple
 
-        if ip_tuple in self.interface.ipaddr:
-            return
-
-        self.interface.add_ip(ip_string).commit()
+        if self.interface and ip_tuple not in self.interface.ipaddr:
+            self.interface.add_ip(ip_string).commit()
 
 
     def set_mtu(self, mtu):
@@ -77,7 +76,8 @@ class Interface(object):
         if self.logger:
             self.logger.debug("setting MTU to %i on %s '%s'" % (mtu, self.description, self.name))
 
-        self.interface.set_mtu(mtu).commit()
+        if self.interface:
+            self.interface.set_mtu(mtu).commit()
 
 
     def netns_set(netns):
@@ -91,11 +91,11 @@ class Interface(object):
         if self.logger:
             self.logger.debug("moving %s '%s' to network namespace '%s'" % (self.description, self.name, netns.name))
 
-        if self.name not in netns.ipdb.by_name.keys():
+        if self.interface and self.name not in netns.ipdb.by_name.keys():
             self.interface.net_ns_fd = netns.name
             self.ipdb.commit()
 
-            self.ipdb = netns.ipdb
+        self.ipdb = netns.ipdb
 
 
     def up(self):
@@ -109,7 +109,8 @@ class Interface(object):
         if self.logger:
             self.logger.debug("bringing up %s '%s'" % (self.description, self.name))
 
-        self.interface.up().commit()
+        if self.interface:
+            self.interface.up().commit()
 
 
     def down(self):
@@ -123,7 +124,8 @@ class Interface(object):
         if self.logger:
             self.logger.debug("bringing down %s '%s'" % (self.description, self.name))
 
-        self.interface.down().commit()
+        if self.interface:
+            self.interface.down().commit()
 
 
     def remove(self):
@@ -133,32 +135,36 @@ class Interface(object):
         '''
 
         if self.removed:
-            raise RuntimeError("%s '%s' removed again" % (self.description, self.name))
+            raise RuntimeError("%s '%s' removed twice" % (self.description, self.name))
 
         if self.logger:
             self.logger.debug("removing %s '%s'" % (self.description, self.name))
 
-        waited = 0.0
+        if self.interface:
+            waited = 0.0
 
-        self.interface.down()
-        self.interface.remove().commit()
+            self.interface.down()
+            self.interface.remove().commit()
 
-        # pyroute2 seems to take a little while to actually execute
-        # an interface removal. Wait for the IPDB to register that the
-        # interface no longer exists.
-        # This stops waiting after a while, to prevent infinite loops.
-        while waited < REMOVE_WAIT_MAX:
-            if self.name not in self.ipdb.by_name.keys():
-                self.removed = True
-                break
-            time.sleep(REMOVE_WAIT_PERIOD)
-            waited += REMOVE_WAIT_PERIOD
+            # pyroute2 seems to take a little while to actually execute
+            # an interface removal. Wait for the IPDB to register that the
+            # interface no longer exists.
+            # This stops waiting after a while, to prevent infinite loops.
+            while waited < REMOVE_WAIT_MAX:
+                if self.name not in self.ipdb.by_name.keys():
+                    self.removed = True
+                    break
+                time.sleep(REMOVE_WAIT_PERIOD)
+                waited += REMOVE_WAIT_PERIOD
 
-        if not self.removed:
-            raise RuntimeError("%s '%s' still exists even after waiting for removal" % (self.description, self.name))
+            if not self.removed:
+                raise RuntimeError("%s '%s' still exists even after waiting for removal" % (self.description, self.name))
+
+        else:
+            self.removed = True
 
 
-def get(logger, ipdb, name):
+def get(dry_run, logger, ipdb, name):
     '''
     Tries to find an interface with the given name in the chosen IPDB
     and returns it. Throws a RuntimeError if it can't find it.
@@ -166,19 +172,25 @@ def get(logger, ipdb, name):
 
     logger.debug("getting runtime state for interface '%s'" % name)
 
+    if dry_run:
+        return Interface(logger, ipdb, None, name)
+
     if name in ipdb.by_name.keys():
         return Interface(logger, ipdb, ipdb.interfaces[name], name)
     else:
         raise RuntimeError("unable to find interface: %s" % name)
 
 
-def netns_set(logger, ipdb, name, netns):
+def netns_set(dry_run, logger, ipdb, name, netns):
     '''
     Moves an interface into a chosen network namespace. Returns the
     interface object from the network namespace.
     '''
 
     logger.debug("moving interface '%s' to network namespace '%s'" % (name, netns.name))
+
+    if dry_run:
+        return Interface(logger, netns.ipdb, None, name)
 
     if name not in netns.ipdb.by_name.keys():
         ipdb.interfaces[name].net_ns_fd = netns.name

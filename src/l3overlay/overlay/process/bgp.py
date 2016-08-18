@@ -52,6 +52,8 @@ class Process(Worker):
 
         super().__init__()
 
+        self.dry_run = daemon.dry_run
+
         self.log_level = daemon.log_level
 
         self.template_dir = daemon.template_dir
@@ -83,8 +85,8 @@ class Process(Worker):
 
         self.bird_conf_template = util.template_read(self.template_dir, "bird.conf")
 
-        self.bird = util.command_path("bird")
-        self.bird6 = util.command_path("bird6")
+        self.bird = util.command_path("bird") if not self.dry_run else None
+        self.bird6 = util.command_path("bird6") if not self.dry_run else None
 
 
     def bird_config_add(self, bird_config, key, value):
@@ -117,16 +119,20 @@ class Process(Worker):
         self.logger.info("starting BGP process")
 
         self.logger.debug("creating BIRD control socket directory")
-        util.directory_create(self.bird_ctl_dir)
+        if not self.dry_run:
+            util.directory_create(self.bird_ctl_dir)
 
         self.logger.debug("creating BIRD configuration directory")
-        util.directory_create(self.bird_conf_dir)
+        if not self.dry_run:
+            util.directory_create(self.bird_conf_dir)
 
         self.logger.debug("creating BIRD logging directory")
-        util.directory_create(self.bird_log_dir)
+        if not self.dry_run:
+            util.directory_create(self.bird_log_dir)
 
         self.logger.debug("creating BIRD PID file directory")
-        util.directory_create(self.bird_pid_dir)
+        if not self.dry_run:
+            util.directory_create(self.bird_pid_dir)
 
         self.logger.debug("configuring BIRD")
 
@@ -198,8 +204,9 @@ class Process(Worker):
         bird_config["overlay"] = self.name
         bird_config["asn"] = self.asn
 
-        with open(bird_conf, "w") as f:
-            f.write(self.bird_conf_template.render(bird_config))
+        if not self.dry_run:
+            with open(bird_conf, "w") as f:
+                f.write(self.bird_conf_template.render(bird_config))
 
         if util.pid_exists(pid_file=bird_pid):
             # Note that socket.error.errno == errno.ECONNREFUSED
@@ -207,25 +214,38 @@ class Process(Worker):
             # a valid PID file, therefore we should have a valid CTL
             # file.
             self.logger.debug("connecting to the BIRD control socket '%s'" % bird_ctl)
-            sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            sock.connect(bird_ctl)
 
-            data = sock.recv(RECV_MAX).decode("UTF-8")
+            sock = None
+            data = None
+
+            if self.dry_run:
+                data = "0001 BIRD 1.4.0 ready.\n"
+            else:
+                sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                sock.connect(bird_ctl)
+
+                data = sock.recv(RECV_MAX).decode("UTF-8")
+
             if not re.match("0001 BIRD [0-9.]* ready.\n", data):
                 raise RuntimeError(
                         "unexpected response from BIRD when connecting:\n%s" % data)
 
             self.logger.debug("reloading BIRD configuration")
-            sock.send(bytes("configure \"%s\"\n" % bird_conf, 'UTF-8'))
 
-            data = sock.recv(RECV_MAX).decode("UTF-8")
+            if self.dry_run:
+                data = "0002-Reading configuration from %s\n0003 Reconfigured" % bird_conf
+            else:
+                sock.send(bytes("configure \"%s\"\n" % bird_conf, 'UTF-8'))
+                data = sock.recv(RECV_MAX).decode("UTF-8")
+
             if ("0002-Reading configuration from %s" % bird_conf not in data or
                         ("0003 Reconfigured" not in data and
                                 "0004 Reconfiguration in progress" not in data)):
                 raise RuntimeError(
                         "unexpected response from BIRD when reloading config:\n%s" % data)
 
-            sock.close()
+            if not self.dry_run:
+                sock.close()
 
         else:
             self.logger.debug("starting BIRD using executable '%s'" % bird)
@@ -256,25 +276,30 @@ class Process(Worker):
 
         self.logger.info("stopping BGP process")
 
-        pid = util.pid_get(pid_file=self.bird_pid)
-        pid6 = util.pid_get(pid_file=self.bird6_pid)
+        if not self.dry_run:
+            pid = util.pid_get(pid_file=self.bird_pid)
+            pid6 = util.pid_get(pid_file=self.bird6_pid)
 
-        if pid:
-            os.kill(pid, signal.SIGTERM)
-        if pid6:
-            os.kill(pid6, signal.SIGTERM)
+            if pid:
+                os.kill(pid, signal.SIGTERM)
+            if pid6:
+                os.kill(pid6, signal.SIGTERM)
 
         self.logger.debug("removing BIRD control socket directory")
-        util.directory_remove(self.bird_ctl_dir)
+        if not self.dry_run:
+            util.directory_remove(self.bird_ctl_dir)
 
         self.logger.debug("removing BIRD configuration directory")
-        util.directory_remove(self.bird_conf_dir)
+        if not self.dry_run:
+            util.directory_remove(self.bird_conf_dir)
 
         self.logger.debug("removing BIRD logging directory")
-        util.directory_remove(self.bird_log_dir)
+        if not self.dry_run:
+            util.directory_remove(self.bird_log_dir)
 
         self.logger.debug("removing BIRD PID file directory")
-        util.directory_remove(self.bird_pid_dir)
+        if not self.dry_run:
+            util.directory_remove(self.bird_pid_dir)
 
         self.logger.info("finished stopping BGP process")
 

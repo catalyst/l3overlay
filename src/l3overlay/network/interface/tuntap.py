@@ -40,12 +40,15 @@ class Tuntap(Interface):
         self.description = "%s interface" % self.mode
 
 
-def get(logger, ipdb, name):
+def get(dry_run, logger, ipdb, name):
     '''
     Return a tuntap interface object for the given interface name.
     '''
 
     logger.debug("getting runtime state for %s interface '%s'" % (IF_TYPE, name))
+
+    if dry_run:
+        return Tuntap(logger, ipdb, None, name, None)
 
     if name in ipdb.by_name.keys():
         interface = ipdb.interfaces[name]
@@ -58,12 +61,15 @@ def get(logger, ipdb, name):
         raise RuntimeError("unable to find %s interface in IPDB: %s" % (IF_TYPE, name))
 
 
-def create(logger, ipdb, name, mode="tap", uid=0, gid=0, ifr=None):
+def create(dry_run, logger, ipdb, name, mode="tap", uid=0, gid=0, ifr=None):
     '''
     Create a tuntap interface object, using a given interface name.
     '''
 
     logger.debug("creating %s interface '%s'" % (mode, name))
+
+    if dry_run:
+        return Tuntap(logger, ipdb, None, name, mode)
 
     if name in ipdb.by_name.keys():
         interface = ipdb.interfaces[name]
@@ -75,7 +81,7 @@ def create(logger, ipdb, name, mode="tap", uid=0, gid=0, ifr=None):
                 interface.ifr != ifr):
             Interface(None, ipdb, interface, name).remove()
         else:
-            return Tuntap(logger, ipdb, interface, name, interface.mode)
+            return Tuntap(logger, ipdb, interface, name, mode)
 
     interface = ipdb.create(
         ifname=name,

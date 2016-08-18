@@ -37,6 +37,8 @@ class Process(Worker):
 
         super().__init__()
 
+        self.dry_run = daemon.dry_run
+
         self.logger = daemon.logger
 
         self.use_ipsec = daemon.use_ipsec
@@ -58,7 +60,7 @@ class Process(Worker):
             daemon.mesh_links,
         ))
 
-        self.ipsec = util.command_path("ipsec")
+        self.ipsec = util.command_path("ipsec") if not self.dry_run else util.command_path("true")
 
 
     def start(self):
@@ -74,28 +76,28 @@ class Process(Worker):
 
         self.set_starting()
 
-        ipsec = util.command_path("ipsec")
-
         self.logger.info("starting IPsec process")
 
         self.logger.debug("creating IPsec configuration file '%s'" % self.ipsec_conf)
-        with open(self.ipsec_conf, "w") as f:
-            f.write(self.ipsec_conf_template.render(
-                file=self.ipsec_conf,
-                mesh_conns=self.mesh_conns,
-            ))
+        if not self.dry_run:
+            with open(self.ipsec_conf, "w") as f:
+                f.write(self.ipsec_conf_template.render(
+                    file=self.ipsec_conf,
+                    mesh_conns=self.mesh_conns,
+                ))
 
         self.logger.debug("creating IPsec secrets file '%s'" % self.ipsec_secrets)
         addresses = set()
         for local, remote in self.mesh_conns.values():
             addresses.add(local)
             addresses.add(remote)
-        with open(self.ipsec_secrets, "w") as f:
-            f.write(self.ipsec_secrets_template.render(
-                file=self.ipsec_secrets,
-                addresses=addresses,
-                secret=self.ipsec_psk,
-            ))
+        if not self.dry_run:
+            with open(self.ipsec_secrets, "w") as f:
+                f.write(self.ipsec_secrets_template.render(
+                    file=self.ipsec_secrets,
+                    addresses=addresses,
+                    secret=self.ipsec_psk,
+                ))
 
         self.logger.debug("checking IPsec status")
         status = subprocess.call(
@@ -142,31 +144,37 @@ class Process(Worker):
         self.logger.info("stopping IPsec process")
 
         self.logger.debug("removing IPsec configuration file '%s'" % self.ipsec_conf)
-        util.file_remove(self.ipsec_conf)
+        if not self.dry_run:
+            util.file_remove(self.ipsec_conf)
 
         self.logger.debug("removing IPsec secrets file '%s'" % self.ipsec_secrets)
-        util.file_remove(self.ipsec_secrets)
+        if not self.dry_run:
+            util.file_remove(self.ipsec_secrets)
 
         if self.ipsec_manage:
             # When we manage IPsec, it is safe to stop it completely.
             self.logger.debug("stopping IPsec")
-            subprocess.check_output([ipsec, "stop"], stderr=subprocess.STDOUT)
+            if not self.dry_run:
+                subprocess.check_output([ipsec, "stop"], stderr=subprocess.STDOUT)
 
         else:
             # When we don't, reload the configuration without the tunnels
             # configured, and shut down all of the tunnels.
             self.logger.debug("reloading IPsec secrets")
-            subprocess.check_output([self.ipsec, "rereadsecrets"], stderr=subprocess.STDOUT)
+            if not self.dry_run:
+                subprocess.check_output([self.ipsec, "rereadsecrets"], stderr=subprocess.STDOUT)
 
             self.logger.debug("reloading IPsec configuration")
-            subprocess.check_output([self.ipsec, "reload"], stderr=subprocess.STDOUT)
+            if not self.dry_run:
+                subprocess.check_output([self.ipsec, "reload"], stderr=subprocess.STDOUT)
 
             for conn in self.mesh_conns:
                 self.logger.debug("shutting down IPsec tunnel '%s'" % conn)
-                subprocess.check_output(
-                    [self.ipsec, "down", conn],
-                    stderr=subprocess.STDOUT,
-                )
+                if not self.dry_run:
+                    subprocess.check_output(
+                        [self.ipsec, "down", conn],
+                        stderr=subprocess.STDOUT,
+                    )
 
         self.logger.info("finished stopping IPsec process")
 

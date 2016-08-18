@@ -91,15 +91,20 @@ SBIN_DIR = $(PREFIX)/sbin
 CONFIG   = .config
 SETUP_PY = setup.py
 
+SRC_DIR   = src
+TESTS_DIR = tests
+
 # At this point, l3overlayd only supports Python >= 3.4.
-PYTHON  = python3
+PYTHON = python3.4
 
 # An alternative to this if the default doesn't work:
-# PIP     = $(PYTHON) -m pip
-PIP     = pip3
+# PIP = $(PYTHON) -m pip
+PIP = pip3
 
-RM      = rm -f
-RMDIR   = rm -rf
+FIND = find
+
+RM    = rm -f
+RMDIR = rm -rf
 
 
 ##############################
@@ -123,6 +128,7 @@ endif
 
 all:
 	@echo "Targets:"
+	@echo "  test - run unit tests"
 	@echo "  sdist - build Python source distribution"
 	@echo "  bdist_wheel - build Python binary wheel distribution"
 	@echo "  install - build and install to local system"
@@ -139,6 +145,11 @@ config:
 	@echo WITH_INIT_D=$(WITH_INIT_D) >> $(CONFIG)
 	@echo WITH_UPSTART=$(WITH_UPSTART) >> $(CONFIG)
 
+
+test:
+	@for t in $(shell $(FIND) $(TESTS_DIR) -name 'test_*.py'); do \
+		PYTHONPATH=$(SRC_DIR) $(PYTHON) $$t; \
+	done
 
 sdist: config
 	$(PYTHON) $(SETUP_PY) sdist
@@ -166,4 +177,4 @@ clean:
 	$(RMDIR) $(NAME).egg-info
 
 
-.PHONY: all config sdist bdist_wheel install uninstall clean
+.PHONY: all config test sdist bdist_wheel install uninstall clean

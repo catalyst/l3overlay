@@ -20,7 +20,7 @@
 
 from l3overlay import util
 
-from l3overlay.network.interface import gre
+from l3overlay.network.interface import dummy
 
 from l3overlay.overlay.interface.base import Interface
 
@@ -47,6 +47,8 @@ class Dummy(Interface):
         Set up static dummy internal state.
         '''
 
+        super().setup(daemon, overlay)
+
         self.dummy_name = self.daemon.interface_name(self.name)
 
 
@@ -56,7 +58,7 @@ class Dummy(Interface):
         assigned to it.
         '''
 
-        raise util.ip_address_is_v6(self.address)
+        return util.ip_address_is_v6(self.address)
 
 
     def start(self):
@@ -67,6 +69,7 @@ class Dummy(Interface):
         self.logger.info("starting static dummy '%s'" % self.name)
 
         dummy_if = dummy.create(
+            self.dry_run,
             self.logger,
             self.netns.ipdb,
             self.dummy_name,
@@ -84,7 +87,7 @@ class Dummy(Interface):
 
         self.logger.info("stopping static dummy '%s'" % self.name)
 
-        dummy.get(self.logger, self.netns.ipdb, self.dummy_name).remove()
+        dummy.get(self.dry_run, self.logger, self.netns.ipdb, self.dummy_name).remove()
 
         self.logger.info("finished stopping static dummy '%s'" % self.name)
 

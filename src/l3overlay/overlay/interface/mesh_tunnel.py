@@ -92,6 +92,7 @@ class MeshTunnel(Interface):
         self.logger.info("starting mesh tunnel '%s'" % self.name)
 
         tunnel_if = gre.create(
+            self.dry_run,
             self.logger,
             self.root_ipdb,
             self.name,
@@ -102,6 +103,7 @@ class MeshTunnel(Interface):
         )
 
         root_veth_if = veth.create(
+            self.dry_run,
             self.logger,
             self.root_ipdb,
             self.root_veth_name,
@@ -109,13 +111,19 @@ class MeshTunnel(Interface):
         )
 
         netns_veth_if = interface.netns_set(
+            self.dry_run,
             self.logger,
             self.root_ipdb,
             self.netns_veth_name,
             self.netns,
         )
 
-        bridge_if = bridge.create(self.logger, self.root_ipdb, self.bridge_name)
+        bridge_if = bridge.create(
+            self.dry_run,
+            self.logger,
+            self.root_ipdb,
+            self.bridge_name,
+        )
         bridge_if.add_port(tunnel_if)
         bridge_if.add_port(root_veth_if)
 
@@ -138,9 +146,9 @@ class MeshTunnel(Interface):
 
         self.logger.info("stopping mesh tunnel '%s'" % self.name)
 
-        bridge.get(self.logger, self.root_ipdb, self.bridge_name).remove()
-        veth.get(self.logger, self.root_ipdb, self.root_veth_name).remove()
-        gre.get(self.logger, self.root_ipdb, self.name).remove()
+        bridge.get(self.dry_run, self.logger, self.root_ipdb, self.bridge_name).remove()
+        veth.get(self.dry_run, self.logger, self.root_ipdb, self.root_veth_name).remove()
+        gre.get(self.dry_run, self.logger, self.root_ipdb, self.name).remove()
 
         self.logger.info("finished stopping mesh tunnel '%s'" % self.name)
 
