@@ -91,4 +91,4 @@ def create(dry_run, logger, ipdb, name):
     interface = ipdb.create(ifname=name, kind=IF_TYPE)
     ipdb.commit()
 
-    return Bridge(dry_run, logger, ipdb, interface, name)
+    return Bridge(logger, ipdb, interface, name)

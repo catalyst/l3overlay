@@ -27,188 +27,214 @@ import sys
 import l3overlay.daemon
 
 
-args = None
-l3overlay_daemon = None
-
-
-def sigterm(signum, frame):
+class Main(object):
     '''
-    Shut down the daemon upon shutdown signal, and exit.
+    Main method state manager.
     '''
 
-    global l3overlay_daemon
+    def __init__(self):
+        '''
+        Set up the main method state manager internal fields.
+        '''
 
-    signal.signal(signal.SIGTERM, signal.SIG_IGN)
-
-    l3overlay_daemon.logger.info("handling SIGINT")
-
-    l3overlay_daemon.logger.debug("stopping daemon")
-    l3overlay_daemon.stop()
-
-    l3overlay_daemon.logger.debug("removing PID file")
-    util.file_remove(l3overlay_daemon.pid)
-
-    l3overlay_daemon.remove()
-
-    sys.exit(0)
+        self.args = None
+        self.daemon = None
 
 
-def sigint(signum, frame):
-    '''
-    Shut down the daemon upon keyboard interrupt, and exit.
-    '''
+    def sigterm(self, signum, frame):
+        '''
+        Shut down the daemon upon shutdown signal, and exit.
+        '''
 
-    global l3overlay_daemon
+        signal.signal(signal.SIGTERM, signal.SIG_IGN)
 
-    signal.signal(signal.SIGINT, signal.SIG_IGN)
+        self.daemon.logger.info("handling SIGINT")
 
-    l3overlay_daemon.logger.info("handling SIGINT")
+        self.daemon.logger.debug("stopping daemon")
+        self.daemon.stop()
 
-    l3overlay_daemon.logger.debug("stopping daemon")
-    l3overlay_daemon.stop()
+        try:
+            self.daemon.logger.debug("removing PID file")
+            util.file_remove(self.daemon.pid)
+        except Exception as e:
+            if self.daemon.logger.is_started():
+                self.daemon.logger.exception(e)
+            raise
 
-    l3overlay_daemon.logger.debug("removing PID file")
-    util.file_remove(l3overlay_daemon.pid)
+        self.daemon.remove()
 
-    l3overlay_daemon.remove()
-
-    sys.exit(0)
-
-
-def sighup(signum, frame):
-    '''
-    Shut down the daemon, make a new daemon to reload the configuration,
-    and start the new daemon.
-    '''
-
-    global args
-    global l3overlay_daemon
-
-    signal.signal(signal.SIGHUP, signal.SIG_IGN)
-
-    l3overlay_daemon.logger.info("handling SIGHUP")
-
-    l3overlay_daemon.logger.debug("stopping daemon")
-    l3overlay_daemon.stop()
-    l3overlay_daemon.remove()
-
-    l3overlay_daemon = l3overlay.daemon.read(args)
-    l3overlay_daemon.setup()
-
-    util.pid_create(l3overlay_daemon.pid)
-
-    l3overlay_daemon.logger.debug("starting daemon")
-    l3overlay_daemon.start()
-
-    l3overlay_daemon.logger.info("finished handling SIGHUP")
+        sys.exit(0)
 
 
-def main():
-    global args
-    global l3overlay_daemon
+    def sigint(self, signum, frame):
+        '''
+        Shut down the daemon upon keyboard interrupt, and exit.
+        '''
 
-    # Parse optional arguments, and return the final values which will be used
-    # in l3overlayd configuration.
-    argparser = argparse.ArgumentParser(description="Construct one or more MPLS-like VRF networks using IPsec tunnels and network namespaces.")
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
 
-    argparser.add_argument(
-        '-gc', '--global-conf',
-        metavar='FILE',
-        type=str,
-        default=None,
-        help="use FILE as the global configuration file",
-    )
+        self.daemon.logger.info("handling SIGINT")
 
-    argparser.add_argument(
-        '-ocd', '--overlay-conf-dir',
-        metavar='DIR',
-        type=str,
-        default=None,
-        help="use DIR as the overlay conf search directory",
-    )
+        self.daemon.logger.debug("stopping daemon")
+        self.daemon.stop()
 
-    argparser.add_argument(
-        '-oc', '--overlay-conf',
-        metavar='FILE',
-        type=str,
-        nargs='+',
-        default=None,
-        help="configure the overlay defined in FILE, disables overlay config directory searching",
-    )
+        try:
+            self.daemon.logger.debug("removing PID file")
+            util.file_remove(self.daemon.pid)
+        except Exception as e:
+            if self.daemon.logger.is_started():
+                self.daemon.logger.exception(e)
+            raise
 
-    argparser.add_argument(
-        '-td', '--template-dir',
-        metavar='DIR',
-        type=str,
-        default=None,
-        help="use DIR as the configuration template search directory",
-    )
+        self.daemon.remove()
 
-    argparser.add_argument(
-        '-fsd', '--fwbuilder-script-dir',
-        metavar='DIR',
-        type=str,
-        default=None,
-        help="use DIR as the fwbuilder script search directory",
-    )
+        sys.exit(0)
 
-    argparser.add_argument(
-        '-Ld', '--lib-dir',
-        metavar='DIR',
-        type=str,
-        default=None,
-        help="use DIR as the runtime data directory",
-    )
 
-    argparser.add_argument(
-        '-lf', '--log-file',
-        metavar='FILE',
-        type=str,
-        default=None,
-        help="log output to FILE",
-    )
+    def sighup(self, signum, frame):
+        '''
+        Shut down the daemon, make a new daemon to reload the configuration,
+        and start the new daemon.
+        '''
 
-    argparser.add_argument(
-        '-pf', '--pid-file',
-        metavar='FILE',
-        type=str,
-        default=None,
-        help="use FILE as the PID lock file",
-    )
+        signal.signal(signal.SIGHUP, signal.SIG_IGN)
 
-    args = argparser.parse_args()
+        self.daemon.logger.info("handling SIGHUP")
 
-    # Configure the umask of this process so, by default, it will securely
-    # create files.
-    os.umask(
-        stat.S_IRGRP|stat.S_IWGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IWOTH|stat.S_IXOTH
-    )
+        self.daemon.logger.debug("stopping daemon")
+        self.daemon.stop()
+        self.daemon.remove()
 
-    # Create the daemon object, which tracks l3overlay state.
-    # After the daemon object is created, we can log output.
-    l3overlay_daemon = l3overlay.daemon.read(vars(args))
-    l3overlay_daemon.setup()
+        self.daemon = l3overlay.daemon.read(self.args)
+        self.daemon.setup()
 
-    # On exceptions: log output, and quit.
-    try:
+        try:
+            util.pid_create(self.daemon.pid)
+        except Exception as e:
+            if self.daemon.logger.is_started():
+                self.daemon.logger.exception(e)
+            raise
+
+        self.daemon.logger.debug("starting daemon")
+        self.daemon.start()
+
+        self.daemon.logger.info("finished handling SIGHUP")
+
+
+    def main(self):
+        '''
+        Main method.
+        '''
+
+        # Parse optional arguments, and return the final values which will be used
+        # in l3overlayd configuration.
+        argparser = argparse.ArgumentParser(description="Construct one or more MPLS-like VRF networks using IPsec tunnels and network namespaces.")
+
+        argparser.add_argument(
+            '-gc', '--global-conf',
+            metavar='FILE',
+            type=str,
+            default=None,
+            help="use FILE as the global configuration file",
+        )
+
+        argparser.add_argument(
+            '-ocd', '--overlay-conf-dir',
+            metavar='DIR',
+            type=str,
+            default=None,
+            help="use DIR as the overlay conf search directory",
+        )
+
+        argparser.add_argument(
+            '-oc', '--overlay-conf',
+            metavar='FILE',
+            type=str,
+            nargs='+',
+            default=None,
+            help="configure the overlay defined in FILE, disables overlay config directory searching",
+        )
+
+        argparser.add_argument(
+            '-td', '--template-dir',
+            metavar='DIR',
+            type=str,
+            default=None,
+            help="use DIR as the configuration template search directory",
+        )
+
+        argparser.add_argument(
+            '-fsd', '--fwbuilder-script-dir',
+            metavar='DIR',
+            type=str,
+            default=None,
+            help="use DIR as the fwbuilder script search directory",
+        )
+
+        argparser.add_argument(
+            '-Ld', '--lib-dir',
+            metavar='DIR',
+            type=str,
+            default=None,
+            help="use DIR as the runtime data directory",
+        )
+
+        argparser.add_argument(
+            '-lf', '--log-file',
+            metavar='FILE',
+            type=str,
+            default=None,
+            help="log output to FILE",
+        )
+
+        argparser.add_argument(
+            '-pf', '--pid-file',
+            metavar='FILE',
+            type=str,
+            default=None,
+            help="use FILE as the PID lock file",
+        )
+
+        self.args = vars(argparser.parse_args())
+
+        # Configure the umask of this process so, by default, it will securely
+        # create files.
+        os.umask(
+            stat.S_IRGRP|stat.S_IWGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IWOTH|stat.S_IXOTH
+        )
+
+        # Create the daemon object, which tracks l3overlay state.
+        # After the daemon object is created, we can log output.
+        self.daemon = l3overlay.daemon.read(self.args)
+        self.daemon.setup()
+
         # Time to start up the daemon!
-        l3overlay_daemon.start()
+        self.daemon.start()
 
-        # Create the PID file for this daemon.
-        util.pid_create(l3overlay_daemon.pid)
+        # On exceptions: log output, and quit.
+        try:
+            # Create the PID file for this daemon.
+            util.pid_create(self.daemon.pid)
 
-        # Set up process signal handlers.
-        l3overlay_daemon.logger.debug("setting up signal handlers")
-        signal.signal(signal.SIGTERM, sigterm)
-        signal.signal(signal.SIGINT, sigint)
-        signal.signal(signal.SIGHUP, sighup)
+            # Set up process signal handlers.
+            self.daemon.logger.debug("setting up signal handlers")
+            signal.signal(signal.SIGTERM, self.sigterm)
+            signal.signal(signal.SIGINT, self.sigint)
+            signal.signal(signal.SIGHUP, self.sighup)
+        except Exception as e:
+            if self.daemon.logger.is_started():
+                self.daemon.logger.exception(e)
+            raise
 
         # We're done! Time to block and wait for signals.
         while True:
-            l3overlay_daemon.logger.debug("waiting for signal")
+            self.daemon.logger.debug("waiting for signal")
             signal.pause()
 
-    except Exception as e:
-        if l3overlay_daemon.logger.is_started():
-            l3overlay_daemon.logger.exception(e)
-        raise
+
+def main():
+    '''
+    Call the main method in the Main object.
+    '''
+
+    Main().main()

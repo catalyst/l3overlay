@@ -21,7 +21,6 @@
 import os
 import pyroute2
 import re
-import sys
 
 from l3overlay import overlay
 from l3overlay import util
@@ -74,42 +73,18 @@ class Daemon(Worker):
         self.ipsec_secrets = ipsec_secrets
 
         self.overlays = overlays.copy()
+        self.sorted_overlays = Daemon.overlays_list_sorted(self.overlays)
 
 
-    def setup(self):
-        '''
-        Set up daemon runtime state.
-        '''
-
-        if self.is_setup():
-            raise RuntimeError("daemon setup twice")
-
-        self._gre_keys = {}
-        self._interface_names = set()
-
-        self.mesh_links = set()
-        self.root_ipdb = pyroute2.IPDB()
-
-        for o in self.overlays_list_sorted():
-            try:
-                o.setup(self)
-            except Exception as e:
-                o.logger.exception(e)
-                sys.exit(1)
-
-        self.ipsec_process = ipsec_process.create(self)
-
-        self.set_setup()
-
-
-    def overlays_list_sorted(self):
+    @staticmethod
+    def overlays_list_sorted(overlays):
         '''
         Resolve inter-overlay dependencies, and place a sorted list
         of overlays, where there would be no dependency issues upon
         starting them, in place of the existing list.
         '''
 
-        os = self.overlays.copy()
+        os = overlays.copy()
         sos = []
 
         while os:
@@ -133,29 +108,77 @@ class Daemon(Worker):
         sos.append(o)
 
 
+    def setup(self):
+        '''
+        Set up daemon runtime state.
+        '''
+
+        try:
+            if self.is_setup():
+                raise RuntimeError("daemon setup twice")
+
+            self._gre_keys = {}
+            self._interface_names = set()
+
+            self.mesh_links = set()
+            self.root_ipdb = pyroute2.IPDB()
+        except Exception as e:
+            if self.logger.is_running():
+                self.logger.exception(e)
+            raise
+
+        for o in self.sorted_overlays:
+            try:
+                o.setup(self)
+            except Exception as e:
+                if o.logger.is_running():
+                    o.logger.exception(e)
+                raise
+
+        try:
+            self.ipsec_process = ipsec_process.create(self)
+
+            self.set_setup()
+        except Exception as e:
+            if self.logger.is_running():
+                self.logger.exception(e)
+            raise
+
+
     def start(self):
         '''
         Start the daemon.
         '''
 
-        if self.is_starting() or self.is_started():
-            raise RuntimeError("daemon started twice")
+        try:
+            if self.is_starting() or self.is_started():
+                raise RuntimeError("daemon started twice")
 
-        self.set_starting()
+            self.set_starting()
 
-        self.logger.debug("creating lib dir '%s'" % self.lib_dir)
-        util.directory_create(self.lib_dir)
+            self.logger.debug("creating lib dir '%s'" % self.lib_dir)
+            util.directory_create(self.lib_dir)
+        except Exception as e:
+            if self.logger.is_running():
+                self.logger.exception(e)
+            raise
 
-        for o in self.overlays_list_sorted():
+        for o in self.sorted_overlays:
             try:
                 o.start()
             except Exception as e:
-                o.logger.exception(e)
-                sys.exit(1)
+                if o.logger.is_running():
+                    o.logger.exception(e)
+                raise
 
-        self.ipsec_process.start()
+        try:
+            self.ipsec_process.start()
 
-        self.set_started()
+            self.set_started()
+        except Exception as e:
+            if self.logger.is_running():
+                self.logger.exception(e)
+            raise
 
 
     def stop(self):
@@ -163,29 +186,46 @@ class Daemon(Worker):
         Stop the daemon.
         '''
 
-        if not self.is_started():
-            raise RuntimeError("daemon not yet started")
+        try:
+            if not self.is_started():
+                raise RuntimeError("daemon not yet started")
 
-        if self.is_stopped() or self.is_stopped():
-            raise RuntimeError("daemon stopped twice")
+            if self.is_stopped() or self.is_stopped():
+                raise RuntimeError("daemon stopped twice")
 
-        self.set_stopping()
+            self.set_stopping()
 
-        self.ipsec_process.stop()
-        self.ipsec_process.remove()
+            self.ipsec_process.stop()
+            self.ipsec_process.remove()
+        except Exception as e:
+            if self.logger.is_running():
+                self.logger.exception(e)
+            raise
 
-        for o in reversed(self.overlays_list_sorted()):
+        for o in reversed(self.sorted_overlays):
             try:
                 o.stop()
             except Exception as e:
-                o.logger.exception(e)
-                sys.exit(1)
-            o.remove()
+                if o.logger.is_running():
+                    o.logger.exception(e)
+                raise
 
-        self.logger.debug("removing lib dir '%s'" % self.lib_dir)
-        util.directory_remove(self.lib_dir)
+            try:
+                o.remove()
+            except Exception as e:
+                if self.logger.is_running():
+                    self.logger.exception(e)
+                raise
 
-        self.set_stopped()
+        try:
+            self.logger.debug("removing lib dir '%s'" % self.lib_dir)
+            util.directory_remove(self.lib_dir)
+
+            self.set_stopped()
+        except Exception as e:
+            if self.logger.is_running():
+                self.logger.exception(e)
+            raise
 
 
     def remove(self):
@@ -193,17 +233,22 @@ class Daemon(Worker):
         Remove the daemon runtime state.
         '''
 
-        if self.is_removed():
-            raise RuntimeError("daemon removed twice")
+        try:
+            if self.is_removed():
+                raise RuntimeError("daemon removed twice")
 
-        if not self.is_stopped():
-            raise RuntimeError("daemon not yet stopped")
+            if not self.is_stopped():
+                raise RuntimeError("daemon not yet stopped")
 
-        self.set_removing()
+            self.set_removing()
 
-        self.logger.stop()
+            self.logger.stop()
 
-        self.set_removed()
+            self.set_removed()
+        except Exception as e:
+            if self.logger.is_running():
+                self.logger.exception(e)
+            raise
 
 
     def gre_key(self, local, remote):
