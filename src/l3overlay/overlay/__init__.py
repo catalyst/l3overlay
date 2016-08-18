@@ -283,39 +283,33 @@ def read(log, log_level, conf):
     lg = logger.create(log, log_level, "l3overlay", name)
     lg.start()
 
-    # Log exceptions to the overlay logger from now on.
-    try:
-        # Global overlay configuration.
-        enabled = util.boolean_get(section["enabled"]) if "enabled" in section else True
-        asn = util.integer_get(section["asn"])
-        linknet_pool = util.ip_network_get(section["linknet-pool"])
+    # Global overlay configuration.
+    enabled = util.boolean_get(section["enabled"]) if "enabled" in section else True
+    asn = util.integer_get(section["asn"])
+    linknet_pool = util.ip_network_get(section["linknet-pool"])
 
-        fwbuilder_script_file = section["fwbuilder-script"] if "fwbuilder-script" in section else None
+    fwbuilder_script_file = section["fwbuilder-script"] if "fwbuilder-script" in section else None
 
-        # Generate the list of nodes, sorted numerically.
-        ns = {util.integer_get(k[5:]):v.split(" ") for k, v in section.items() if k.startswith("node-")}
-        nodes = [(util.name_get(ns[k][0]), util.ip_address_get(ns[k][1])) for k in sorted(ns.keys())]
+    # Generate the list of nodes, sorted numerically.
+    ns = {util.integer_get(k[5:]):v.split(" ") for k, v in section.items() if k.startswith("node-")}
+    nodes = [(util.name_get(ns[k][0]), util.ip_address_get(ns[k][1])) for k in sorted(ns.keys())]
 
-        if len(nodes) != len(set(nodes)):
-            raise RuntimeError("node list contains duplicates")
+    if len(nodes) != len(set(nodes)):
+        raise RuntimeError("node list of overlay '%s' contains duplicates" % name)
 
-        # Get the node object for this node from the list of nodes.
-        this_node = next((n for n in nodes if n[0] == util.name_get(section["this-node"])), None)
+    # Get the node object for this node from the list of nodes.
+    this_node = next((n for n in nodes if n[0] == util.name_get(section["this-node"])), None)
 
-        if not this_node:
-            raise RuntimeError("this node '%s' is missing from node list" %
-                    util.name_get(section["this-node"]))
+    if not this_node:
+        raise RuntimeError("this node '%s' is missing from node list of overlay '%s' " %
+                (util.name_get(section["this-node"]), name))
 
-        # Static interfaces.
-        interfaces = [interface.read(lg, h, s) for h, s in config.items() if h.startswith("static")]
+    # Static interfaces.
+    interfaces = [interface.read(lg, h, s) for h, s in config.items() if h.startswith("static")]
 
-        # Return overlay object.
-        return Overlay(lg, name,
-            enabled, asn, linknet_pool, fwbuilder_script_file, nodes, this_node, interfaces)
-
-    except Exception as e:
-        lg.exception(e)
-        sys.exit(1)
+    # Return overlay object.
+    return Overlay(lg, name,
+        enabled, asn, linknet_pool, fwbuilder_script_file, nodes, this_node, interfaces)
 
 
 def write(overlay, config):

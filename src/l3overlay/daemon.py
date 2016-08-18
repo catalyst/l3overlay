@@ -277,9 +277,9 @@ class ValueReader(object):
         arg_key = key.lower().replace("-", "_")
         config_key = key.lower().replace("_", "-")
 
-        if arg_key in self.args:
+        if self.args and arg_key in self.args and self.args[arg_key]:
             return self.args[arg_key]
-        elif self.config and config_key in self.config:
+        elif self.config and config_key in self.config and self.config[config_key]:
             return self.config[config_key]
         else:
             return default
@@ -287,7 +287,7 @@ class ValueReader(object):
 
 def read(args):
     '''
-    Create a daemon object using the given arguments.
+    Create a daemon object using the given argument dictionary.
     '''
 
     # Load the global configuration file (if specified),
@@ -325,7 +325,7 @@ def read(args):
         overlay_dir = os.path.join(lib_dir, "overlays")
 
         fwbuilder_script_dir = reader.get("fwbuilder-script-dir", util.path_search("fwbuilder_scripts"))
-        overlay_conf_dir = reader.get("overlay-conf-dir", util.path_search("overlays")) if "overlay_conf" not in args else None
+        overlay_conf_dir = reader.get("overlay-conf-dir", util.path_search("overlays"))
         template_dir = reader.get("template-dir", util.path_search("templates"))
 
         # Get required file paths.
@@ -334,18 +334,11 @@ def read(args):
         ipsec_conf = reader.get("ipsec-conf", os.path.join(util.path_root(), "etc", "ipsec.d", "l3overlay.conf"))
         ipsec_secrets = reader.get("ipsec-secrets", os.path.join(util.path_root(), "etc", "ipsec.secrets" if ipsec_manage else "ipsec.l3overlay.secrets"))
 
-        # Create a list of all the overlay configuration file paths.
-        overlay_confs = []
+        overlay_confs = tuple(reader.get("overlay-conf", (os.path.join(overlay_conf_dir, oc) for oc in os.listdir(overlay_conf_dir)) if overlay_conf_dir else ()))
 
-        if overlay_conf_dir:
-            for overlay_conf_file in os.listdir(overlay_conf_dir):
-                overlay_conf = os.path.join(overlay_conf_dir, overlay_conf_file)
-                if os.path.isfile(overlay_conf):
-                   overlay_confs.append(overlay_conf)
-        elif args.overlay_conf:
-            overlay_confs.extend(args.overlay_conf)
-        else:
-            raise RuntimeError("no overlay configuration files found")
+        # Configuration checks.
+        if not overlay_confs:
+                raise RuntimeError("no overlay configuration files found")
 
         # Create the application state for each overlay.
         overlays = {}
@@ -366,7 +359,7 @@ def read(args):
 
     except Exception as e:
         lg.exception(e)
-        sys.exit(1)
+        raise
 
 
 def write(daemon, global_conf, overlay_conf_dir):

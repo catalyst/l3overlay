@@ -186,7 +186,7 @@ def main():
 
     # Create the daemon object, which tracks l3overlay state.
     # After the daemon object is created, we can log output.
-    l3overlay_daemon = l3overlay.daemon.read(args)
+    l3overlay_daemon = l3overlay.daemon.read(vars(args))
     l3overlay_daemon.setup()
 
     # On exceptions: log output, and quit.
@@ -211,6 +211,4 @@ def main():
     except Exception as e:
         if l3overlay_daemon.logger.is_started():
             l3overlay_daemon.logger.exception(e)
-            sys.exit(1)
-        else:
-            raise
+        raise
