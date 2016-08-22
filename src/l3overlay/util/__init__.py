@@ -42,11 +42,11 @@ def boolean_get(value):
     is not a valid boolean.
     '''
 
-    if isinstance(bool, value):
+    if isinstance(value, bool):
         return value
-    if isinstance(int, value):
+    if isinstance(value, int):
         return True if lower_value > 0 else False
-    elif isinstance(str, value):
+    elif isinstance(value, str):
         lower_value = value.lower()
 
         if lower_value != "true" and lower_value != "false":
