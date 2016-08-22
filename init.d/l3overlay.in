@@ -54,7 +54,7 @@ do_start()
 		--name $DAEMON_NAME --test > /dev/null \
 		|| return 1
 	start-stop-daemon --start --background --quiet --pidfile $PIDFILE --startas $DAEMON \
-		--name $DAEMON_NAME -- $DAEMON_ARGS --pid-file $PIDFILE \
+		--name $DAEMON_NAME -- $DAEMON_ARGS --pid $PIDFILE \
 		|| return 2
 }
 
