@@ -357,10 +357,10 @@ def read(args):
     # Log exceptions for the rest of the initialisation process.
     try:
         # Get (general) global configuration.
-        dry_run = util.boolean_get(reader.get("dry-run", "false"))
+        dry_run = util.boolean_get(reader.get("dry-run", False))
 
-        use_ipsec = util.boolean_get(reader.get("use-ipsec", "false"))
-        ipsec_manage = util.boolean_get(reader.get("ipsec-manage", "true"))
+        use_ipsec = util.boolean_get(reader.get("use-ipsec", False))
+        ipsec_manage = util.boolean_get(reader.get("ipsec-manage", True))
 
         _psk = reader.get("ipsec-psk")
         ipsec_psk = util.hex_get_string(_psk, min=6, max=64) if _psk else None

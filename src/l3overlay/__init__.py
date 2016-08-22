@@ -130,69 +130,105 @@ class Main(object):
         # in l3overlayd configuration.
         argparser = argparse.ArgumentParser(description="Construct one or more MPLS-like VRF networks using IPsec tunnels and network namespaces.")
 
+        # Configuration options.
         argparser.add_argument(
-            '-gc', '--global-conf',
-            metavar='FILE',
-            type=str,
-            default=None,
-            help="use FILE as the global configuration file",
+            "-dr", "--dry-run",
+            action = "store_true",
+            help = "test configuration and daemon without modifying the system",
         )
 
         argparser.add_argument(
-            '-ocd', '--overlay-conf-dir',
-            metavar='DIR',
-            type=str,
-            default=None,
-            help="use DIR as the overlay conf search directory",
+            "-ui", "--use-ipsec",
+            action = "store_true",
+            help = "use IPsec encapsulation on the overlay mesh",
+        )
+        argparser.add_argument(
+            "-im", "--ipsec-manage",
+            action = "store_true",
+            help = "operate in IPsec daemon management mode",
+        )
+        # No way we're having ipsec-psk as an argument, for obvious reasons.
+
+        # Directory paths.
+        argparser.add_argument(
+            "-ocd", "--overlay-conf-dir",
+            metavar = "DIR",
+            type = str,
+            default = None,
+            help = "use DIR as the overlay conf search directory",
         )
 
         argparser.add_argument(
-            '-oc', '--overlay-conf',
-            metavar='FILE',
-            type=str,
-            nargs='+',
-            default=None,
-            help="configure the overlay defined in FILE, disables overlay config directory searching",
+            "-td", "--template-dir",
+            metavar = "DIR",
+            type = str,
+            default = None,
+            help = "use DIR as the configuration template search directory",
         )
 
         argparser.add_argument(
-            '-td', '--template-dir',
-            metavar='DIR',
-            type=str,
-            default=None,
-            help="use DIR as the configuration template search directory",
+            "-fsd", "--fwbuilder-script-dir",
+            metavar = "DIR",
+            type = str,
+            default = None,
+            help = "use DIR as the fwbuilder script search directory",
         )
 
         argparser.add_argument(
-            '-fsd', '--fwbuilder-script-dir',
-            metavar='DIR',
-            type=str,
-            default=None,
-            help="use DIR as the fwbuilder script search directory",
+            "-Ld", "--lib-dir",
+            metavar = "DIR",
+            type = str,
+            default = None,
+            help = "use DIR as the runtime data directory",
+        )
+
+        # File paths.
+        argparser.add_argument(
+            "-gc", "--global-conf",
+            metavar = "FILE",
+            type = str,
+            default = None,
+            help = "use FILE as the global configuration file",
         )
 
         argparser.add_argument(
-            '-Ld', '--lib-dir',
-            metavar='DIR',
-            type=str,
-            default=None,
-            help="use DIR as the runtime data directory",
+            "-oc", "--overlay-conf",
+            metavar = "FILE",
+            type = str,
+            nargs = "+",
+            default = None,
+            help = "configure the overlay defined in FILE, disables overlay config directory searching",
         )
 
         argparser.add_argument(
-            '-lf', '--log-file',
-            metavar='FILE',
-            type=str,
-            default=None,
-            help="log output to FILE",
+            "-l", "--log",
+            metavar = "FILE",
+            type = str,
+            default = None,
+            help = "log output to FILE",
         )
 
         argparser.add_argument(
-            '-pf', '--pid-file',
-            metavar='FILE',
-            type=str,
-            default=None,
-            help="use FILE as the PID lock file",
+            "-p", "--pid",
+            metavar = "FILE",
+            type = str,
+            default = None,
+            help = "write the daemon PID to FILE",
+        )
+
+        argparser.add_argument(
+            "-ic", "--ipsec-conf",
+            metavar = "FILE",
+            type = str,
+            default = None,
+            help = "write IPsec configuration to FILE",
+        )
+        argparser.add_argument(
+            "-is", "--ipsec-secrets",
+            metavar = "FILE",
+            type = str,
+            default = None,
+            help = "write IPsec secrets to FILE",
         )
 
         self.args = vars(argparser.parse_args())

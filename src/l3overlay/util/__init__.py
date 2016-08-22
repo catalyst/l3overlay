@@ -42,12 +42,19 @@ def boolean_get(value):
     is not a valid boolean.
     '''
 
-    lower_value = value.lower()
+    if isinstance(bool, value):
+        return value
+    if isinstance(int, value):
+        return True if lower_value > 0 else False
+    elif isinstance(str, value):
+        lower_value = value.lower()
 
-    if lower_value != "true" and lower_value != "false":
-        raise ValueError("invalid value for boolean: %s" % lower_value)
+        if lower_value != "true" and lower_value != "false":
+            raise ValueError("invalid value for boolean: %s" % lower_value)
 
-    return True if lower_value == "true" else False
+        return True if lower_value == "true" else False
+    else:
+        raise ValueError("invalid value for boolean: %s" % value)
 
 
 def integer_get(value):
