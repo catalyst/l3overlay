@@ -27,6 +27,7 @@ from l3overlay.network.interface import dummy
 from l3overlay.network.interface import veth
 
 from l3overlay.overlay.interface.base import Interface
+from l3overlay.overlay.interface.base import ReadError
 
 
 class OverlayLink(Interface):
@@ -165,7 +166,7 @@ def read(logger, name, config):
     netmask = util.netmask_get(config["netmask"], util.ip_address_is_v6(inner_address))
 
     if (type(inner_address) != type(outer_address)):
-        raise ValueError("inner address '%s' (%s) and outer address '%s' (%s) must be the same type of IP address" %
+        raise ReadError("inner address '%s' (%s) and outer address '%s' (%s) must be the same type of IP address" %
                 (inner_address, str(type(nner_address)),
                     outer_address, str(type(outer_address))))
 

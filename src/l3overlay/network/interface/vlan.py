@@ -19,6 +19,8 @@
 
 
 from l3overlay.network.interface import Interface
+from l3overlay.network.interface import NotFoundError
+from l3overlay.network.interface import UnexpectedTypeError
 
 
 IF_TYPE = "vlan"
@@ -57,11 +59,11 @@ def get(dry_run, logger, ipdb, name):
         interface = ipdb.interfaces[name]
 
         if interface.kind != IF_TYPE:
-            raise RuntimeError("found interface of type '%s', expected '%s': %s" % (interface.kind, IF_TYPE, name))
+            raise UnexpectedTypeError("found interface of type '%s', expected '%s': %s" % (interface.kind, IF_TYPE, name))
 
         return VLAN(ipdb, interface, name, interface.peer)
     else:
-        raise RuntimeError("unable to find %s interface in IPDB: %s" % (IF_TYPE, name))
+        raise NotFound("unable to find %s interface in IPDB: %s" % (IF_TYPE, name))
 
 
 def create(dry_run, logger, ipdb, name, link, id):

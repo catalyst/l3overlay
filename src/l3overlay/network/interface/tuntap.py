@@ -19,6 +19,8 @@
 
 
 from l3overlay.network.interface import Interface
+from l3overlay.network.interface import NotFoundError
+from l3overlay.network.interface import UnexpectedTypeError
 
 
 IF_TYPE = "tuntap"
@@ -54,11 +56,11 @@ def get(dry_run, logger, ipdb, name):
         interface = ipdb.interfaces[name]
 
         if interface.kind != IF_TYPE:
-            raise RuntimeError("found interface of type '%s', expected '%s': %s" % (interface.kind, IF_TYPE, name))
+            raise UnexpectedTypeError("found interface of type '%s', expected '%s': %s" % (interface.kind, IF_TYPE, name))
 
         return Tuntap(logger, ipdb, interface, name, interface.mode)
     else:
-        raise RuntimeError("unable to find %s interface in IPDB: %s" % (IF_TYPE, name))
+        raise NotFoundError("unable to find %s interface in IPDB: %s" % (IF_TYPE, name))
 
 
 def create(dry_run, logger, ipdb, name, mode="tap", uid=0, gid=0, ifr=None):

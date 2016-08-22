@@ -31,14 +31,22 @@ from l3overlay.overlay.interface.veth import VETH
 from l3overlay.process import ipsec as ipsec_process
 
 from l3overlay.util import logger
+from l3overlay.util import worker
 
-from l3overlay.util.worker import Worker
+from l3overlay.util.exception.l3overlayerror import L3overlayError
 
 
-class Daemon(Worker):
+class NoOverlayConfError(L3overlayError):
+    pass
+
+
+class Daemon(worker.Worker):
     '''
     Daemon class for overlay management.
     '''
+
+    description = "daemon"
+
 
     def __init__(self, dry_run, logger,
             log, log_level, use_ipsec, ipsec_manage, ipsec_psk,
@@ -50,7 +58,7 @@ class Daemon(Worker):
         Set up daemon internal fields.
         '''
 
-        super().__init__()
+        super().__init__(use_setup=True)
 
         self.dry_run = dry_run
         self.logger = logger
@@ -114,8 +122,7 @@ class Daemon(Worker):
         '''
 
         try:
-            if self.is_setup():
-                raise RuntimeError("daemon setup twice")
+            self.set_settingup()
 
             self._gre_keys = {}
             self._interface_names = set()
@@ -151,9 +158,6 @@ class Daemon(Worker):
         '''
 
         try:
-            if self.is_starting() or self.is_started():
-                raise RuntimeError("daemon started twice")
-
             self.set_starting()
 
             self.logger.debug("creating lib dir '%s'" % self.lib_dir)
@@ -187,12 +191,6 @@ class Daemon(Worker):
         '''
 
         try:
-            if not self.is_started():
-                raise RuntimeError("daemon not yet started")
-
-            if self.is_stopped() or self.is_stopped():
-                raise RuntimeError("daemon stopped twice")
-
             self.set_stopping()
 
             self.ipsec_process.stop()
@@ -234,12 +232,6 @@ class Daemon(Worker):
         '''
 
         try:
-            if self.is_removed():
-                raise RuntimeError("daemon removed twice")
-
-            if not self.is_stopped():
-                raise RuntimeError("daemon not yet stopped")
-
             self.set_removing()
 
             self.logger.stop()
@@ -294,7 +286,7 @@ class Daemon(Worker):
         self._interface_names.add(ifname)
         return ifname
 
-Worker.register(Daemon)
+worker.Worker.register(Daemon)
 
 
 class ValueReader(object):
@@ -383,7 +375,7 @@ def read(args):
 
         # Configuration checks.
         if not overlay_confs:
-                raise RuntimeError("no overlay configuration files found")
+                raise NoOverlayConfError("no overlay configuration files found")
 
         # Create the application state for each overlay.
         overlays = {}

@@ -28,6 +28,9 @@ from l3overlay.overlay.interface import tuntap
 from l3overlay.overlay.interface import veth
 from l3overlay.overlay.interface import vlan
 
+from l3overlay.overlay.interface.base import ReadError
+from l3overlay.overlay.interface.base import WriteError
+
 
 def read(logger, section, config):
     '''
@@ -51,9 +54,9 @@ def read(logger, section, config):
     elif interface_type == "static-vlan":
         return vlan.read(logger, name, config)
     elif name.startswith("static"):
-        raise RuntimeError("unsupported static interface type '%s' with name '%s'" % (interface_type, name))
+        raise ReadError("unsupported static interface type '%s' with name '%s'" % (interface_type, name))
     else:
-        raise RuntimeError("unsupported section type '%s'" % section)
+        raise ReadError("unsupported section type '%s'" % section)
 
 
 def write(interface, config):
@@ -86,7 +89,7 @@ def write(interface, config):
         section = util.section_header("static-vlan", interface.name)
         interface_class = vlan
     else:
-        raise RuntimeError("unsupported interface type '%s'" % str(type(interface)))
+        raise WriteError("unsupported interface type '%s'" % str(type(interface)))
 
     config[section] = {}
     interface_class.write(interface, config[section])

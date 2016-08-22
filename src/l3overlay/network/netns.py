@@ -27,7 +27,14 @@ import pyroute2.netns.process.proxy
 
 from l3overlay import util
 
+from l3overlay.util.exception.l3overlayerror import L3overlayError
+
 from l3overlay.util.worker import Worker
+from l3overlay.util.worker import NotYetStartedError
+
+
+class UnableToCreateNetnsError(L3overlayError):
+    pass
 
 
 class NetNS(Worker):
@@ -41,12 +48,13 @@ class NetNS(Worker):
         Set up network namespace internal fields.
         '''
 
-        super().__init__()
+        super().__init__(use_remove=True)
 
         self.dry_run = dry_run
 
         self.logger = logger
         self.name = name
+        self.description = "network namespace '%s'" % self.name
 
         self.netns = None
         self.ipdb = None
@@ -57,9 +65,6 @@ class NetNS(Worker):
         Start the network namespace object, and create the network
         namespace if it doesn't exist.
         '''
-
-        if self.is_starting() or self.is_started():
-            raise RuntimeError("Network namespace '%s' started twice" % self.name)
 
         self.set_starting()
 
@@ -72,8 +77,9 @@ class NetNS(Worker):
                 except FileExistsError:
                     # Network namespace already exists
                     pass
-                except:
-                    raise RuntimeError("unable to create network namespace: %s" % self.name)
+                except e:
+                    raise UnableToCreateNetnsError("unable to create network namespace '%s': %s" %
+                            (self.name, e))
 
             self.netns = pyroute2.NetNS(self.name)
             self.ipdb = pyroute2.IPDB(nl=self.netns)
@@ -85,12 +91,6 @@ class NetNS(Worker):
         '''
         Stop the network namespace object.
         '''
-
-        if not self.is_started():
-            raise RuntimeError("network namespace '%s' not yet started" % self.name)
-
-        if self.is_stopped() or self.is_stopped():
-            raise RuntimeError("network namespace '%s' stopped twice" % self.name)
 
         self.set_stopping()
 
@@ -108,12 +108,6 @@ class NetNS(Worker):
         Remove a network namespace from the system.
         '''
 
-        if self.is_started():
-            raise RuntimeError("network namespace '%s' still running, stop before removing" % self.name)
-
-        if self.is_removing() or self.is_removed():
-            raise RuntimeError("cannot remove NetNS a second time: %s" % self.name)
-
         self.set_removing()
 
         self.logger.debug("removing network namespace '%s'" % self.name)
@@ -130,7 +124,7 @@ class NetNS(Worker):
         '''
 
         if not self.is_started():
-            raise RuntimeError("network namespace '%s' not yet started" % self.name)
+            raise NotYetStartedError("%s not yet started" % self.description)
 
         if self.dry_run:
             # Create a dummy NSPopen object with a

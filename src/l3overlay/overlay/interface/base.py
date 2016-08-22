@@ -22,6 +22,15 @@ import abc
 
 from l3overlay import util
 
+from l3overlay.util.exception.l3overlayerror import L3overlayError
+
+
+class ReadError(L3overlayError):
+    pass
+
+class WriteError(L3overlayError):
+    pass
+
 
 class Interface(metaclass=abc.ABCMeta):
     '''

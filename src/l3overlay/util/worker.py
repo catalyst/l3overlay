@@ -20,8 +20,57 @@
 
 import abc
 
+from l3overlay.util.exception.l3overlayerror import L3overlayError
 
-STATES = ("starting", "started", "stopping", "stopped", "removing", "removed")
+
+STATES = ("settingup", "setup", "starting", "started", "stopping", "stopped", "removing", "removed")
+
+
+class InvalidSetupStateError(L3overlayError):
+    pass
+
+class InvalidWorkerStateError(L3overlayError):
+    pass
+
+
+class SetupTwiceError(L3overlayError):
+    pass
+
+class NotYetSettingupError(L3overlayError):
+    pass
+
+class NotYetSetupError(L3overlayError):
+    pass
+
+
+class StartedTwiceError(L3overlayError):
+    pass
+
+class NotYetStartingError(L3overlayError):
+    pass
+
+class NotYetStartedError(L3overlayError):
+    pass
+
+
+class StoppedTwiceError(L3overlayError):
+    pass
+
+class NotYetStoppingError(L3overlayError):
+    pass
+
+class NotYetStoppedError(L3overlayError):
+    pass
+
+
+class RemovedTwiceError(L3overlayError):
+    pass
+
+class NotYetRemovingError(L3overlayError):
+    pass
+
+class NotYetRemovedError(L3overlayError):
+    pass
 
 
 class Worker(metaclass=abc.ABCMeta):
@@ -31,13 +80,21 @@ class Worker(metaclass=abc.ABCMeta):
     for this.
     '''
 
-    def __init__(self):
+    description = "worker"
+
+
+    def __init__(self, use_setup = False, use_remove = False):
         '''
         Set up worker internal fields.
         '''
 
-        self._setup = False
-        self._state = "stopped"
+        self.use_setup = use_setup
+        self.use_remove = use_remove
+
+        self._states = dict.fromkeys(
+            STATES,
+            False,
+        )
 
 
     def _assert_state(self):
@@ -45,28 +102,63 @@ class Worker(metaclass=abc.ABCMeta):
         Check that the worker state is valid.
         '''
 
-        if not isinstance(self._setup, bool):
-            raise RuntimeError("invalid setup state '%s', expected True/False" % self._setup)
+        for state, value in self._states.items():
+            if state not in STATES:
+                raise InvalidWorkerStateError(
+                    "invalid worker state type '%s' for %s, expected one of %s" %
+                            (state, self.description, STATES))
+            if not isinstance(value, bool):
+                raise InvalidWorkerStateError(
+                    "invalid worker state value '%s' in state type '%s' for %s, expected boolean" %
+                            (value, state, self.description))
 
-        if self._state not in STATES:
-            raise RuntimeError("invalid worker state '%s', expected one of %s" % (self._state, STATES))
+
+    def is_settingup(self):
+        '''
+        Check if the worker is currently setting up.
+        '''
+
+        self._assert_state()
+        return self._states["settingup"]
+
+
+    def set_settingup(self):
+        '''
+        Set the worker as setting up.
+        '''
+
+        self._assert_state()
+
+        if self.is_settingup() or self.is_setup():
+            raise SetupTwiceError("%s setup twice" % self.description)
+
+        self._states["settingup"] = True
 
 
     def is_setup(self):
         '''
-        Check if the worker has had 'setup()' called yet.
+        Check if the worker has been set up.
         '''
 
         self._assert_state()
-        return self._setup
+        return self._states["setup"]
 
 
     def set_setup(self):
         '''
-        Set the worker to be set up.
+        Set the worker as set up.
         '''
 
-        self._setup = True
+        self._assert_state()
+
+        if self.is_setup():
+            raise SetupTwiceError("%s setup twice" % self.description)
+
+        if not self.is_settingup():
+            raise NotYetSettingupError("%s not yet set to setting up" % self.description)
+
+        self._states["settingup"] = False
+        self._states["setup"] = True
 
 
     def is_starting(self):
@@ -75,7 +167,7 @@ class Worker(metaclass=abc.ABCMeta):
         '''
 
         self._assert_state()
-        return self._state == "starting"
+        return self._states["starting"]
 
 
     def set_starting(self):
@@ -84,7 +176,14 @@ class Worker(metaclass=abc.ABCMeta):
         '''
 
         self._assert_state()
-        self._state = "starting"
+
+        if self.is_starting() or self.is_started():
+            raise StartedTwiceError("%s started twice" % self.description)
+
+        if self.use_setup and not self.is_setup():
+            raise NotYetSetupError("%s not yet set up" % self.description)
+
+        self._states["starting"] = True
 
 
     def is_started(self):
@@ -93,7 +192,7 @@ class Worker(metaclass=abc.ABCMeta):
         '''
 
         self._assert_state()
-        return self._state == "started"
+        return self._states["started"]
 
 
     def set_started(self):
@@ -102,7 +201,18 @@ class Worker(metaclass=abc.ABCMeta):
         '''
 
         self._assert_state()
-        self._state = "started"
+
+        if self.is_started():
+            raise StartedTwiceError("%s started twice" % self.description)
+
+        if self.use_setup and not self.is_setup():
+            raise NotYetSetupError("%s not yet set up" % self.description)
+
+        if not self.is_starting():
+            raise NotYetStartingError("%s not yet set to starting" % self.description)
+
+        self._states["starting"] = False
+        self._states["started"] = True
 
 
     def is_running(self):
@@ -127,7 +237,7 @@ class Worker(metaclass=abc.ABCMeta):
         '''
 
         self._assert_state()
-        return self._state == "stopping"
+        return self._states["stopping"]
 
 
     def set_stopping(self):
@@ -136,7 +246,14 @@ class Worker(metaclass=abc.ABCMeta):
         '''
 
         self._assert_state()
-        self._state = "stopping"
+
+        if self.is_stopping() or self.is_stopped():
+            raise StoppedTwiceError("%s stopped twice" % self.description)
+
+        if not self.is_started():
+            raise NotYetStartedError("%s not yet started" % self.description)
+
+        self._states["stopping"] = True
 
 
     def is_stopped(self):
@@ -145,7 +262,7 @@ class Worker(metaclass=abc.ABCMeta):
         '''
 
         self._assert_state()
-        return self._state == "stopped"
+        return self._states["stopped"]
 
 
     def set_stopped(self):
@@ -154,7 +271,20 @@ class Worker(metaclass=abc.ABCMeta):
         '''
 
         self._assert_state()
-        self._state = "stopped"
+
+        if self.is_stopped():
+            raise StoppedTwiceError("%s stopped twice" % self.description)
+
+        if not self.is_started():
+            raise NotYetStartedError("%s not yet started" % self.description)
+
+        if not self.is_stopping():
+            raise NotYetStoppingError("%s not yet set to stopping" % self.description)
+
+        self._states["stopping"] = False
+        self._states["stopped"] = True
+
+        self._states["started"] = False
 
 
     def is_removing(self):
@@ -163,7 +293,7 @@ class Worker(metaclass=abc.ABCMeta):
         '''
 
         self._assert_state()
-        return self._state == "removing"
+        return self._states["removing"]
 
 
     def set_removing(self):
@@ -172,7 +302,14 @@ class Worker(metaclass=abc.ABCMeta):
         '''
 
         self._assert_state()
-        self._state = "removing"
+
+        if self.is_removing() or self.is_removed():
+            raise RemovedTwiceError("%s removed twice" % self.description)
+
+        if self.is_started():
+            raise NotYetStoppedError("%s not yet stopped" % self.description)
+
+        self._states["removing"] = True
 
 
     def is_removed(self):
@@ -181,7 +318,7 @@ class Worker(metaclass=abc.ABCMeta):
         '''
 
         self._assert_state()
-        return self._state == "removed"
+        return self._states["removed"]
 
 
     def set_removed(self):
@@ -190,7 +327,20 @@ class Worker(metaclass=abc.ABCMeta):
         '''
 
         self._assert_state()
-        self._state = "removed"
+
+        if self.is_removed():
+            raise RemovedTwiceError("%s removed twice" % self.description)
+
+        if self.is_started():
+            raise NotYetStoppedError("%s not yet stopped" % self.description)
+
+        if not self.is_removing():
+            raise NotYetRemovingError("%s not yet set to removing" % self.description)
+
+        self._states["removing"] = False
+        self._states["removed"] = True
+
+        self._states["setup"] = False
 
 
     def setup(self):

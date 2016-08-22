@@ -24,7 +24,7 @@ import os
 from l3overlay import util
 
 from l3overlay.util.worker import Worker
-
+from l3overlay.util.worker import NotYetStartedError
 
 class Logger(Worker):
     '''
@@ -44,6 +44,7 @@ class Logger(Worker):
         self.logger_section = logger_section
 
         self.name = "%s-%s" % (logger_name, logger_section) if logger_section else logger_name
+        self.description = "logger '%s'" % self.name
 
         lf = str.format(
             "%(asctime)s {0}: <{1}> [%(levelname)s] %(message)s",
@@ -64,9 +65,6 @@ class Logger(Worker):
         Start the logger.
         '''
 
-        if self.is_starting() or self.is_started():
-            raise RuntimeError("daemon started twice")
-
         self.set_starting()
 
         self.logger = logging.getLogger(self.name)
@@ -75,8 +73,6 @@ class Logger(Worker):
         if self.log:
             self.logger.addHandler(self.logger_file_handler)
 
-        self.logger.debug("started logger")
-
         self.set_started()
 
 
@@ -84,12 +80,6 @@ class Logger(Worker):
         '''
         Stop the logger.
         '''
-
-        if not self.is_started():
-            raise RuntimeError("logger '%s' not yet started" % self.name)
-
-        if self.is_stopped() or self.is_stopped():
-            raise RuntimeError("daemon '%s' stopped twice" % self.name)
 
         self.set_stopping()
 
@@ -106,7 +96,7 @@ class Logger(Worker):
         '''
 
         if not self.is_started():
-            raise RuntimeError("logger '%s' not yet started" % self.name)
+            raise NotYetStartedError("%s not yet started" % self.description)
 
         self.logger.debug(msg, *args, **kwargs)
 
@@ -117,7 +107,7 @@ class Logger(Worker):
         '''
 
         if not self.is_started():
-            raise RuntimeError("logger '%s' not yet started" % self.name)
+            raise NotYetStartedError("%s not yet started" % self.description)
 
         self.logger.info(msg, *args, **kwargs)
 
@@ -128,7 +118,7 @@ class Logger(Worker):
         '''
 
         if not self.is_started():
-            raise RuntimeError("logger '%s' not yet started" % self.name)
+            raise NotYetStartedError("%s not yet started" % self.description)
 
         self.logger.warning(msg, *args, **kwargs)
 
@@ -139,7 +129,7 @@ class Logger(Worker):
         '''
 
         if not self.is_started():
-            raise RuntimeError("logger '%s' not yet started" % self.name)
+            raise NotYetStartedError("%s not yet started" % self.description)
 
         self.logger.error(msg, *args, **kwargs)
 
@@ -150,7 +140,7 @@ class Logger(Worker):
         '''
 
         if not self.is_started():
-            raise RuntimeError("logger '%s' not yet started" % self.name)
+            raise NotYetStartedError("%s not yet started" % self.description)
 
         self.logger.critical(msg, *args, **kwargs)
 
@@ -161,7 +151,7 @@ class Logger(Worker):
         '''
 
         if not self.is_started():
-            raise RuntimeError("logger '%s' not yet started" % self.name)
+            raise NotYetStartedError("%s not yet started" % self.description)
 
         self.logger.log(lvl, msg, *args, **kwargs)
 
@@ -172,7 +162,7 @@ class Logger(Worker):
         '''
 
         if not self.is_started():
-            raise RuntimeError("logger '%s' not yet started" % self.name)
+            raise NotYetStartedError("%s not yet started" % self.description)
 
         self.logger.exception(msg, *args, **kwargs)
 

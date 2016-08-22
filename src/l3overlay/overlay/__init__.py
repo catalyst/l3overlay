@@ -36,7 +36,19 @@ from l3overlay.overlay.process import firewall as firewall_process
 
 from l3overlay.util import logger
 
+from l3overlay.util.exception.l3overlayerror import L3overlayError
+
 from l3overlay.util.worker import Worker
+
+
+class LinknetPoolOverflowError(L3overlayError):
+    pass
+
+class DuplicateNodeListError(L3overlayError):
+    pass
+
+class MissingThisNodeError(L3overlayError):
+    pass
 
 
 class Overlay(Worker):
@@ -51,10 +63,11 @@ class Overlay(Worker):
         Set up the overlay internal fields.
         '''
 
-        super().__init__()
+        super().__init__(use_setup=True)
 
         self.logger = logger
         self.name = name
+        self.description = "overlay '%s'" % self.name
 
         self.enabled = enabled
         self.asn = asn
@@ -71,8 +84,7 @@ class Overlay(Worker):
         Set up the overlay runtime state.
         '''
 
-        if self.is_setup():
-            raise RuntimeError("overlay '%s' setup twice" % self.name)
+        self.set_settingup()
 
         # Set arguments.
         self.daemon = daemon
@@ -118,7 +130,7 @@ class Overlay(Worker):
 
             if (virtual_local > self.linknet_pool.broadcast_address or
                     virtual_remote > self.linknet_pool.broadcast_address):
-                raise RuntimeError("overflowed linknet pool %s with node link %s" % (str(self.linknet_pool), str(node_link)))
+                raise LinknetPoolOverflowError("overflowed linknet pool %s with node link %s" % (str(self.linknet_pool), str(node_link)))
 
             self.mesh_tunnels.append(mesh_tunnel.create(
                 self.logger,
@@ -185,9 +197,6 @@ class Overlay(Worker):
         Start the overlay.
         '''
 
-        if self.is_starting() or self.is_started():
-            raise RuntimeError("overlay started twice")
-
         self.set_starting()
 
         self.logger.info("starting overlay")
@@ -216,12 +225,6 @@ class Overlay(Worker):
         '''
         Stop the overlay.
         '''
-
-        if not self.is_started():
-            raise RuntimeError("overlay not yet started")
-
-        if self.is_stopped() or self.is_stopped():
-            raise RuntimeError("overlay stopped twice")
 
         self.set_stopping()
 
@@ -252,12 +255,6 @@ class Overlay(Worker):
         '''
         Remove the overlay runtime state.
         '''
-
-        if self.is_removed():
-            raise RuntimeError("overlay removed twice")
-
-        if not self.is_stopped():
-            raise RuntimeError("overlay not yet stopped")
 
         self.set_removing()
 
@@ -295,13 +292,13 @@ def read(log, log_level, conf):
     nodes = [(util.name_get(ns[k][0]), util.ip_address_get(ns[k][1])) for k in sorted(ns.keys())]
 
     if len(nodes) != len(set(nodes)):
-        raise RuntimeError("node list of overlay '%s' contains duplicates" % name)
+        raise DuplicateNodeListError("node list of overlay '%s' contains duplicates" % name)
 
     # Get the node object for this node from the list of nodes.
     this_node = next((n for n in nodes if n[0] == util.name_get(section["this-node"])), None)
 
     if not this_node:
-        raise RuntimeError("this node '%s' is missing from node list of overlay '%s' " %
+        raise MissingThisNodeError("this node '%s' is missing from node list of overlay '%s' " %
                 (util.name_get(section["this-node"]), name))
 
     # Static interfaces.

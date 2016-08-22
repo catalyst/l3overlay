@@ -19,6 +19,8 @@
 
 
 from l3overlay.network.interface import Interface
+from l3overlay.network.interface import NotFoundError
+from l3overlay.network.interface import UnexpectedTypeError
 
 
 IF_TYPES = ["gre", "gretap"]
@@ -54,11 +56,11 @@ def get(dry_run, logger, ipdb, name):
         interface = ipdb.interfaces[name]
 
         if interface.kind not in IF_TYPES:
-            raise RuntimeError("found interface of type '%s', expected '%s': %s" % (interface.kind, str.join("/", IF_TYPES), name))
+            raise UnexpectedTypeError("found interface of type '%s', expected '%s': %s" % (interface.kind, str.join("/", IF_TYPES), name))
 
         return GRE(logger, ipdb, interface, name, interface.kind)
     else:
-        raise RuntimeError("unable to find %s interface in IPDB: %s" % (str.join("/", IF_TYPES), name))
+        raise NotFoundError("unable to find %s interface in IPDB: %s" % (str.join("/", IF_TYPES), name))
 
 
 def create(dry_run, logger, ipdb, name,

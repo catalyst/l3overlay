@@ -33,7 +33,8 @@ class Process(Worker):
 
         super().__init__()
 
-        self.dry_run = overlay.dry_run
+        self.name = overlay.name
+        self.description = "firewall process for overlay '%s'" % self.name
 
         self.logger = overlay.logger
         self.fwbuilder_script = overlay.fwbuilder_script
@@ -44,13 +45,18 @@ class Process(Worker):
         Start the firewall process.
         '''
 
+        self.set_starting()
+
         if self.fwbuilder_script:
             self.logger.debug("starting firewall")
 
-            if not self.dry_run:
-                fwbuilder = self.netns.Popen([self.fwbuilder_script], stderr=subprocess.STDOUT)
-                fwbuilder.wait()
-                fwbuilder.release()
+            fwbuilder = self.netns.Popen([self.fwbuilder_script], stderr=subprocess.STDOUT)
+            fwbuilder.wait()
+            fwbuilder.release()
+
+            self.logger.debug("finished starting firewall")
+
+        self.set_started()
 
 
     def stop(self):
@@ -58,7 +64,8 @@ class Process(Worker):
         Stop the firewall process.
         '''
 
-        return
+        self.set_stopping()
+        self.set_stopped()
 
 Worker.register(Process)
 

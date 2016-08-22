@@ -20,9 +20,24 @@
 
 import time
 
+from l3overlay.util.exception.l3overlayerror import L3overlayError
+
 
 REMOVE_WAIT_MAX = 1.0
 REMOVE_WAIT_PERIOD = 0.001
+
+
+class RemovedThenModifiedError(L3overlayError):
+    pass
+
+class NotRemovedError(L3overlayError):
+    pass
+
+class NotFoundError(L3overlayError):
+    pass
+
+class UnexpectedTypeError(L3overlayError):
+    pass
 
 
 class Interface(object):
@@ -46,14 +61,23 @@ class Interface(object):
         self.removed = False
 
 
+    def _check_state(self):
+        '''
+        Check interface internal state.
+        '''
+
+        if self.removed:
+            raise RemovedThenModifiedError("%s '%s' removed and then modified" %
+                    (self.description, self.name))
+
+
     def add_ip(self, address, netmask):
         '''
         Add the given IP address (either a string, IPv4Address or IPv6Address)
         with its netmask to the chosen interface.
         '''
 
-        if self.removed:
-            raise RuntimeError("%s '%s' removed and then modified" % (self.description, self.name))
+        self._check_state()
 
         if self.logger:
             self.logger.debug("assigning IP address '%s/%i' to %s '%s'" % (str(address), netmask, self.description, self.name))
@@ -70,8 +94,8 @@ class Interface(object):
         Set the maximum transmission unit size on the chosen interface.
         '''
 
-        if self.removed:
-            raise RuntimeError("%s '%s' removed and then modified" % (self.description, self.name))
+
+        self._check_state()
 
         if self.logger:
             self.logger.debug("setting MTU to %i on %s '%s'" % (mtu, self.description, self.name))
@@ -85,8 +109,8 @@ class Interface(object):
         Move the interface into a chosen network namespace.
         '''
 
-        if self.removed:
-            raise RuntimeError("%s '%s' removed and then modified" % (self.description, self.name))
+
+        self._check_state()
 
         if self.logger:
             self.logger.debug("moving %s '%s' to network namespace '%s'" % (self.description, self.name, netns.name))
@@ -103,8 +127,7 @@ class Interface(object):
         Bring up the given interface.
         '''
 
-        if self.removed:
-            raise RuntimeError("%s '%s' removed and then modified" % (self.description, self.name))
+        self._check_state()
 
         if self.logger:
             self.logger.debug("bringing up %s '%s'" % (self.description, self.name))
@@ -118,8 +141,7 @@ class Interface(object):
         Bring up the interface.
         '''
 
-        if self.removed:
-            raise RuntimeError("%s '%s' removed and then modified" % (self.description, self.name))
+        self._check_state()
 
         if self.logger:
             self.logger.debug("bringing down %s '%s'" % (self.description, self.name))
@@ -134,8 +156,7 @@ class Interface(object):
         interacted with.
         '''
 
-        if self.removed:
-            raise RuntimeError("%s '%s' removed twice" % (self.description, self.name))
+        self._check_state()
 
         if self.logger:
             self.logger.debug("removing %s '%s'" % (self.description, self.name))
@@ -158,7 +179,8 @@ class Interface(object):
                 waited += REMOVE_WAIT_PERIOD
 
             if not self.removed:
-                raise RuntimeError("%s '%s' still exists even after waiting for removal" % (self.description, self.name))
+                raise NotRemovedError("%s '%s' still exists even after waiting for removal" %
+                        (self.description, self.name))
 
         else:
             self.removed = True
@@ -178,7 +200,7 @@ def get(dry_run, logger, ipdb, name):
     if name in ipdb.by_name.keys():
         return Interface(logger, ipdb, ipdb.interfaces[name], name)
     else:
-        raise RuntimeError("unable to find interface: %s" % name)
+        raise NotFoundError("unable to find interface: %s" % name)
 
 
 def netns_set(dry_run, logger, ipdb, name, netns):

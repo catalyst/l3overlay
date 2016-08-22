@@ -34,10 +34,16 @@ from l3overlay.overlay.interface.tuntap import Tuntap
 from l3overlay.overlay.interface.veth import VETH
 from l3overlay.overlay.interface.vlan import VLAN
 
+from l3overlay.util.exception.l3overlayerror import L3overlayError
+
 from l3overlay.util.worker import Worker
 
 
 RECV_MAX = 1024
+
+
+class UnexpectedResponseError(L3overlayError):
+    pass
 
 
 class Process(Worker):
@@ -61,6 +67,8 @@ class Process(Worker):
         self.logger = overlay.logger
         self.name = overlay.name
         self.netns = overlay.netns
+
+        self.description = "BGP process for overlay '%s'" % self.name
 
         self.asn = overlay.asn
         self.linknet_pool = overlay.linknet_pool
@@ -110,9 +118,6 @@ class Process(Worker):
         '''
         Start the BGP process.
         '''
-
-        if self.is_starting() or self.is_started():
-            raise RuntimeError("BGP process for overlay '%s' started twice" % self.name)
 
         self.set_starting()
 
@@ -227,7 +232,7 @@ class Process(Worker):
                 data = sock.recv(RECV_MAX).decode("UTF-8")
 
             if not re.match("0001 BIRD [0-9.]* ready.\n", data):
-                raise RuntimeError(
+                raise UnexpectedResponseError(
                         "unexpected response from BIRD when connecting:\n%s" % data)
 
             self.logger.debug("reloading BIRD configuration")
@@ -241,7 +246,7 @@ class Process(Worker):
             if ("0002-Reading configuration from %s" % bird_conf not in data or
                         ("0003 Reconfigured" not in data and
                                 "0004 Reconfiguration in progress" not in data)):
-                raise RuntimeError(
+                raise UnexpectedResponseError(
                         "unexpected response from BIRD when reloading config:\n%s" % data)
 
             if not self.dry_run:
@@ -265,12 +270,6 @@ class Process(Worker):
         '''
         Stop the BGP process.
         '''
-
-        if not self.is_started():
-            raise RuntimeError("BGP process for overlay '%s' not yet started" % self.name)
-
-        if self.is_stopped() or self.is_stopped():
-            raise RuntimeError("BGP process for overlay '%s' stopped twice" % self.name)
 
         self.set_stopping()
 

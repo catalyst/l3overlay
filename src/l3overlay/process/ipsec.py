@@ -22,13 +22,22 @@ import subprocess
 
 from l3overlay import util
 
+from l3overlay.util.exception.l3overlayerror import L3overlayError
+
 from l3overlay.util.worker import Worker
+
+
+class UnexpectedReturnCodeError(L3overlayError):
+    pass
 
 
 class Process(Worker):
     '''
     IPsec process manager.
     '''
+
+    description = "ipsec process"
+
 
     def __init__(self, daemon):
         '''
@@ -70,9 +79,6 @@ class Process(Worker):
 
         if not self.use_ipsec:
             return
-
-        if self.is_starting() or self.is_started():
-            raise RuntimeError("IPsec process started twice")
 
         self.set_starting()
 
@@ -118,7 +124,7 @@ class Process(Worker):
             subprocess.check_output([self.ipsec, "start"], stderr=subprocess.STDOUT)
 
         else:
-            raise RuntimeError("unexpected 'ipsec status' return code: %i" % status)
+            raise UnexpectedReturnCodeError("unexpected 'ipsec status' return code: %i" % status)
 
         self.logger.info("finished starting IPsec process")
 
@@ -132,12 +138,6 @@ class Process(Worker):
 
         if not self.use_ipsec:
             return
-
-        if not self.is_started():
-            raise RuntimeError("IPsec process not yet started")
-
-        if self.is_stopped() or self.is_stopped():
-            raise RuntimeError("IPsec process stopped twice")
 
         self.set_stopping()
 
