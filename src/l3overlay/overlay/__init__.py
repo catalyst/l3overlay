@@ -42,13 +42,22 @@ from l3overlay.util.worker import Worker
 
 
 class LinknetPoolOverflowError(L3overlayError):
-    pass
+    def __init__(self, overlay, node_link):
+        super().__init__(
+            "overflowed linknet pool '%s' with node link %s in %s '%s'" %
+                    (str(overlay.linknet_pool), str(node_link), overlay.description, overlay.name))
 
 class DuplicateNodeListError(L3overlayError):
-    pass
+    def __init__(self, overlay):
+        super().__init__(
+            "node list of %s '%s' contains duplicates" %
+                    (overlay.description, overlay.name))
 
 class MissingThisNodeError(L3overlayError):
-    pass
+    def __init__(self, overlay, this_node):
+        super().__init__(
+            "this node '%s' is missing from node list of %s '%s'" %
+                    (this_node, overlay.description, overlay.name))
 
 
 class Overlay(Worker):
@@ -130,7 +139,7 @@ class Overlay(Worker):
 
             if (virtual_local > self.linknet_pool.broadcast_address or
                     virtual_remote > self.linknet_pool.broadcast_address):
-                raise LinknetPoolOverflowError("overflowed linknet pool %s with node link %s" % (str(self.linknet_pool), str(node_link)))
+                raise LinknetPoolOverflowError(self, node_link)
 
             self.mesh_tunnels.append(mesh_tunnel.create(
                 self.logger,
@@ -292,14 +301,13 @@ def read(log, log_level, conf):
     nodes = [(util.name_get(ns[k][0]), util.ip_address_get(ns[k][1])) for k in sorted(ns.keys())]
 
     if len(nodes) != len(set(nodes)):
-        raise DuplicateNodeListError("node list of overlay '%s' contains duplicates" % name)
+        raise DuplicateNodeListError(self)
 
     # Get the node object for this node from the list of nodes.
     this_node = next((n for n in nodes if n[0] == util.name_get(section["this-node"])), None)
 
     if not this_node:
-        raise MissingThisNodeError("this node '%s' is missing from node list of overlay '%s' " %
-                (util.name_get(section["this-node"]), name))
+        raise MissingThisNodeError(self, util.name_get(section["this-node"]))
 
     # Static interfaces.
     interfaces = [interface.read(lg, h, s) for h, s in config.items() if h.startswith("static")]

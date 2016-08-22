@@ -28,17 +28,35 @@ REMOVE_WAIT_PERIOD = 0.001
 
 
 class RemovedThenModifiedError(L3overlayError):
-    pass
+    def __init__(self, interface):
+        super().__init__("%s '%s' removed and then modified" %
+                (interface.description, interface.name))
 
 class NotRemovedError(L3overlayError):
-    pass
+    def __init__(self, interface):
+        super().__init__(
+            "%s '%s' still exists even after waiting %s second%s for removal" %
+                    (
+                        interface.description,
+                        interface.name,
+                        REMOVE_WAIT_MAX,
+                        "s" if REMOVE_WAIT_MAX != 1.0 else "",
+                    ))
 
 class NotFoundError(L3overlayError):
-    pass
+    def __init__(self, name, kind = None, netns = False):
+        super().__init__("unable to find %s with name '%s' in %s namespace" %
+                (
+                    name,
+                    kind if kind else "interface",
+                    "network" if netns else "root",
+                ))
 
 class UnexpectedTypeError(L3overlayError):
-    pass
-
+    def __init__(self, name, kind, expected_kind):
+        super().__init__(
+            "found interface with name '%s' of kind '%s', expected '%s'" %
+                    (name, kind, expected_kind))
 
 class Interface(object):
     '''
@@ -67,8 +85,7 @@ class Interface(object):
         '''
 
         if self.removed:
-            raise RemovedThenModifiedError("%s '%s' removed and then modified" %
-                    (self.description, self.name))
+            raise RemovedThenModifiedError(self)
 
 
     def add_ip(self, address, netmask):
@@ -179,8 +196,7 @@ class Interface(object):
                 waited += REMOVE_WAIT_PERIOD
 
             if not self.removed:
-                raise NotRemovedError("%s '%s' still exists even after waiting for removal" %
-                        (self.description, self.name))
+                raise NotRemovedError(self)
 
         else:
             self.removed = True
@@ -200,7 +216,7 @@ def get(dry_run, logger, ipdb, name):
     if name in ipdb.by_name.keys():
         return Interface(logger, ipdb, ipdb.interfaces[name], name)
     else:
-        raise NotFoundError("unable to find interface: %s" % name)
+        raise NotFoundError(name)
 
 
 def netns_set(dry_run, logger, ipdb, name, netns):

@@ -34,7 +34,8 @@ from l3overlay.util.worker import NotYetStartedError
 
 
 class UnableToCreateNetnsError(L3overlayError):
-    pass
+    def __init__(self, netns, message):
+        super().__init("unable to create network namespace '%s': %s" % (netns.name, message))
 
 
 class NetNS(Worker):
@@ -78,8 +79,7 @@ class NetNS(Worker):
                     # Network namespace already exists
                     pass
                 except e:
-                    raise UnableToCreateNetnsError("unable to create network namespace '%s': %s" %
-                            (self.name, e))
+                    raise UnableToCreateNetnsError(self, e.message)
 
             self.netns = pyroute2.NetNS(self.name)
             self.ipdb = pyroute2.IPDB(nl=self.netns)
@@ -124,7 +124,7 @@ class NetNS(Worker):
         '''
 
         if not self.is_started():
-            raise NotYetStartedError("%s not yet started" % self.description)
+            raise NotYetStartedError(self)
 
         if self.dry_run:
             # Create a dummy NSPopen object with a

@@ -37,7 +37,8 @@ from l3overlay.util.exception.l3overlayerror import L3overlayError
 
 
 class NoOverlayConfError(L3overlayError):
-    pass
+    def __init__(self):
+        super().__init__("no overlay configuration files found")
 
 
 class Daemon(worker.Worker):
@@ -375,7 +376,7 @@ def read(args):
 
         # Configuration checks.
         if not overlay_confs:
-                raise NoOverlayConfError("no overlay configuration files found")
+                raise NoOverlayConfError()
 
         # Create the application state for each overlay.
         overlays = {}

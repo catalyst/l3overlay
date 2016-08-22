@@ -26,51 +26,69 @@ from l3overlay.util.exception.l3overlayerror import L3overlayError
 STATES = ("settingup", "setup", "starting", "started", "stopping", "stopped", "removing", "removed")
 
 
-class InvalidSetupStateError(L3overlayError):
-    pass
-
 class InvalidWorkerStateError(L3overlayError):
-    pass
+    def __init__(self, worker, state, states):
+        super().__init__(
+            "invalid worker state type '%s' for %s, expected one of %s" %
+                    (state, worker.description, str.join(states, "/")))
+
+class InvalidWorkerStateValueError(L3overlayError):
+    def __init__(self, worker, state, value):
+        super().__init__(
+            "invalid worker state value '%s' in state type '%s' for %s, expected True/False" %
+                    (value, state, worker.description))
 
 
 class SetupTwiceError(L3overlayError):
-    pass
+    def __init__(self, worker):
+        super().__init__("%s setup twice" % worker.description)
 
 class NotYetSettingupError(L3overlayError):
-    pass
+    def __init__(self, worker):
+        super().__init__("%s not yet set to setting up" % worker.description)
 
 class NotYetSetupError(L3overlayError):
-    pass
+    def __init__(self, worker):
+        super().__init__("%s not yet set up" % worker.description)
 
 
 class StartedTwiceError(L3overlayError):
-    pass
+    def __init__(self, worker):
+        super().__init__("%s started twice" % worker.description)
 
 class NotYetStartingError(L3overlayError):
-    pass
+    def __init__(self, worker):
+        super().__init__("%s not yet set to starting" % worker.description)
 
 class NotYetStartedError(L3overlayError):
-    pass
+    def __init__(self, worker):
+        super().__init__("%s not yet started" % worker.description)
 
 
 class StoppedTwiceError(L3overlayError):
-    pass
+    def __init__(self, worker):
+        super().__init__("%s stopped twice" % worker.description)
 
 class NotYetStoppingError(L3overlayError):
-    pass
+    def __init__(self, worker):
+        super().__init__("%s not yet set to stopping" % worker.description)
 
 class NotYetStoppedError(L3overlayError):
-    pass
+    def __init__(self, worker):
+        super().__init__("%s not yet stopped" % worker.description)
 
 
 class RemovedTwiceError(L3overlayError):
-    pass
+    def __init__(self, worker):
+        super().__init__("%s removed twice" % worker.description)
 
 class NotYetRemovingError(L3overlayError):
-    pass
+    def __init__(self, worker):
+        super().__init__("%s not yet set to removing" % worker.description)
 
 class NotYetRemovedError(L3overlayError):
-    pass
+    def __init__(self, worker):
+        super().__init__("%s not yet removed" % worker.description)
 
 
 class Worker(metaclass=abc.ABCMeta):
@@ -104,13 +122,9 @@ class Worker(metaclass=abc.ABCMeta):
 
         for state, value in self._states.items():
             if state not in STATES:
-                raise InvalidWorkerStateError(
-                    "invalid worker state type '%s' for %s, expected one of %s" %
-                            (state, self.description, STATES))
+                raise InvalidWorkerStateError(self, state, STATES)
             if not isinstance(value, bool):
-                raise InvalidWorkerStateError(
-                    "invalid worker state value '%s' in state type '%s' for %s, expected boolean" %
-                            (value, state, self.description))
+                raise InvalidWorkerStateError(self, state, value)
 
 
     def is_settingup(self):
@@ -130,7 +144,7 @@ class Worker(metaclass=abc.ABCMeta):
         self._assert_state()
 
         if self.is_settingup() or self.is_setup():
-            raise SetupTwiceError("%s setup twice" % self.description)
+            raise SetupTwiceError(self)
 
         self._states["settingup"] = True
 
@@ -152,10 +166,10 @@ class Worker(metaclass=abc.ABCMeta):
         self._assert_state()
 
         if self.is_setup():
-            raise SetupTwiceError("%s setup twice" % self.description)
+            raise SetupTwiceError(self)
 
         if not self.is_settingup():
-            raise NotYetSettingupError("%s not yet set to setting up" % self.description)
+            raise NotYetSettingupError(self)
 
         self._states["settingup"] = False
         self._states["setup"] = True
@@ -178,10 +192,10 @@ class Worker(metaclass=abc.ABCMeta):
         self._assert_state()
 
         if self.is_starting() or self.is_started():
-            raise StartedTwiceError("%s started twice" % self.description)
+            raise StartedTwiceError(self)
 
         if self.use_setup and not self.is_setup():
-            raise NotYetSetupError("%s not yet set up" % self.description)
+            raise NotYetSetupError(self)
 
         self._states["starting"] = True
 
@@ -203,13 +217,13 @@ class Worker(metaclass=abc.ABCMeta):
         self._assert_state()
 
         if self.is_started():
-            raise StartedTwiceError("%s started twice" % self.description)
+            raise StartedTwiceError(self)
 
         if self.use_setup and not self.is_setup():
-            raise NotYetSetupError("%s not yet set up" % self.description)
+            raise NotYetSetupError(self)
 
         if not self.is_starting():
-            raise NotYetStartingError("%s not yet set to starting" % self.description)
+            raise NotYetStartingError(self)
 
         self._states["starting"] = False
         self._states["started"] = True
@@ -248,10 +262,10 @@ class Worker(metaclass=abc.ABCMeta):
         self._assert_state()
 
         if self.is_stopping() or self.is_stopped():
-            raise StoppedTwiceError("%s stopped twice" % self.description)
+            raise StoppedTwiceError(self)
 
         if not self.is_started():
-            raise NotYetStartedError("%s not yet started" % self.description)
+            raise NotYetStartedError(self)
 
         self._states["stopping"] = True
 
@@ -273,13 +287,13 @@ class Worker(metaclass=abc.ABCMeta):
         self._assert_state()
 
         if self.is_stopped():
-            raise StoppedTwiceError("%s stopped twice" % self.description)
+            raise StoppedTwiceError(self)
 
         if not self.is_started():
-            raise NotYetStartedError("%s not yet started" % self.description)
+            raise NotYetStartedError(self)
 
         if not self.is_stopping():
-            raise NotYetStoppingError("%s not yet set to stopping" % self.description)
+            raise NotYetStoppingError(self)
 
         self._states["stopping"] = False
         self._states["stopped"] = True
@@ -304,10 +318,10 @@ class Worker(metaclass=abc.ABCMeta):
         self._assert_state()
 
         if self.is_removing() or self.is_removed():
-            raise RemovedTwiceError("%s removed twice" % self.description)
+            raise RemovedTwiceError(self)
 
         if self.is_started():
-            raise NotYetStoppedError("%s not yet stopped" % self.description)
+            raise NotYetStoppedError(self)
 
         self._states["removing"] = True
 
@@ -329,13 +343,13 @@ class Worker(metaclass=abc.ABCMeta):
         self._assert_state()
 
         if self.is_removed():
-            raise RemovedTwiceError("%s removed twice" % self.description)
+            raise RemovedTwiceError(self)
 
         if self.is_started():
-            raise NotYetStoppedError("%s not yet stopped" % self.description)
+            raise NotYetStoppedError(self)
 
         if not self.is_removing():
-            raise NotYetRemovingError("%s not yet set to removing" % self.description)
+            raise NotYetRemovingError(self)
 
         self._states["removing"] = False
         self._states["removed"] = True

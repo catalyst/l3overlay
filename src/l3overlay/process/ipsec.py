@@ -28,7 +28,8 @@ from l3overlay.util.worker import Worker
 
 
 class UnexpectedReturnCodeError(L3overlayError):
-    pass
+    def __init__(self, command, code):
+        super().__init__("unexpected '%s' return code: %i" % (command, code))
 
 
 class Process(Worker):
@@ -124,7 +125,7 @@ class Process(Worker):
             subprocess.check_output([self.ipsec, "start"], stderr=subprocess.STDOUT)
 
         else:
-            raise UnexpectedReturnCodeError("unexpected 'ipsec status' return code: %i" % status)
+            raise UnexpectedReturnCodeError("%s status" % self.ipsec, status)
 
         self.logger.info("finished starting IPsec process")
 

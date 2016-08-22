@@ -43,7 +43,8 @@ RECV_MAX = 1024
 
 
 class UnexpectedResponseError(L3overlayError):
-    pass
+    def __init__(self, action, data):
+        super().__init__("unexpected response from BIRD when %s:\n%s" % (action, data))
 
 
 class Process(Worker):
@@ -232,8 +233,7 @@ class Process(Worker):
                 data = sock.recv(RECV_MAX).decode("UTF-8")
 
             if not re.match("0001 BIRD [0-9.]* ready.\n", data):
-                raise UnexpectedResponseError(
-                        "unexpected response from BIRD when connecting:\n%s" % data)
+                raise UnexpectedResponseError("connecting", data)
 
             self.logger.debug("reloading BIRD configuration")
 
@@ -246,8 +246,7 @@ class Process(Worker):
             if ("0002-Reading configuration from %s" % bird_conf not in data or
                         ("0003 Reconfigured" not in data and
                                 "0004 Reconfiguration in progress" not in data)):
-                raise UnexpectedResponseError(
-                        "unexpected response from BIRD when reloading config:\n%s" % data)
+                raise UnexpectedResponseError("reloading config", data)
 
             if not self.dry_run:
                 sock.close()

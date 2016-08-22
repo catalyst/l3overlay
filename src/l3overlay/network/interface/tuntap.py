@@ -56,11 +56,11 @@ def get(dry_run, logger, ipdb, name):
         interface = ipdb.interfaces[name]
 
         if interface.kind != IF_TYPE:
-            raise UnexpectedTypeError("found interface of type '%s', expected '%s': %s" % (interface.kind, IF_TYPE, name))
+            raise UnexpectedTypeError(name, interface.kind, IF_TYPE)
 
         return Tuntap(logger, ipdb, interface, name, interface.mode)
     else:
-        raise NotFoundError("unable to find %s interface in IPDB: %s" % (IF_TYPE, name))
+        raise NotFoundError(name, IF_TYPE, True)
 
 
 def create(dry_run, logger, ipdb, name, mode="tap", uid=0, gid=0, ifr=None):
