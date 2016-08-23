@@ -22,7 +22,6 @@ import os
 import subprocess
 import tests
 import time
-import unittest
 
 from l3overlay import util
 
@@ -31,10 +30,26 @@ DAEMON_WAIT_TIMEOUT = 5
 DAEMON_TERMINATE_TIMEOUT = 10
 
 
-class L3overlaydTest(unittest.TestCase):
+class L3overlaydTest(tests.L3overlayTest):
     '''
     l3overlay unit test for testing static interfaces.
     '''
+
+    def setUp(self):
+        '''
+        Set up the unit test runtime state.
+        '''
+
+        self.global_conf = tests.global_conf_get("test_l3overlayd")
+
+
+    def tearDown(self):
+        '''
+        Clean up the unit test runtime state.
+        '''
+
+        tests.global_conf_cleanup(self.global_conf)
+
 
     def test_l3overlayd(self):
         '''
@@ -42,46 +57,40 @@ class L3overlaydTest(unittest.TestCase):
         designed to test each static interface type.
         '''
 
-        args = tests.global_conf_get("test_l3overlayd")
+        command = [util.command_path("python3"), "-c", "import l3overlay; l3overlay.main()"]
 
-        try:
-            command = [util.command_path("python3"), "-c", "import l3overlay; l3overlay.main()"]
+        for key, value in self.global_conf.items():
+            arg = "--%s" % key.replace("_", "-")
+            if value == True or value.lower() == "true":
+                command.append(arg)
+            elif not isinstance(value, bool):
+                command.extend([arg, value])
 
-            for key, value in args.items():
-                arg = "--%s" % key.replace("_", "-")
-                if value == True or value.lower() == "true":
-                    command.append(arg)
-                elif not isinstance(value, bool):
-                    command.extend([arg, value])
+        with subprocess.Popen(
+            command,
+            stdout = subprocess.PIPE,
+            stderr = subprocess.PIPE,
+        ) as process:
+            try:
+                stdout_data, stderr_data = process.communicate(timeout=DAEMON_WAIT_TIMEOUT)
+                raise RuntimeError(
+                    "daemon terminated, timeout expected, return code %i\n\nstdout:\n%s\n\nstderr:\n%s" %
+                        (process.returncode, stdout_data.decode("UTF-8"), stderr_data.decode("UTF-8")))
+            except subprocess.TimeoutExpired:
+                pass
 
-            with subprocess.Popen(
-                command,
-                stdout = subprocess.PIPE,
-                stderr = subprocess.PIPE,
-            ) as process:
-                try:
-                    stdout_data, stderr_data = process.communicate(timeout=DAEMON_WAIT_TIMEOUT)
-                    raise RuntimeError(
-                        "daemon terminated, timeout expected, return code %i\n\nstdout:\n%s\n\nstderr:\n%s" %
-                            (process.returncode, stdout_data.decode("UTF-8"), stderr_data.decode("UTF-8")))
-                except subprocess.TimeoutExpired:
-                    pass
+            time.sleep(DAEMON_WAIT_TIMEOUT)
 
-                time.sleep(DAEMON_WAIT_TIMEOUT)
+            process.terminate()
 
-                process.terminate()
-
-                try:
-                    process.communicate(timeout=DAEMON_TERMINATE_TIMEOUT)
-                except subprocess.TimeoutExpired as e:
-                    process.kill()
-                    stdout_data, stderr_data = process.communicate()
-                    raise RuntimeError("daemon did not terminate when expected, output:\n%s" %
-                            stdout_data.decode("UTF-8"))
-
-        finally:
-              tests.global_conf_cleanup(args)
+            try:
+                process.communicate(timeout=DAEMON_TERMINATE_TIMEOUT)
+            except subprocess.TimeoutExpired as e:
+                process.kill()
+                stdout_data, stderr_data = process.communicate()
+                raise RuntimeError("daemon did not terminate when expected, output:\n%s" %
+                        stdout_data.decode("UTF-8"))
 
 
 if __name__ == "__main__":
-    unittest.main()
+    tests.main()

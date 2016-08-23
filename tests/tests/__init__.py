@@ -19,7 +19,9 @@
 
 
 import os
+import string
 import tempfile
+import unittest
 
 from l3overlay import util
 
@@ -29,6 +31,127 @@ ROOT_DIR = os.path.join(MY_DIR, "..", "..")
 SRC_DIR  = os.path.join(ROOT_DIR, "src")
 
 LOG_DIR = os.path.join(ROOT_DIR, ".tests")
+
+
+class L3overlayTest(unittest.TestCase):
+    '''
+    Unit test base class.
+    '''
+
+    def assert_success(self, args):
+        '''
+        Assertion abstract method for success.
+        Process:
+        * Take in an argument dictionary
+        * Create an object
+        * Run assertions
+        * Return the object
+        '''
+
+        raise NotImplementedError()
+
+
+    def assert_fail(self, args, *exceptions):
+        '''
+        Assertion abstract method for failure.
+        Process:
+        * Take in an argument dictionary and a
+          list of exceptions that could be thrown
+        * Create an object
+        * Run assertions
+        '''
+
+        raise NotImplementedError()
+
+
+    def assert_boolean(self, key, test_default=False):
+        '''
+        Test that key, of type boolean, is properly handled by the daemon.
+        '''
+
+        # Test default value, if specified.
+        if test_default:
+            object = self.assert_success({key: None})
+            self.assert_success({key: vars(object)[key]})
+
+        # Test valid values.
+        self.assert_success({key: True})
+        self.assert_success({key: "true"})
+        self.assert_success({key: 1})
+        self.assert_success({key: 2})
+
+        self.assert_success({key: False})
+        self.assert_success({key: "false"})
+        self.assert_success({key: 0})
+        self.assert_success({key: -1})
+
+        # Test invalid values.
+        self.assert_fail({key: ""}, ValueError)
+        self.assert_fail({key: "foo"}, ValueError)
+
+
+    def assert_hex_string(self, key, min=None, max=None, test_default=False):
+        '''
+        Test that key, of type hex string, is properly handled by the daemon.
+        Optionally checks if digit limits are properly handled, by specifying
+        a miniumum and maximum digit size.
+        '''
+
+        vvs = string.hexdigits
+
+        _min = min if min is not None else 1
+        _max = max if max is not None else max(_min + 1, 16)
+
+        # Test default value, if specified.
+        if test_default:
+            object = self.assert_success({key: None})
+            self.assert_success({key: vars(object)[key]})
+
+        # Test valid values.
+        for v in vvs:
+            self.assert_success({key: str.join("", [v for __ in range(0, _min)])})
+
+        self.assert_success({
+            key: str.join("", [vvs[i % len(vvs)] for i in range(0, _max)]),
+        })
+
+        # Test invalid values.
+        self.assert_fail({key: ""}, ValueError)
+
+        self.assert_fail({
+            key: str.join("", ["z" for __ in range(0, _min)]),
+        }, ValueError)
+
+        if min is not None and _min > 1:
+            self.assert_fail({
+                key: str.join("", [vvs[i % len(vvs)] for i in range(0, _min - 1)]),
+            }, ValueError)
+
+        if max is not None and _max > 1:
+            self.assert_fail({
+                key: str.join("", [vvs[i % len(vvs)] for i in range(0, _max + 1)]),
+            }, ValueError)
+
+
+    def assert_enum(self, enum, key, test_default=False):
+        '''
+        Test that key, of type enum, is properly handled by the daemon.
+        '''
+
+        # Test default value, if specified.
+        if test_default:
+            object = self.assert_success({key: None})
+            self.assert_success({key: vars(object)[key]})
+
+        # Test valid values.
+        for e in enum:
+            self.assert_success({key: e.upper()})
+            self.assert_success({key: e.lower()})
+
+        # Test invalid values.
+        self.assert_fail({key: ""}, ValueError)
+        self.assert_fail({key: util.random_string(16)}, ValueError)
+        self.assert_fail({key: 1}, ValueError)
 
 
 def global_conf_get(test_name, daemon_name = None):
@@ -74,3 +197,11 @@ def global_conf_cleanup(args):
 
     util.directory_remove(args["lib_dir"])
     util.directory_remove(os.path.dirname(args["pid"]))
+
+
+def main():
+    '''
+    Unit test main routine.
+    '''
+
+    unittest.main()

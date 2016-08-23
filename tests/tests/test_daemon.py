@@ -22,14 +22,13 @@ import argparse
 import os
 import tempfile
 import tests
-import unittest
 
 from l3overlay import util
 
 import l3overlay.daemon
 
 
-class DaemonTest(unittest.TestCase):
+class DaemonTest(tests.L3overlayTest):
     '''
     l3overlay unit test for testing static interfaces.
     '''
@@ -62,96 +61,24 @@ class DaemonTest(unittest.TestCase):
 
 
     #
-    ## TODO: implement assert_<type> in base test class.
-    #
-
-
-    def assert_boolean(self, key):
-        '''
-        Test that key, of type boolean, is properly handled by the daemon.
-        '''
-
-        # Test default values.
-
-        # Test valid values.
-        self.assert_success({key: True})
-        self.assert_success({key: "true"})
-        self.assert_success({key: 1})
-        self.assert_success({key: 2})
-
-        self.assert_success({key: False})
-        self.assert_success({key: "false"})
-        self.assert_success({key: 0})
-        self.assert_success({key: -1})
-
-        # Test invalid values.
-        self.assert_fail({key: ""}, ValueError)
-        self.assert_fail({key: "foo"}, ValueError)
-
-
-    def assert_hex_string(self, key, min=None, max=None):
-        '''
-        Test that key, of type hex string, is properly handled by the daemon.
-        Optionally checks if digit limits are properly handled, by specifying
-        a miniumum and maximum digit size.
-        '''
-
-        valid_values = "0123456789abcdef"
-
-        _min = min if min is not None else 1
-        _max = max if max is not None else max(_min + 1, 16)
-
-        # Test default values.
-
-        # Test valid values.
-        for v in valid_values:
-            self.assert_success({key: str.join("", [v for __ in range(0, _min)])})
-
-        self.assert_success({
-            key: str.join("", [valid_values[i % 16] for i in range(0, _max)]),
-        })
-
-        # Test invalid values.
-        self.assert_fail({key: ""}, ValueError)
-
-        self.assert_fail({
-            key: str.join("", ["z" for __ in range(0, _min)]),
-        }, ValueError)
-
-        if min is not None and _min > 1:
-            self.assert_fail({
-                key: str.join("", [valid_values[i % 16] for i in range(0, _min - 1)]),
-            }, ValueError)
-
-        if max is not None and _max > 1:
-            self.assert_fail({
-                key: str.join("", [valid_values[i % 16] for i in range(0, _max + 1)]),
-            }, ValueError)
-
-
-    def assert_enum(self, enum, key, *invalid_value):
-        '''
-        Test that key, of type enum, is properly handled by the daemon.
-        '''
-
-        # Test default values.
-
-        # Test valid values.
-        for e in enum:
-            self.assert_success({key: e.upper()})
-            self.assert_success({key: e.lower()})
-
-        # Test invalid values.
-        self.assert_fail({key: ""}, ValueError)
-        self.assert_fail({key: 1}, ValueError)
-
-        for iv in invalid_value:
-            self.assert_fail({key: iv}, ValueError)
-
-
-    #
     ##
     #
+
+
+    def assert_success(self, args):
+        '''
+        Try and read an l3overlay daemon using the given arguments.
+        Assumes it will succeed, and will run an assertion test to make
+        sure a Daemon is returned.
+        '''
+
+        a = self.args_base.copy()
+        a.update(args)
+
+        daemon = l3overlay.daemon.read(a)
+        self.assertIsInstance(daemon, l3overlay.daemon.Daemon)
+
+        return daemon
 
 
     def assert_fail(self, args, *exceptions):
@@ -172,19 +99,6 @@ Arguments: %s''' % (str.join(", ", (e.__name__ for e in exceptions)), a))
             pass
 
 
-    def assert_success(self, args):
-        '''
-        Try and read an l3overlay daemon using the given arguments.
-        Assumes it will succeed, and will run an assertion test to make
-        sure a Daemon is returned.
-        '''
-
-        a = self.args_base.copy()
-        a.update(args)
-
-        self.assertIsInstance(l3overlay.daemon.read(a), l3overlay.daemon.Daemon)
-
-
     #
     ##
     #
@@ -198,7 +112,7 @@ Arguments: %s''' % (str.join(", ", (e.__name__ for e in exceptions)), a))
         self.assert_enum(
             ["NOTSET", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
             "log_level",
-            "FOO",
+            test_default = True,
         )
 
 
@@ -207,7 +121,7 @@ Arguments: %s''' % (str.join(", ", (e.__name__ for e in exceptions)), a))
         Test that 'use_ipsec' is properly handled by the daemon.
         '''
 
-        self.assert_boolean("use_ipsec")
+        self.assert_boolean("use_ipsec", test_default=True)
 
 
     def test_ipsec_manage(self):
@@ -215,7 +129,7 @@ Arguments: %s''' % (str.join(", ", (e.__name__ for e in exceptions)), a))
         Test that 'ipsec_manage' is properly handled by the daemon.
         '''
 
-        self.assert_boolean("ipsec_manage")
+        self.assert_boolean("ipsec_manage", test_default=True)
 
 
     def test_ipsec_psk(self):
@@ -227,4 +141,4 @@ Arguments: %s''' % (str.join(", ", (e.__name__ for e in exceptions)), a))
 
 
 if __name__ == "__main__":
-    unittest.main()
+    tests.main()

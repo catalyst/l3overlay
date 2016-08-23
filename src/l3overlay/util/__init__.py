@@ -25,7 +25,9 @@ import jinja2
 import logging
 import re
 import os
+import random
 import shutil
+import string
 import sys
 
 import distutils.spawn
@@ -327,6 +329,24 @@ def list_get(string, pattern='\s*,\s*'):
     '''
 
     return re.split(pattern, string)
+
+
+#
+## Random functions.
+#
+
+def random_string(length, alpha=True, num=False):
+    set = []
+
+    if alpha:
+        set.append(string.ascii_letters)
+
+    if num:
+        set.append(string.digits)
+
+    set = str.join("", set)
+
+    return str.join("", (random.choice(set) for __ in range(length)))
 
 
 #
