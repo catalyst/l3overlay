@@ -35,20 +35,12 @@ class L3overlaydTest(tests.L3overlayTest):
     l3overlay unit test for testing static interfaces.
     '''
 
-    def setUp(self):
-        '''
-        Set up the unit test runtime state.
-        '''
-
-        self.global_conf = tests.global_conf_get("test_l3overlayd")
+    name = "test_l3overlayd"
 
 
-    def tearDown(self):
-        '''
-        Clean up the unit test runtime state.
-        '''
-
-        tests.global_conf_cleanup(self.global_conf)
+    #
+    ##
+    #
 
 
     def test_l3overlayd(self):

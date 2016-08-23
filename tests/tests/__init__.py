@@ -38,6 +38,57 @@ class L3overlayTest(unittest.TestCase):
     Unit test base class.
     '''
 
+    name = "test_l3overlay"
+
+
+    #
+    ##
+    #
+
+
+    def setUp(self):
+        '''
+        Set up the unit test runtime state.
+        '''
+
+        conf_dir = os.path.join(MY_DIR, self.name)
+        tmp_dir = tempfile.mkdtemp(prefix="l3overlay-%s-" % self.name)
+
+        log_dir = os.path.join(LOG_DIR, os.path.basename(tmp_dir))
+
+        self.global_conf = {
+            "dry_run": "true",
+
+            "log_level": "DEBUG",
+
+            "use_ipsec": "true",
+            "ipsec_manage": "true",
+
+            "lib_dir": os.path.join(tmp_dir, "lib"),
+
+            "overlay_conf_dir": os.path.join(conf_dir, "overlays"),
+            "template_dir": os.path.join(ROOT_DIR, "l3overlay", "templates"),
+
+
+            "log": os.path.join(log_dir, "l3overlay.log"),
+            "pid": os.path.join(tmp_dir, "l3overlayd.pid"),
+        }
+
+
+    def tearDown(self):
+        '''
+        Tear down the unit test runtime state.
+        '''
+
+        util.directory_remove(self.global_conf["lib_dir"])
+        util.directory_remove(os.path.dirname(self.global_conf["pid"]))
+
+
+    #
+    ##
+    #
+
+
     def assert_success(self, args):
         '''
         Assertion abstract method for success.
@@ -62,6 +113,11 @@ class L3overlayTest(unittest.TestCase):
         '''
 
         raise NotImplementedError()
+
+
+    #
+    ##
+    #
 
 
     def assert_boolean(self, key, test_default=False):
@@ -152,51 +208,6 @@ class L3overlayTest(unittest.TestCase):
         self.assert_fail({key: ""}, ValueError)
         self.assert_fail({key: util.random_string(16)}, ValueError)
         self.assert_fail({key: 1}, ValueError)
-
-
-def global_conf_get(test_name, daemon_name = None):
-    '''
-    Create an l3overlay daemon test global configuration,
-    prefixing required file and directory paths with the
-    given daemon name, if it exists.
-    '''
-
-    conf_subdir = os.path.join(test_name, daemon_name) if daemon_name else test_name
-    conf_dir = os.path.join(MY_DIR, conf_subdir)
-
-    tmp_subdir = "l3overlay-%s-%s-" % (test_name, daemon_name) if daemon_name else "l3overlay-%s-" % test_name
-    tmp_dir = tempfile.mkdtemp(prefix=tmp_subdir)
-
-    log_dir = os.path.join(LOG_DIR, os.path.basename(tmp_dir))
-
-    args = {
-        "dry_run": "true",
-
-        "log_level": "DEBUG",
-
-        "use_ipsec": "true",
-        "ipsec_manage": "true",
-
-        "lib_dir": os.path.join(tmp_dir, "lib"),
-
-        "overlay_conf_dir": os.path.join(conf_dir, "overlays"),
-        "template_dir": os.path.join(ROOT_DIR, "l3overlay", "templates"),
-
-
-        "log": os.path.join(log_dir, "l3overlay.log"),
-        "pid": os.path.join(tmp_dir, "l3overlayd.pid"),
-    }
-
-    return args
-
-
-def global_conf_cleanup(args):
-    '''
-    Clean up global configuration runtime state.
-    '''
-
-    util.directory_remove(args["lib_dir"])
-    util.directory_remove(os.path.dirname(args["pid"]))
 
 
 def main():

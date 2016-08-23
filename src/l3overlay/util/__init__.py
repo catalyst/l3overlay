@@ -335,7 +335,13 @@ def list_get(string, pattern='\s*,\s*'):
 ## Random functions.
 #
 
+
 def random_string(length, alpha=True, num=False):
+    '''
+    Return a randomly generated string, containing either
+    letters, numbers, or both.
+    '''
+
     set = []
 
     if alpha:

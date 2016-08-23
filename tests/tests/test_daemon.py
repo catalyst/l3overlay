@@ -33,31 +33,7 @@ class DaemonTest(tests.L3overlayTest):
     l3overlay unit test for testing static interfaces.
     '''
 
-    def setUp(self):
-        '''
-        Set up the unit test runtime state.
-        '''
-
-        self.global_conf = tests.global_conf_get("test_l3overlayd")
-
-        self.args_base = {
-            "dry_run": True,
-
-            "lib_dir": self.global_conf["lib_dir"],
-
-            "overlay_conf_dir": self.global_conf["overlay_conf_dir"],
-            "template_dir": self.global_conf["template_dir"],
-
-            "log": None,
-        }
-
-
-    def tearDown(self):
-        '''
-        Clean up the unit test runtime state.
-        '''
-
-        tests.global_conf_cleanup(self.global_conf)
+    name = "test_daemon"
 
 
     #
@@ -72,7 +48,7 @@ class DaemonTest(tests.L3overlayTest):
         sure a Daemon is returned.
         '''
 
-        a = self.args_base.copy()
+        a = self.global_conf.copy()
         a.update(args)
 
         daemon = l3overlay.daemon.read(a)
@@ -87,7 +63,7 @@ class DaemonTest(tests.L3overlayTest):
         Assumes it will fail, and raises a RuntimeError if it doesn't.
         '''
 
-        a = self.args_base.copy()
+        a = self.global_conf.copy()
         a.update(args)
 
         try:
