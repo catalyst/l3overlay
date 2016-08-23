@@ -148,7 +148,7 @@ config:
 
 test:
 	@for t in $(shell $(FIND) $(TESTS_DIR) -name 'test_*.py'); do \
-		PYTHONPATH=$(SRC_DIR) $(PYTHON) $$t; \
+		PYTHONPATH=$(TESTS_DIR):$(SRC_DIR) $(PYTHON) $$t; \
 	done
 
 sdist: config
@@ -172,9 +172,13 @@ clean:
 	$(RM) default/l3overlay
 	$(RM) init.d/l3overlay
 	$(RM) upstart/l3overlay.conf
+	$(RMDIR) .tests
 	$(RMDIR) build
 	$(RMDIR) dist
 	$(RMDIR) $(NAME).egg-info
+	for d in $(shell $(FIND) -name '__pycache__'); do \
+		$(RMDIR) $$d; \
+	done
 
 
 .PHONY: all config test sdist bdist_wheel install uninstall clean

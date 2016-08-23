@@ -48,7 +48,7 @@ class Main(object):
 
         signal.signal(signal.SIGTERM, signal.SIG_IGN)
 
-        self.daemon.logger.info("handling SIGINT")
+        self.daemon.logger.info("handling SIGTERM")
 
         self.daemon.logger.debug("stopping daemon")
         self.daemon.stop()
@@ -135,6 +135,14 @@ class Main(object):
             "-dr", "--dry-run",
             action = "store_true",
             help = "test configuration and daemon without modifying the system",
+        )
+
+        argparser.add_argument(
+            "-ll", "--log-level",
+            metavar = "LEVEL",
+            type = str,
+            default = None,
+            help = "use LEVEL as the logging level parameter",
         )
 
         argparser.add_argument(

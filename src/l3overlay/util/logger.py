@@ -96,7 +96,7 @@ class Logger(Worker):
         '''
 
         if not self.is_started():
-            raise NotYetStartedError("%s not yet started" % self.description)
+            raise NotYetStartedError(self)
 
         self.logger.debug(msg, *args, **kwargs)
 
@@ -107,7 +107,7 @@ class Logger(Worker):
         '''
 
         if not self.is_started():
-            raise NotYetStartedError("%s not yet started" % self.description)
+            raise NotYetStartedError(self)
 
         self.logger.info(msg, *args, **kwargs)
 
@@ -118,7 +118,7 @@ class Logger(Worker):
         '''
 
         if not self.is_started():
-            raise NotYetStartedError("%s not yet started" % self.description)
+            raise NotYetStartedError(self)
 
         self.logger.warning(msg, *args, **kwargs)
 
@@ -129,7 +129,7 @@ class Logger(Worker):
         '''
 
         if not self.is_started():
-            raise NotYetStartedError("%s not yet started" % self.description)
+            raise NotYetStartedError(self)
 
         self.logger.error(msg, *args, **kwargs)
 
@@ -140,7 +140,7 @@ class Logger(Worker):
         '''
 
         if not self.is_started():
-            raise NotYetStartedError("%s not yet started" % self.description)
+            raise NotYetStartedError(self)
 
         self.logger.critical(msg, *args, **kwargs)
 
@@ -151,7 +151,7 @@ class Logger(Worker):
         '''
 
         if not self.is_started():
-            raise NotYetStartedError("%s not yet started" % self.description)
+            raise NotYetStartedError(self)
 
         self.logger.log(lvl, msg, *args, **kwargs)
 
@@ -162,7 +162,7 @@ class Logger(Worker):
         '''
 
         if not self.is_started():
-            raise NotYetStartedError("%s not yet started" % self.description)
+            raise NotYetStartedError(self)
 
         self.logger.exception(msg, *args, **kwargs)
 
