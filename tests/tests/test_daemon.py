@@ -92,33 +92,38 @@ class DaemonTest(unittest.TestCase):
     def assert_hex_string(self, key, min=None, max=None):
         '''
         Test that key, of type hex string, is properly handled by the daemon.
+        Optionally checks if digit limits are properly handled, by specifying
+        a miniumum and maximum digit size.
         '''
 
         valid_values = "0123456789abcdef"
 
-        _min = min if min is not None else 0
-        _max = max if max is not None else 16
+        _min = min if min is not None else 1
+        _max = max if max is not None else max(_min + 1, 16)
 
         # Test default values.
 
         # Test valid values.
+        for v in valid_values:
+            self.assert_success({key: str.join("", [v for __ in range(0, _min)])})
+
         self.assert_success({
-            key: str.join("", [valid_values[i % 16] for i in range(_min, _max)]),
+            key: str.join("", [valid_values[i % 16] for i in range(0, _max)]),
         })
 
         # Test invalid values.
         self.assert_fail({key: ""}, ValueError)
 
         self.assert_fail({
-            key: str.join("", ["z" for __ in range(_min, _max)]),
+            key: str.join("", ["z" for __ in range(0, _min)]),
         }, ValueError)
 
-        if min is not None:
+        if min is not None and _min > 1:
             self.assert_fail({
                 key: str.join("", [valid_values[i % 16] for i in range(0, _min - 1)]),
             }, ValueError)
 
-        if max is not None:
+        if max is not None and _max > 1:
             self.assert_fail({
                 key: str.join("", [valid_values[i % 16] for i in range(0, _max + 1)]),
             }, ValueError)
