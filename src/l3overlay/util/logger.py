@@ -56,8 +56,11 @@ class Logger(Worker):
 
         if self.log:
             util.directory_create(os.path.dirname(self.log))
-            self.logger_file_handler = logging.FileHandler(self.log)
-            self.logger_file_handler.setFormatter(self.logger_formatter)
+            self.logger_handler = logging.FileHandler(self.log)
+        else:
+            self.logger_handler = logging.NullHandler()
+
+        self.logger_handler.setFormatter(self.logger_formatter)
 
 
     def start(self):
@@ -70,8 +73,7 @@ class Logger(Worker):
         self.logger = logging.getLogger(self.name)
         self.logger.setLevel(self.log_level)
 
-        if self.log:
-            self.logger.addHandler(self.logger_file_handler)
+        self.logger.addHandler(self.logger_handler)
 
         self.set_started()
 
@@ -84,8 +86,7 @@ class Logger(Worker):
         self.set_stopping()
 
         self.logger.debug("stopping logger")
-        if self.log:
-            self.logger.removeHandler(self.logger_file_handler)
+        self.logger.removeHandler(self.logger_handler)
 
         self.set_stopped()
 

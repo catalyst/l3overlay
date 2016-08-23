@@ -133,10 +133,10 @@ If an IPsec PSK is stored in the global configuration, the permissions should be
 
 All `global.conf` configuration values come under the `[global]` section.
 
-#### logging-level
+#### log-level
 * Type: **enum**
 * Required: no
-* Values: `NOSET`, `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`
+* Values: `NOTSET`, `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`
 
 Specifies the logging output level that l3overlay should use. The default value is `INFO`.
 

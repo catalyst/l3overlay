@@ -315,9 +315,9 @@ class ValueReader(object):
         arg_key = key.lower().replace("-", "_")
         config_key = key.lower().replace("_", "-")
 
-        if self.args and arg_key in self.args and self.args[arg_key]:
+        if self.args and arg_key in self.args and self.args[arg_key] is not None:
             return self.args[arg_key]
-        elif self.config and config_key in self.config and self.config[config_key]:
+        elif self.config and config_key in self.config and self.config[config_key] is not None:
             return self.config[config_key]
         else:
             return default
@@ -336,11 +336,11 @@ def read(args):
     reader = ValueReader(args, global_config)
 
     # Get enough configuration to start a logger.
-    log = reader.get("log", os.path.join(util.path_root(), "var", "log", "l3overlay.log"))
+    log = reader.get("log")
 
     log_level = util.enum_get(
         reader.get("log-level", "INFO"),
-        ["NOSET", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        ["NOTSET", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
     )
 
     # Start the logger.
@@ -356,7 +356,7 @@ def read(args):
         ipsec_manage = util.boolean_get(reader.get("ipsec-manage", True))
 
         _psk = reader.get("ipsec-psk")
-        ipsec_psk = util.hex_get_string(_psk, min=6, max=64) if _psk else None
+        ipsec_psk = util.hex_get_string(_psk, min=6, max=64) if _psk is not None else None
 
         # Get required directory paths.
         lib_dir = reader.get("lib-dir", os.path.join(util.path_root(), "var", "lib", "l3overlay"))

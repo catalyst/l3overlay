@@ -45,7 +45,7 @@ def boolean_get(value):
     if isinstance(value, bool):
         return value
     if isinstance(value, int):
-        return True if lower_value > 0 else False
+        return True if value > 0 else False
     elif isinstance(value, str):
         lower_value = value.lower()
 
@@ -97,11 +97,15 @@ def enum_get(value, enum):
     equivalent to. Raise a ValueError if it is not in the list.
     '''
 
+    if not isinstance(value, str):
+        raise ValueError("value '%s' is not an enumerable string" % str(value))
+
     for e in enum:
         if value.lower() == e.lower():
             return e
 
-    raise ValueError("given value %s is not a valid enum, must be one of %s" % (value, str(enum)))
+    raise ValueError("value '%s' not in enumeration list, must be one of %s" %
+            (value, str.join("/", enum)))
 
 
 def name_get(value):
