@@ -359,24 +359,49 @@ def read(args):
         ipsec_psk = util.hex_get_string(_psk, min=6, max=64) if _psk is not None else None
 
         # Get required directory paths.
-        lib_dir = reader.get("lib-dir", os.path.join(util.path_root(), "var", "lib", "l3overlay"))
+        lib_dir = util.path_get(reader.get(
+            "lib-dir",
+            os.path.join(util.path_root(), "var", "lib", "l3overlay"),
+        ))
         overlay_dir = os.path.join(lib_dir, "overlays")
 
-        fwbuilder_script_dir = reader.get("fwbuilder-script-dir", util.path_search("fwbuilder_scripts"))
-        overlay_conf_dir = reader.get("overlay-conf-dir", util.path_search("overlays"))
-        template_dir = reader.get("template-dir", util.path_search("templates"))
+        fwbuilder_script_dir = util.path_get(reader.get(
+            "fwbuilder-script-dir",
+            util.path_search("fwbuilder_scripts"),
+        ))
+        overlay_conf_dir = util.path_get(reader.get(
+            "overlay-conf-dir",
+            util.path_search("overlays"),
+        ))
+        template_dir = util.path_get(reader.get(
+            "template-dir",
+            util.path_search("templates"),
+        ))
 
         # Get required file paths.
-        pid = reader.get("pid", os.path.join(util.path_root(), "var", "run", "l3overlayd.pid"))
+        pid = util.path_get(reader.get(
+            "pid",
+            os.path.join(util.path_root(), "var", "run", "l3overlayd.pid"),
+        ))
 
-        ipsec_conf = reader.get("ipsec-conf", os.path.join(util.path_root(), "etc", "ipsec.d", "l3overlay.conf"))
-        ipsec_secrets = reader.get("ipsec-secrets", os.path.join(util.path_root(), "etc", "ipsec.secrets" if ipsec_manage else "ipsec.l3overlay.secrets"))
+        ipsec_conf = util.path_get(reader.get(
+            "ipsec-conf",
+            os.path.join(util.path_root(), "etc", "ipsec.d", "l3overlay.conf"),
+        ))
+        ipsec_secrets = util.path_get(reader.get(
+            "ipsec-secrets",
+              os.path.join(util.path_root(), "etc", "ipsec.secrets" if ipsec_manage else "ipsec.l3overlay.secrets"),
+        ))
 
-        overlay_confs = tuple(reader.get("overlay-conf", (os.path.join(overlay_conf_dir, oc) for oc in os.listdir(overlay_conf_dir)) if overlay_conf_dir else ()))
+        # Get overlay configuration file paths.
+        overlay_confs = reader.get("overlay-conf")
 
-        # Configuration checks.
-        if not overlay_confs:
-                raise NoOverlayConfError()
+        if overlay_confs is not None:
+            overlay_confs = (util.path_get(oc) for oc in overlay_confs)
+        elif overlay_conf_dir is not None:
+            overlay_confs = (os.path.join(overlay_conf_dir, oc) for oc in os.listdir(overlay_conf_dir))
+        else:
+            raise NoOverlayConfError()
 
         # Create the application state for each overlay.
         overlays = {}

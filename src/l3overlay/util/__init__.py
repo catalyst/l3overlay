@@ -32,100 +32,135 @@ import sys
 
 import distutils.spawn
 
+from l3overlay.util.exception.l3overlayerror import L3overlayError
+
 
 #
 ## Argument/parameter processing.
 #
 
 
+class GetError(L3overlayError):
+    pass
+
+
 def boolean_get(value):
     '''
-    Get a boolean value from a string. Raise a ValueError if the string
+    Get a boolean value from a string. Raise a GetError if the string
     is not a valid boolean.
     '''
 
     if isinstance(value, bool):
         return value
-    if isinstance(value, int):
+    elif isinstance(value, int):
         return True if value > 0 else False
     elif isinstance(value, str):
         lower_value = value.lower()
 
         if lower_value != "true" and lower_value != "false":
-            raise ValueError("invalid value for boolean: %s" % lower_value)
+            raise GetError("value '%s' not a valid boolean" % lower_value)
 
         return True if lower_value == "true" else False
     else:
-        raise ValueError("invalid value for boolean: %s" % value)
+        raise GetError("value '%s' not a valid boolean" % value)
 
 
 def integer_get(value):
     '''
-    Get an integer value from a string. Raise a ValueError if the string
+    Get an integer value from a string. Raise a GetError if the string
     is not a valid boolean.
     '''
 
-    return int(value)
+    try:
+        return int(value)
+    except ValueError:
+        raise GetError("value '%s' is not a valid integer" % value)
 
 
 def hex_get_string(value, min=None, max=None):
     '''
     Check that a string is a valid hexadecimal integer, optionally
     checking if it is within a minimum and maximum length. Returns the
-    string if the conditions are satisfied, raises a ValueError otherwise.
+    string if the conditions are satisfied, raises a GetError otherwise.
     '''
 
-    length = len(value)
+    if isinstance(value, int):
+        return hex(value)
 
-    if length == 0:
-        raise ValueError("empty string not a valid hexadecimal integer")
+    elif isinstance(value, str):
+        if value.startswith("0x"):
+            value = value[2:]
 
-    if min is not None and length < min:
-        raise ValueError("hexadecimal integer too short, minimum %i digits required: %s" % (min, value))
+        length = len(value)
 
-    if max is not None and length > max:
-        raise ValueError("hexadecimal integer too long, maximum %i digits required: %s" % (max, value))
+        if not length:
+            raise GetError("empty string not a valid hex integer")
 
-    if not re.fullmatch("[0-9A-Fa-f][0-9A-Fa-f]*", value):
-        raise ValueError("given string not a valid hexadecimal integer: %s" % value)
+        if min is not None and length < min:
+            raise GetError("hex integer '%s' too short, minimum %i digits required" % (value, min))
 
-    return value
+        if max is not None and length > max:
+            raise GetError("hex integer '%s' too long, maximum %i digits required" % (value, max))
+
+        for v in value:
+            if v not in string.hexdigits:
+                raise GetError("string '%s' not a valid hexadecimal integer")
+
+        return "0x%s" % value
+
+    else:
+        raise GetError("value '%s' not a valid hex integer" % value)
 
 
 def enum_get(value, enum):
     '''
     Check that the given value string is in the list of enumeration string
     values, and return the enumeration value the value string is
-    equivalent to. Raise a ValueError if it is not in the list.
+    equivalent to. Raise a GetError if it is not in the list.
     '''
 
     if not isinstance(value, str):
-        raise ValueError("value '%s' is not an enumerable string" % str(value))
+        raise GetError("value '%s' is not an enumerable string" % str(value))
 
     for e in enum:
         if value.lower() == e.lower():
             return e
 
-    raise ValueError("value '%s' not in enumeration list, must be one of %s" %
+    raise GetError("value '%s' not in enumeration list, must be one of %s" %
             (value, str.join("/", enum)))
 
 
 def name_get(value):
     '''
     Check that a string is a valid name, and return it. A name is a string
-    that is just one word, without whitespace. Raise a ValueError if the
+    that is just one word, without whitespace. Raise a GetError if the
     string is not a valid name.
     '''
 
     name = value.strip()
 
     if len(name) == 0:
-        raise ValueError("empty string not a valid name")
+        raise GetError("empty string not a valid name")
 
     if not re.fullmatch("[^\s][^\s]*", value):
-        raise ValueError("given string not a valid name (contains whitespace): %s" % name)
+        raise GetError("given string not a valid name (contains whitespace): %s" % name)
 
     return name
+
+
+def path_get(value):
+    '''
+    Check that the given value is a fully qualified file system path, raising
+    GetError if it isn't.
+    '''
+
+    if not isinstance(value, str):
+        raise GetError("non-string value '%s' not a valid file system path" % str(value))
+
+    if not os.path.isabs(value):
+        raise GetError("value '%s' not a fully qualified file system path" % value)
+
+    return value
 
 
 def section_header(type, name):

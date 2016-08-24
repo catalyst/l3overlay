@@ -51,10 +51,10 @@ class L3overlayTest(unittest.TestCase):
         Set up the unit test runtime state.
         '''
 
-        conf_dir = os.path.join(MY_DIR, self.name)
-        tmp_dir = tempfile.mkdtemp(prefix="l3overlay-%s-" % self.name)
+        self.tmp_dir = tempfile.mkdtemp(prefix="l3overlay-%s-" % self.name)
 
-        log_dir = os.path.join(LOG_DIR, os.path.basename(tmp_dir))
+        self.conf_dir = os.path.join(MY_DIR, self.name)
+        self.log_dir = os.path.join(LOG_DIR, os.path.basename(self.tmp_dir))
 
         self.global_conf = {
             "dry_run": "true",
@@ -64,14 +64,14 @@ class L3overlayTest(unittest.TestCase):
             "use_ipsec": "true",
             "ipsec_manage": "true",
 
-            "lib_dir": os.path.join(tmp_dir, "lib"),
+            "lib_dir": os.path.join(self.tmp_dir, "lib"),
 
-            "overlay_conf_dir": os.path.join(conf_dir, "overlays"),
+            "overlay_conf_dir": os.path.join(self.conf_dir, "overlays"),
             "template_dir": os.path.join(ROOT_DIR, "l3overlay", "templates"),
 
 
-            "log": os.path.join(log_dir, "l3overlay.log"),
-            "pid": os.path.join(tmp_dir, "l3overlayd.pid"),
+            "log": os.path.join(self.log_dir, "l3overlay.log"),
+            "pid": os.path.join(self.tmp_dir, "l3overlayd.pid"),
         }
 
 
@@ -80,8 +80,7 @@ class L3overlayTest(unittest.TestCase):
         Tear down the unit test runtime state.
         '''
 
-        util.directory_remove(self.global_conf["lib_dir"])
-        util.directory_remove(os.path.dirname(self.global_conf["pid"]))
+        util.directory_remove(self.tmp_dir)
 
 
     #
@@ -127,8 +126,8 @@ class L3overlayTest(unittest.TestCase):
 
         # Test default value, if specified.
         if test_default:
-            object = self.assert_success({key: None})
-            self.assert_success({key: vars(object)[key]})
+            obj = self.assert_success({key: None})
+            self.assert_success({key: vars(obj)[key]})
 
         # Test valid values.
         self.assert_success({key: True})
@@ -142,8 +141,8 @@ class L3overlayTest(unittest.TestCase):
         self.assert_success({key: -1})
 
         # Test invalid values.
-        self.assert_fail({key: ""}, ValueError)
-        self.assert_fail({key: "foo"}, ValueError)
+        self.assert_fail({key: ""}, util.GetError)
+        self.assert_fail({key: "foo"}, util.GetError)
 
 
     def assert_hex_string(self, key, min=None, max=None, test_default=False):
@@ -160,8 +159,8 @@ class L3overlayTest(unittest.TestCase):
 
         # Test default value, if specified.
         if test_default:
-            object = self.assert_success({key: None})
-            self.assert_success({key: vars(object)[key]})
+            obj = self.assert_success({key: None})
+            self.assert_success({key: vars(obj)[key]})
 
         # Test valid values.
         for v in vvs:
@@ -172,21 +171,21 @@ class L3overlayTest(unittest.TestCase):
         })
 
         # Test invalid values.
-        self.assert_fail({key: ""}, ValueError)
+        self.assert_fail({key: ""}, util.GetError)
 
         self.assert_fail({
             key: str.join("", ["z" for __ in range(0, _min)]),
-        }, ValueError)
+        }, util.GetError)
 
         if min is not None and _min > 1:
             self.assert_fail({
                 key: str.join("", [vvs[i % len(vvs)] for i in range(0, _min - 1)]),
-            }, ValueError)
+            }, util.GetError)
 
         if max is not None and _max > 1:
             self.assert_fail({
                 key: str.join("", [vvs[i % len(vvs)] for i in range(0, _max + 1)]),
-            }, ValueError)
+            }, util.GetError)
 
 
     def assert_enum(self, enum, key, test_default=False):
@@ -196,8 +195,8 @@ class L3overlayTest(unittest.TestCase):
 
         # Test default value, if specified.
         if test_default:
-            object = self.assert_success({key: None})
-            self.assert_success({key: vars(object)[key]})
+            obj = self.assert_success({key: None})
+            self.assert_success({key: vars(obj)[key]})
 
         # Test valid values.
         for e in enum:
@@ -205,9 +204,59 @@ class L3overlayTest(unittest.TestCase):
             self.assert_success({key: e.lower()})
 
         # Test invalid values.
-        self.assert_fail({key: ""}, ValueError)
-        self.assert_fail({key: util.random_string(16)}, ValueError)
-        self.assert_fail({key: 1}, ValueError)
+        self.assert_fail({key: ""}, util.GetError)
+        self.assert_fail({key: util.random_string(16)}, util.GetError)
+        self.assert_fail({key: 1}, util.GetError)
+
+
+    def assert_path(self, key, valid_path=None, test_default=False):
+        '''
+        Test that key, of type path, is properly handled by the daemon.
+        '''
+
+        # Test default value, if specified.
+        if test_default:
+            value = vars(self.assert_success({key: None}))[key]
+
+            self.assertTrue(os.path.isabs(value))
+            self.assert_success({key: value})
+
+        # Test valid values.
+        if valid_path:
+            self.assert_success({key: valid_path})
+        else:
+            self.assert_success({key: os.path.join(self.tmp_dir, "assert_path")})
+
+        # Test invalid values.
+        self.assert_fail({key: ""}, util.GetError)
+        self.assert_fail({key: util.random_string(16)}, util.GetError)
+        self.assert_fail({key: 1}, util.GetError)
+
+
+    def assert_path_iterable(self, key, valid_paths=None, test_default=False):
+        '''
+        Test that key, of type path, is properly handled by the daemon.
+        '''
+
+        # Test default value, if specified.
+        if test_default:
+            value = vars(self.assert_success({key: None}))[key]
+
+            for f in value:
+                self.assertTrue(os.path.isabs(f))
+
+            self.assert_success({key: value})
+
+        # Test valid values.
+        if valid_paths:
+            self.assert_success({key: valid_paths})
+        else:
+            self.assert_success({key: (os.path.join(self.tmp_dir, "assert_path_iterable"))})
+
+        # Test invalid values.
+        self.assert_fail({key: [""]}, util.GetError)
+        self.assert_fail({key: (util.random_string(16))}, util.GetError)
+        self.assert_fail({key: [1]}, util.GetError)
 
 
 def main():

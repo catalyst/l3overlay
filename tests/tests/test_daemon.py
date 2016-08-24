@@ -116,5 +116,76 @@ Arguments: %s''' % (str.join(", ", (e.__name__ for e in exceptions)), a))
         self.assert_hex_string("ipsec_psk", min=6, max=64)
 
 
+    def test_lib_dir(self):
+        '''
+        Test that 'lib_dir' is properly handled by the daemon.
+        '''
+
+        self.assert_path("lib_dir", test_default=True)
+
+
+    def test_fwbuilder_script_dir(self):
+        '''
+        Test that 'fwbuilder_script_dir' is properly handled by the daemon.
+        '''
+
+        self.assert_path("fwbuilder_script_dir")
+
+
+    def test_overlay_conf_dir(self):
+        '''
+        Test that 'overlay_conf_dir' is properly handled by the daemon.
+        '''
+
+        self.assert_path(
+            "template_dir",
+            valid_path = self.global_conf["overlay_conf_dir"],
+            test_default = True,
+        )
+
+
+    def test_template_dir(self):
+        '''
+        Test that 'template_dir' is properly handled by the daemon.
+        '''
+
+        self.assert_path("template_dir", test_default=True)
+
+
+    def test_pid(self):
+        '''
+        Test that 'pid' is properly handled by the daemon.
+        '''
+
+        self.assert_path("pid", test_default=True)
+
+
+    def test_ipsec_conf(self):
+        '''
+        Test that 'ipsec_conf' is properly handled by the daemon.
+        '''
+
+        self.assert_path("ipsec_conf", test_default=True)
+
+
+    def test_ipsec_secrets(self):
+        '''
+        Test that 'ipsec_secrets' is properly handled by the daemon.
+        '''
+
+        self.assert_path("ipsec_secrets", test_default=True)
+
+
+    def test_overlay_conf(self):
+        '''
+        Test that 'overlay_conf' is properly handled by the daemon.
+        '''
+
+        self.assert_path_iterable(
+            "overlay_conf",
+            valid_paths = (os.path.join(self.global_conf["overlay_conf_dir"], f) for f in os.listdir(self.global_conf["overlay_conf_dir"])),
+        )
+
+
 if __name__ == "__main__":
     tests.main()
