@@ -65,14 +65,23 @@ def boolean_get(value):
         raise GetError("value '%s' not a valid boolean" % value)
 
 
-def integer_get(value):
+def integer_get(value, minval=None, maxval=None):
     '''
     Get an integer value from a string. Raise a GetError if the string
     is not a valid boolean.
     '''
 
     try:
-        return int(value)
+        integer = int(value)
+
+        if minval is not None and integer < minval:
+            raise GetError("integer value %s too low, minimum value %i required" % (integer, minval))
+
+        if maxval is not None and integer > maxval:
+            raise GetError("integer value %s too high, maximum value %i required" % (integer, maxval))
+
+        return integer
+
     except ValueError:
         raise GetError("value '%s' is not a valid integer" % value)
 
@@ -137,12 +146,15 @@ def name_get(value):
     string is not a valid name.
     '''
 
-    name = value.strip()
+    if not isinstance(value, str):
+        raise GetError("non-string value '%s' not a valid name" % value)
 
-    if len(name) == 0:
+    if len(value) == 0:
         raise GetError("empty string not a valid name")
 
-    if not re.fullmatch("[^\s][^\s]*", value):
+    name = value.strip()
+
+    if not re.fullmatch("[^\s][^\s]*", name):
         raise GetError("given string not a valid name (contains whitespace): %s" % name)
 
     return name
@@ -198,11 +210,14 @@ def section_name_get(section):
 
 def ip_network_get(value):
     '''
-    Get an IP network from a string. Raises a ValueError if the string
+    Get an IP network from a string. Raises a GetError if the string
     is not a valid IP network. Supports both IPv4 and IPv6.
     '''
 
-    return ipaddress.ip_network(value)
+    try:
+        return ipaddress.ip_network(value)
+    except ValueError:
+        raise GetError("value '%s' is not a valid IPv4/IPv6 address" % value)
 
 
 def ip_network_is_v6(value):
@@ -222,11 +237,14 @@ def ip_network_is_v6(value):
 
 def ip_address_get(value):
     '''
-    Get an IP address from a string. Raises a ValueError if the string
+    Get an IP address from a string. Raises a GetError if the string
     is not a valid IP address. Supports both IPv4 and IPv6.
     '''
 
-    return ipaddress.ip_address(value)
+    try:
+        return ipaddress.ip_address(value)
+    except ValueError:
+        raise GetError("value '%s' is not a valid IPv4/IPv6 address" % value)
 
 
 def ip_address_remote(local):
@@ -357,13 +375,21 @@ def bird_prefix_get(value):
     return value
 
 
-def list_get(string, pattern='\s*,\s*'):
+def list_get(s, length=None, pattern="\\s*,\\s*"):
     '''
     Convert a string separated by regular expression pattern into a list.
     The default pattern separated by a comma, absorbing whitespace in between.
     '''
 
-    return re.split(pattern, string)
+    if not isinstance(s, str):
+        raise GetError("non-string value '%s' is not a valid separated string" % s)
+
+    l = re.split(pattern, s)
+
+    if length and length != len(l):
+        raise GetError("list length %s does not match required length %s" % (len(l), length))
+
+    return l
 
 
 #

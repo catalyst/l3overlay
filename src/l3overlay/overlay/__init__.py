@@ -41,23 +41,25 @@ from l3overlay.util.exception.l3overlayerror import L3overlayError
 from l3overlay.util.worker import Worker
 
 
+class NoOverlayConfigError(L3overlayError):
+    def __init__(self):
+        super().__init__("no overlay configuration specified")
+
 class LinknetPoolOverflowError(L3overlayError):
     def __init__(self, overlay, node_link):
         super().__init__(
             "overflowed linknet pool '%s' with node link %s in %s '%s'" %
                     (str(overlay.linknet_pool), str(node_link), overlay.description, overlay.name))
 
-class DuplicateNodeListError(L3overlayError):
-    def __init__(self, overlay):
+class NoNodeListError(L3overlayError):
+    def __init__(self, name):
         super().__init__(
-            "node list of %s '%s' contains duplicates" %
-                    (overlay.description, overlay.name))
+            "node list missing from overlay '%s'" % name)
 
 class MissingThisNodeError(L3overlayError):
-    def __init__(self, overlay, this_node):
+    def __init__(self, name, this_node):
         super().__init__(
-            "this node '%s' is missing from node list of %s '%s'" %
-                    (this_node, overlay.description, overlay.name))
+            "this node '%s' is missing from node list of overlay '%s'" % (this_node, name))
 
 
 class Overlay(Worker):
@@ -102,7 +104,13 @@ class Overlay(Worker):
         self.dry_run = self.daemon.dry_run
 
         if self.fwbuilder_script_file:
-            self.fwbuilder_script = self.fwbuilder_script if os.path.isabs(self.fwbuilder_script_file) else os.path.join(self.daemon.fwbuilder_script_dir, self.fwbuilder_script_file)
+            if os.path.isabs(self.fwbuilder_script_file):
+                self.fwbuilder_script = self.fwbuilder_script
+            else:
+                self.fwbuilder_script = os.path.join(
+                    self.daemon.fwbuilder_script_dir,
+                    self.fwbuilder_script_file,
+                )
         else:
             self.fwbuilder_script = None
 
@@ -274,13 +282,20 @@ class Overlay(Worker):
 Worker.register(Overlay)
 
 
-def read(log, log_level, conf):
+def read(log, log_level, conf=None, config=None):
     '''
-    Parse a configuration file, and return an overlay object.
+    Parse a configuration, file or dictionary, and return an overlay object.
     '''
 
+    # If specified, read the overlay configuration file.
+    if conf:
+        config = util.config(conf)
+    elif config:
+        config = config.copy()
+    else:
+        raise NoOverlayConfigError()
+
     # Get the overlay configuration.
-    config = util.config(conf)
     section = config["overlay"]
 
     # Fetch just enough configuration to start an overlay logger.
@@ -291,23 +306,26 @@ def read(log, log_level, conf):
 
     # Global overlay configuration.
     enabled = util.boolean_get(section["enabled"]) if "enabled" in section else True
-    asn = util.integer_get(section["asn"])
+    asn = util.integer_get(section["asn"], minval=0, maxval=65535)
     linknet_pool = util.ip_network_get(section["linknet-pool"])
 
     fwbuilder_script_file = section["fwbuilder-script"] if "fwbuilder-script" in section else None
 
     # Generate the list of nodes, sorted numerically.
-    ns = {util.integer_get(k[5:]):v.split(" ") for k, v in section.items() if k.startswith("node-")}
-    nodes = [(util.name_get(ns[k][0]), util.ip_address_get(ns[k][1])) for k in sorted(ns.keys())]
+    nodes = []
+    for key, value in section.items():
+        if key.startswith("node-"):
+            node = util.list_get(value, length=2, pattern="\\s")
+            nodes.append((util.name_get(node[0]), util.ip_address_get(node[1])))
 
-    if len(nodes) != len(set(nodes)):
-        raise DuplicateNodeListError(self)
+    if not nodes:
+        raise NoNodeListError(name)
 
     # Get the node object for this node from the list of nodes.
     this_node = next((n for n in nodes if n[0] == util.name_get(section["this-node"])), None)
 
     if not this_node:
-        raise MissingThisNodeError(self, util.name_get(section["this-node"]))
+        raise MissingThisNodeError(name, util.name_get(section["this-node"]))
 
     # Static interfaces.
     interfaces = [interface.read(lg, h, s) for h, s in config.items() if h.startswith("static")]

@@ -1,6 +1,6 @@
 #
 # IPsec overlay network manager (l3overlay)
-# l3overlay/tests/tests/__init__.py - unit test constants and helper functions
+# l3overlay/tests/tests/__init__.py - unit test constants, base class and helper functions
 #
 # Copyright (c) 2016 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify
@@ -18,6 +18,7 @@
 #
 
 
+import ipaddress
 import os
 import string
 import tempfile
@@ -88,7 +89,7 @@ class L3overlayTest(unittest.TestCase):
     #
 
 
-    def assert_success(self, args):
+    def assert_success(self, section, key, value):
         '''
         Assertion abstract method for success.
         Process:
@@ -101,7 +102,7 @@ class L3overlayTest(unittest.TestCase):
         raise NotImplementedError()
 
 
-    def assert_fail(self, args, *exceptions):
+    def assert_fail(self, section, key, value, *exceptions):
         '''
         Assertion abstract method for failure.
         Process:
@@ -118,36 +119,122 @@ class L3overlayTest(unittest.TestCase):
     ##
     #
 
-
-    def assert_boolean(self, key, test_default=False):
+    def assert_value(self, section, key, value, test_default=False):
         '''
-        Test that key, of type boolean, is properly handled by the daemon.
+        Test that key is properly handled by the object.
         '''
 
         # Test default value, if specified.
         if test_default:
-            obj = self.assert_success({key: None})
-            self.assert_success({key: vars(obj)[key]})
+            obj = self.assert_success(section, key, None)
+            value = vars(obj)[section][key] if section else vars(obj)[key]
+            self.assert_success(section, key, value)
+
+        # Test value.
+        self.assert_success(section, key, value)
+
+
+    def assert_boolean(self, section, key, test_default=False):
+        '''
+        Test that key, of type boolean, is properly handled by the object.
+        '''
+
+        # Test default value, if specified.
+        if test_default:
+            obj = self.assert_success(section, key, None)
+            value = vars(obj)[section][key] if section else vars(obj)[key]
+            self.assert_success(section, key, value)
 
         # Test valid values.
-        self.assert_success({key: True})
-        self.assert_success({key: "true"})
-        self.assert_success({key: 1})
-        self.assert_success({key: 2})
+        self.assert_success(section, key, True)
+        self.assert_success(section, key, "true")
+        self.assert_success(section, key, 1)
+        self.assert_success(section, key, 2)
 
-        self.assert_success({key: False})
-        self.assert_success({key: "false"})
-        self.assert_success({key: 0})
-        self.assert_success({key: -1})
+        self.assert_success(section, key, False)
+        self.assert_success(section, key, "false")
+        self.assert_success(section, key, 0)
+        self.assert_success(section, key, -1)
 
         # Test invalid values.
-        self.assert_fail({key: ""}, util.GetError)
-        self.assert_fail({key: "foo"}, util.GetError)
+        self.assert_fail(section, key, "", util.GetError)
+        self.assert_fail(section, key, util.random_string(6), util.GetError)
 
 
-    def assert_hex_string(self, key, min=None, max=None, test_default=False):
+    def assert_integer(self, section, key, minval=None, maxval=None, test_default=False):
         '''
-        Test that key, of type hex string, is properly handled by the daemon.
+        Test that key, of type integer, is properly handled by the object.
+        '''
+
+        vvs = string.digits
+
+        _minval = minval if minval is not None else 0
+        _maxval = maxval if maxval is not None else max(_minval + 1, 11)
+
+        # Test default value, if specified.
+        if test_default:
+            obj = self.assert_success(section, key, None)
+            value = vars(obj)[section][key] if section else vars(obj)[key]
+            self.assert_success(section, key, value)
+
+        # Test valid values.
+        self.assert_success(section, key, _minval)
+        self.assert_success(section, key, _maxval)
+
+        self.assert_success(section, key, str(_minval))
+
+        # Test invalid values.
+        self.assert_fail(section, key, "", util.GetError)
+        self.assert_fail(section, key, "foo", util.GetError)
+
+        if minval is not None:
+            self.assert_fail(section, key, _minval - 1, util.GetError)
+
+        if maxval is not None:
+            self.assert_fail(section, key, _maxval + 1, util.GetError)
+
+
+    def assert_name(self, section, key, valid_value=None, invalid_exception=None, test_default=False):
+        '''
+        Test that key, of type name, is properly handled by the object.
+        '''
+
+        # Test default value, if specified.
+        if test_default:
+            obj = self.assert_success(section, key, None)
+            value = vars(obj)[section][key] if section else vars(obj)[key]
+            self.assert_success(section, key, value)
+
+        # Test valid values.
+        if valid_value:
+            self.assert_success(section, key, valid_value)
+            self.assert_success(section, key, " %s" % valid_value)
+            self.assert_success(section, key, "%s " % valid_value)
+        else:
+            self.assert_success(section, key, "name")
+            self.assert_success(section, key, "name_1")
+            self.assert_success(section, key, "name-2")
+            self.assert_success(section, key, "name.3")
+            self.assert_success(section, key, " name-4")
+            self.assert_success(section, key, "name-5 ")
+
+        # Test invalid values.
+        self.assert_fail(section, key, "", util.GetError)
+        self.assert_fail(section, key, 1, util.GetError)
+        self.assert_fail(section, key, "name 6", util.GetError)
+
+        if invalid_exception:
+            self.assert_fail(
+                section,
+                key,
+                util.random_string(4),
+                invalid_exception,
+            )
+
+
+    def assert_hex_string(self, section, key, min=None, max=None, test_default=False):
+        '''
+        Test that key, of type hex string, is properly handled by the object.
         Optionally checks if digit limits are properly handled, by specifying
         a miniumum and maximum digit size.
         '''
@@ -159,104 +246,144 @@ class L3overlayTest(unittest.TestCase):
 
         # Test default value, if specified.
         if test_default:
-            obj = self.assert_success({key: None})
-            self.assert_success({key: vars(obj)[key]})
+            obj = self.assert_success(section, key, None)
+            value = vars(obj)[section][key] if section else vars(obj)[key]
+            self.assert_success(section, key, value)
 
         # Test valid values.
         for v in vvs:
-            self.assert_success({key: str.join("", [v for __ in range(0, _min)])})
+            self.assert_success(section, key, str.join("", [v for __ in range(0, _min)]))
 
-        self.assert_success({
-            key: str.join("", [vvs[i % len(vvs)] for i in range(0, _max)]),
-        })
+        self.assert_success(
+            section,
+            key,
+            str.join("", [vvs[i % len(vvs)] for i in range(0, _max)]),
+        )
 
         # Test invalid values.
-        self.assert_fail({key: ""}, util.GetError)
+        self.assert_fail(section, key, "", util.GetError)
 
-        self.assert_fail({
-            key: str.join("", ["z" for __ in range(0, _min)]),
-        }, util.GetError)
+        self.assert_fail(
+            section,
+            key,
+            str.join("", ["z" for __ in range(0, _min)]),
+            util.GetError,
+        )
 
         if min is not None and _min > 1:
-            self.assert_fail({
-                key: str.join("", [vvs[i % len(vvs)] for i in range(0, _min - 1)]),
-            }, util.GetError)
+            self.assert_fail(
+                section,
+                key,
+                str.join("", [vvs[i % len(vvs)] for i in range(0, _min - 1)]),
+                util.GetError,
+            )
 
         if max is not None and _max > 1:
-            self.assert_fail({
-                key: str.join("", [vvs[i % len(vvs)] for i in range(0, _max + 1)]),
-            }, util.GetError)
+            self.assert_fail(
+                section,
+                key,
+                str.join("", [vvs[i % len(vvs)] for i in range(0, _max + 1)]),
+                util.GetError,
+            )
 
 
-    def assert_enum(self, enum, key, test_default=False):
+    def assert_ip_network(self, section, key, test_default=False):
         '''
-        Test that key, of type enum, is properly handled by the daemon.
+        Test that key, of type 'ip network', is properly handled by the object.
         '''
 
         # Test default value, if specified.
         if test_default:
-            obj = self.assert_success({key: None})
-            self.assert_success({key: vars(obj)[key]})
+            obj = self.assert_success(section, key, None)
+            value = vars(obj)[section][key] if section else vars(obj)[key]
+            self.assert_success(section, key, value)
+
+        # Test valid values.
+        self.assert_success(section, key, 3325256704)
+        self.assert_success(section, key, "198.51.100.0/24")
+        self.assert_success(section, key, ipaddress.ip_network("198.51.100.0/24"))
+
+        self.assert_success(section, key, 42540766411282592856903984951653826560)
+        self.assert_success(section, key, "2001:db8::/32")
+        self.assert_success(section, key, ipaddress.ip_network("2001:db8::/32"))
+
+        # Test invalid values.
+        self.assert_fail(section, key, "", util.GetError)
+        self.assert_fail(section, key, -1, util.GetError)
+        self.assert_fail(section, key, util.random_string(32), util.GetError)
+
+
+    def assert_enum(self, section, key, enum, test_default=False):
+        '''
+        Test that key, of type enum, is properly handled by the object.
+        '''
+
+        # Test default value, if specified.
+        if test_default:
+            obj = self.assert_success(section, key, None)
+            value = vars(obj)[section][key] if section else vars(obj)[key]
+            self.assert_success(section, key, value)
 
         # Test valid values.
         for e in enum:
-            self.assert_success({key: e.upper()})
-            self.assert_success({key: e.lower()})
+            self.assert_success(section, key, e.upper())
+            self.assert_success(section, key, e.lower())
 
         # Test invalid values.
-        self.assert_fail({key: ""}, util.GetError)
-        self.assert_fail({key: util.random_string(16)}, util.GetError)
-        self.assert_fail({key: 1}, util.GetError)
+        self.assert_fail(section, key, "", util.GetError)
+        self.assert_fail(section, key, util.random_string(16), util.GetError)
+        self.assert_fail(section, key, 1, util.GetError)
 
 
-    def assert_path(self, key, valid_path=None, test_default=False):
+    def assert_path(self, section, key, valid_path=None, test_default=False):
         '''
-        Test that key, of type path, is properly handled by the daemon.
+        Test that key, of type path, is properly handled by the object.
         '''
 
         # Test default value, if specified.
         if test_default:
-            value = vars(self.assert_success({key: None}))[key]
-
+            obj = self.assert_success(section, key, None)
+            value = vars(obj)[section][key] if section else vars(obj)[key]
             self.assertTrue(os.path.isabs(value))
-            self.assert_success({key: value})
+            self.assert_success(section, key, value)
 
         # Test valid values.
         if valid_path:
-            self.assert_success({key: valid_path})
+            self.assert_success(section, key, valid_path)
         else:
-            self.assert_success({key: os.path.join(self.tmp_dir, "assert_path")})
+            self.assert_success(section, key, os.path.join(self.tmp_dir, "assert_path"))
 
         # Test invalid values.
-        self.assert_fail({key: ""}, util.GetError)
-        self.assert_fail({key: util.random_string(16)}, util.GetError)
-        self.assert_fail({key: 1}, util.GetError)
+        self.assert_fail(section, key, "", util.GetError)
+        self.assert_fail(section, key, util.random_string(16), util.GetError)
+        self.assert_fail(section, key, 1, util.GetError)
 
 
-    def assert_path_iterable(self, key, valid_paths=None, test_default=False):
+    def assert_path_iterable(self, section, key, valid_paths=None, test_default=False):
         '''
-        Test that key, of type path, is properly handled by the daemon.
+        Test that key, of type path, is properly handled by the object.
         '''
 
         # Test default value, if specified.
         if test_default:
-            value = vars(self.assert_success({key: None}))[key]
+            obj = self.assert_success(section, key, None)
+            value = vars(obj)[section][key] if section else vars(obj)[key]
 
             for f in value:
                 self.assertTrue(os.path.isabs(f))
 
-            self.assert_success({key: value})
+            self.assert_success(section, key, value)
 
         # Test valid values.
         if valid_paths:
-            self.assert_success({key: valid_paths})
+            self.assert_success(section, key, valid_paths)
         else:
-            self.assert_success({key: (os.path.join(self.tmp_dir, "assert_path_iterable"))})
+            self.assert_success(section, key, os.path.join(self.tmp_dir, "assert_path_iterable"))
 
         # Test invalid values.
-        self.assert_fail({key: [""]}, util.GetError)
-        self.assert_fail({key: (util.random_string(16))}, util.GetError)
-        self.assert_fail({key: [1]}, util.GetError)
+        self.assert_fail(section, key, [""], util.GetError)
+        self.assert_fail(section, key, [util.random_string(16)], util.GetError)
+        self.assert_fail(section, key, [1], util.GetError)
 
 
 def main():

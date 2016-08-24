@@ -1,6 +1,6 @@
 #
 # IPsec overlay network manager (l3overlay)
-# l3overlay/tests/test_daemon.py - unit test for testing daemon
+# l3overlay/tests/test_daemon.py - unit test for reading Daemon object
 #
 # Copyright (c) 2016 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify
@@ -30,7 +30,7 @@ import l3overlay.daemon
 
 class DaemonTest(tests.L3overlayTest):
     '''
-    l3overlay unit test for testing static interfaces.
+    l3overlay unit test for reading Daemon objects.
     '''
 
     name = "test_daemon"
@@ -41,7 +41,7 @@ class DaemonTest(tests.L3overlayTest):
     #
 
 
-    def assert_success(self, args):
+    def assert_success(self, section, key, value):
         '''
         Try and read an l3overlay daemon using the given arguments.
         Assumes it will succeed, and will run an assertion test to make
@@ -49,7 +49,7 @@ class DaemonTest(tests.L3overlayTest):
         '''
 
         a = self.global_conf.copy()
-        a.update(args)
+        a[key] = value
 
         daemon = l3overlay.daemon.read(a)
         self.assertIsInstance(daemon, l3overlay.daemon.Daemon)
@@ -57,14 +57,14 @@ class DaemonTest(tests.L3overlayTest):
         return daemon
 
 
-    def assert_fail(self, args, *exceptions):
+    def assert_fail(self, section, key, value, *exceptions):
         '''
         Try and read an l3overlay daemon using the given arguments.
         Assumes it will fail, and raises a RuntimeError if it doesn't.
         '''
 
         a = self.global_conf.copy()
-        a.update(args)
+        a[key] = value
 
         try:
             l3overlay.daemon.read(a)
@@ -86,8 +86,9 @@ Arguments: %s''' % (str.join(", ", (e.__name__ for e in exceptions)), a))
         '''
 
         self.assert_enum(
-            ["NOTSET", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+            None,
             "log_level",
+            ["NOTSET", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
             test_default = True,
         )
 
@@ -97,7 +98,7 @@ Arguments: %s''' % (str.join(", ", (e.__name__ for e in exceptions)), a))
         Test that 'use_ipsec' is properly handled by the daemon.
         '''
 
-        self.assert_boolean("use_ipsec", test_default=True)
+        self.assert_boolean(None, "use_ipsec", test_default=True)
 
 
     def test_ipsec_manage(self):
@@ -105,7 +106,7 @@ Arguments: %s''' % (str.join(", ", (e.__name__ for e in exceptions)), a))
         Test that 'ipsec_manage' is properly handled by the daemon.
         '''
 
-        self.assert_boolean("ipsec_manage", test_default=True)
+        self.assert_boolean(None, "ipsec_manage", test_default=True)
 
 
     def test_ipsec_psk(self):
@@ -113,7 +114,7 @@ Arguments: %s''' % (str.join(", ", (e.__name__ for e in exceptions)), a))
         Test that 'ipsec_psk' is properly handled by the daemon.
         '''
 
-        self.assert_hex_string("ipsec_psk", min=6, max=64)
+        self.assert_hex_string(None, "ipsec_psk", min=6, max=64)
 
 
     def test_lib_dir(self):
@@ -121,7 +122,7 @@ Arguments: %s''' % (str.join(", ", (e.__name__ for e in exceptions)), a))
         Test that 'lib_dir' is properly handled by the daemon.
         '''
 
-        self.assert_path("lib_dir", test_default=True)
+        self.assert_path(None, "lib_dir", test_default=True)
 
 
     def test_fwbuilder_script_dir(self):
@@ -129,7 +130,7 @@ Arguments: %s''' % (str.join(", ", (e.__name__ for e in exceptions)), a))
         Test that 'fwbuilder_script_dir' is properly handled by the daemon.
         '''
 
-        self.assert_path("fwbuilder_script_dir")
+        self.assert_path(None, "fwbuilder_script_dir")
 
 
     def test_overlay_conf_dir(self):
@@ -138,6 +139,7 @@ Arguments: %s''' % (str.join(", ", (e.__name__ for e in exceptions)), a))
         '''
 
         self.assert_path(
+            None,
             "template_dir",
             valid_path = self.global_conf["overlay_conf_dir"],
             test_default = True,
@@ -149,7 +151,7 @@ Arguments: %s''' % (str.join(", ", (e.__name__ for e in exceptions)), a))
         Test that 'template_dir' is properly handled by the daemon.
         '''
 
-        self.assert_path("template_dir", test_default=True)
+        self.assert_path(None, "template_dir", test_default=True)
 
 
     def test_pid(self):
@@ -157,7 +159,7 @@ Arguments: %s''' % (str.join(", ", (e.__name__ for e in exceptions)), a))
         Test that 'pid' is properly handled by the daemon.
         '''
 
-        self.assert_path("pid", test_default=True)
+        self.assert_path(None, "pid", test_default=True)
 
 
     def test_ipsec_conf(self):
@@ -165,7 +167,7 @@ Arguments: %s''' % (str.join(", ", (e.__name__ for e in exceptions)), a))
         Test that 'ipsec_conf' is properly handled by the daemon.
         '''
 
-        self.assert_path("ipsec_conf", test_default=True)
+        self.assert_path(None, "ipsec_conf", test_default=True)
 
 
     def test_ipsec_secrets(self):
@@ -173,7 +175,7 @@ Arguments: %s''' % (str.join(", ", (e.__name__ for e in exceptions)), a))
         Test that 'ipsec_secrets' is properly handled by the daemon.
         '''
 
-        self.assert_path("ipsec_secrets", test_default=True)
+        self.assert_path(None, "ipsec_secrets", test_default=True)
 
 
     def test_overlay_conf(self):
@@ -182,6 +184,7 @@ Arguments: %s''' % (str.join(", ", (e.__name__ for e in exceptions)), a))
         '''
 
         self.assert_path_iterable(
+            None,
             "overlay_conf",
             valid_paths = (os.path.join(self.global_conf["overlay_conf_dir"], f) for f in os.listdir(self.global_conf["overlay_conf_dir"])),
         )

@@ -407,7 +407,7 @@ def read(args):
         overlays = {}
 
         for overlay_conf in overlay_confs:
-            o = overlay.read(log, log_level, overlay_conf)
+            o = overlay.read(log, log_level, conf=overlay_conf)
             overlays[o.name] = o
 
         # Return a set up daemon object.
