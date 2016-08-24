@@ -152,6 +152,7 @@ test:
 		PYTHONPATH=$(TESTS_SRC_DIR):$(SRC_DIR) $(PYTHON) $$t; \
 	done
 
+
 sdist: config
 	$(PYTHON) $(SETUP_PY) sdist
 
