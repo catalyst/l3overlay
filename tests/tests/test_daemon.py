@@ -18,12 +18,8 @@
 #
 
 
-import argparse
 import os
-import tempfile
 import tests
-
-from l3overlay import util
 
 import l3overlay.daemon
 
@@ -48,10 +44,10 @@ class DaemonTest(tests.L3overlayTest):
         sure a Daemon is returned.
         '''
 
-        a = self.global_conf.copy()
-        a[key] = value
+        gc = self.global_conf.copy()
+        gc[key] = value
 
-        daemon = l3overlay.daemon.read(a)
+        daemon = l3overlay.daemon.read(gc)
         self.assertIsInstance(daemon, l3overlay.daemon.Daemon)
 
         return daemon
@@ -63,14 +59,14 @@ class DaemonTest(tests.L3overlayTest):
         Assumes it will fail, and raises a RuntimeError if it doesn't.
         '''
 
-        a = self.global_conf.copy()
-        a[key] = value
+        gc = self.global_conf.copy()
+        gc[key] = value
 
         try:
-            l3overlay.daemon.read(a)
+            l3overlay.daemon.read(gc)
             raise RuntimeError('''l3overlay.daemon.read unexpectedly returned successfully
 Expected exception types: %s
-Arguments: %s''' % (str.join(", ", (e.__name__ for e in exceptions)), a))
+Arguments: %s''' % (str.join(", ", (e.__name__ for e in exceptions)), gc))
         except exceptions:
             pass
 

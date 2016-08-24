@@ -18,9 +18,7 @@
 #
 
 
-import argparse
 import os
-import tempfile
 import tests
 
 from l3overlay import overlay
@@ -127,7 +125,7 @@ class OverlayTest(OverlayBaseTest):
 
         # Remove the node list from the overlay list.
         for key in self.overlay_conf["overlay"].copy():
-            if key.startswith("node"):
+            if key.startswith("node-"):
                 del self.overlay_conf["overlay"][key]
 
         # Test that no nodes causes it to fail.

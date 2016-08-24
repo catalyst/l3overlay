@@ -19,6 +19,7 @@
 
 
 import configparser
+import copy
 import math
 import os
 
@@ -41,15 +42,15 @@ from l3overlay.util.exception.l3overlayerror import L3overlayError
 from l3overlay.util.worker import Worker
 
 
-class NoOverlayConfigError(L3overlayError):
-    def __init__(self):
-        super().__init__("no overlay configuration specified")
-
 class LinknetPoolOverflowError(L3overlayError):
     def __init__(self, overlay, node_link):
         super().__init__(
             "overflowed linknet pool '%s' with node link %s in %s '%s'" %
                     (str(overlay.linknet_pool), str(node_link), overlay.description, overlay.name))
+
+class NoOverlayConfigError(L3overlayError):
+    def __init__(self):
+        super().__init__("no overlay configuration specified")
 
 class NoNodeListError(L3overlayError):
     def __init__(self, name):
@@ -105,7 +106,7 @@ class Overlay(Worker):
 
         if self.fwbuilder_script_file:
             if os.path.isabs(self.fwbuilder_script_file):
-                self.fwbuilder_script = self.fwbuilder_script
+                self.fwbuilder_script = self.fwbuilder_script_file
             else:
                 self.fwbuilder_script = os.path.join(
                     self.daemon.fwbuilder_script_dir,
@@ -291,7 +292,7 @@ def read(log, log_level, conf=None, config=None):
     if conf:
         config = util.config(conf)
     elif config:
-        config = config.copy()
+        config = copy.deepcopy(config)
     else:
         raise NoOverlayConfigError()
 

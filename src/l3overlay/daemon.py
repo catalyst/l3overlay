@@ -18,6 +18,7 @@
 #
 
 
+import copy
 import os
 import pyroute2
 import re
@@ -81,7 +82,7 @@ class Daemon(worker.Worker):
         self.ipsec_conf = ipsec_conf
         self.ipsec_secrets = ipsec_secrets
 
-        self.overlays = overlays.copy()
+        self.overlays = copy.deepcopy(overlays)
         self.sorted_overlays = Daemon.overlays_list_sorted(self.overlays)
 
 
