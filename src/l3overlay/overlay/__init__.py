@@ -96,6 +96,9 @@ class Overlay(Worker):
         Set up the overlay runtime state.
         '''
 
+        if not self.enabled:
+            return
+
         self.set_settingup()
 
         # Set arguments.
@@ -215,6 +218,9 @@ class Overlay(Worker):
         Start the overlay.
         '''
 
+        if not self.enabled:
+            return
+
         self.set_starting()
 
         self.logger.info("starting overlay")
@@ -243,6 +249,9 @@ class Overlay(Worker):
         '''
         Stop the overlay.
         '''
+
+        if not self.enabled:
+            return
 
         self.set_stopping()
 
@@ -273,6 +282,9 @@ class Overlay(Worker):
         '''
         Remove the overlay runtime state.
         '''
+
+        if not self.enabled:
+            return
 
         self.set_removing()
 
