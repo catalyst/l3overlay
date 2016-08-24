@@ -1,6 +1,6 @@
 #
 # IPsec overlay network manager (l3overlay)
-# l3overlay/tests/tests/test_l3overlayd.py - l3overlayd execution unit test
+# tests/test_l3overlayd.py - unit tests for executing l3overlayd
 #
 # Copyright (c) 2016 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify
@@ -32,7 +32,7 @@ DAEMON_TERMINATE_TIMEOUT = 10
 
 class L3overlaydTest(tests.L3overlayTest):
     '''
-    l3overlay unit test for testing static interfaces.
+    l3overlay unit test for executing l3overlayd.
     '''
 
     name = "test_l3overlayd"

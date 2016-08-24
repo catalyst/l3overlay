@@ -1,6 +1,6 @@
 #
 # IPsec overlay network manager (l3overlay)
-# l3overlay/tests/tests/__init__.py - unit test constants, base class and helper functions
+# tests/__init__.py - unit test constants, base class and helper functions
 #
 # Copyright (c) 2016 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify

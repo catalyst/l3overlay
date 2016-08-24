@@ -1,6 +1,6 @@
 #
 # IPsec overlay network manager (l3overlay)
-# l3overlay/tests/test_daemon.py - unit test for reading Daemon object
+# tests/test_daemon.py - unit test for reading Overlay objects
 #
 # Copyright (c) 2016 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify
@@ -24,12 +24,12 @@ import tests
 from l3overlay import overlay
 from l3overlay import util
 
-from tests.test_overlay_base import OverlayBaseTest
+from tests.base.overlay import OverlayBaseTest
 
 
 class OverlayTest(OverlayBaseTest):
     '''
-    l3overlay unit test for reading Daemon objects.
+    l3overlay unit test for reading Overlay objects.
     '''
 
     name = "test_overlay"

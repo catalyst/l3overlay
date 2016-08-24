@@ -1,6 +1,6 @@
 #
 # IPsec overlay network manager (l3overlay)
-# l3overlay/tests/test_daemon.py - unit test for reading Daemon object
+# tests/test_daemon.py - unit test for reading Daemon objects
 #
 # Copyright (c) 2016 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify

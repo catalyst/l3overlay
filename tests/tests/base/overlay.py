@@ -1,6 +1,6 @@
 #
 # IPsec overlay network manager (l3overlay)
-# l3overlay/tests/test_overlay_base.py - base class for overlay-related unit tests
+# tests/base/overlay.py - base class for overlay-related unit tests
 #
 # Copyright (c) 2016 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify
@@ -18,18 +18,16 @@
 #
 
 
-import argparse
 import copy
-import os
-import tempfile
-import tests
-
-from l3overlay import util
 
 import l3overlay.overlay
 
+from l3overlay import util
 
-class OverlayBaseTest(tests.L3overlayTest):
+from tests import L3overlayTest
+
+
+class OverlayBaseTest(L3overlayTest):
     '''
     Base class for overlay-related unit tests.
     '''

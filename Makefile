@@ -92,7 +92,8 @@ CONFIG   = .config
 SETUP_PY = setup.py
 
 SRC_DIR   = src
-TESTS_DIR = tests
+TESTS_BIN_DIR = tests/tests
+TESTS_SRC_DIR = tests
 
 # At this point, l3overlayd only supports Python >= 3.4.
 PYTHON = python3.4
@@ -147,8 +148,8 @@ config:
 
 
 test:
-	@for t in $(shell $(FIND) $(TESTS_DIR) -name 'test_*.py'); do \
-		PYTHONPATH=$(TESTS_DIR):$(SRC_DIR) $(PYTHON) $$t; \
+	@for t in $(shell $(FIND) $(TESTS_BIN_DIR) -maxdepth 1 -name 'test_*.py'); do \
+		PYTHONPATH=$(TESTS_SRC_DIR):$(SRC_DIR) $(PYTHON) $$t; \
 	done
 
 sdist: config
