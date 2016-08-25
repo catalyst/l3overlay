@@ -253,7 +253,9 @@ class Daemon(worker.Worker):
         link = (local, remote)
 
         if link not in self._gre_keys:
-            self._gre_keys[link] = len(self._gre_keys)
+            self._gre_keys[link] = -1
+
+        self._gre_keys[link] += 1
 
         return self._gre_keys[link]
 
