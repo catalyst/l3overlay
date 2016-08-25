@@ -62,6 +62,11 @@ class MissingThisNodeError(L3overlayError):
         super().__init__(
             "this node '%s' is missing from node list of overlay '%s'" % (this_node, name))
 
+class UnsupportedSectionTypeError(L3overlayError):
+    def __init__(self, name, section):
+        super().__init__(
+            "supported section type '%s' in overlay '%s'" % (section, name))
+
 
 class Overlay(Worker):
     '''
@@ -341,7 +346,15 @@ def read(log, log_level, conf=None, config=None):
         raise MissingThisNodeError(name, util.name_get(section["this-node"]))
 
     # Static interfaces.
-    interfaces = [interface.read(lg, h, s) for h, s in config.items() if h.startswith("static")]
+    interfaces = []
+
+    for s, c in config.items():
+        if s.startswith("static"):
+            interfaces.append(interface.read(lg, s, c))
+        elif s == "DEFAULT" or s == "overlay":
+            continue
+        else:
+            raise UnsupportedSectionTypeError(name, s)
 
     # Return overlay object.
     return Overlay(lg, name,

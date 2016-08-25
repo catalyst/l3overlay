@@ -20,17 +20,26 @@
 
 import os
 import subprocess
-import tests
 import time
+import unittest
 
 from l3overlay import util
+
+from tests.base import BaseTest
 
 
 DAEMON_WAIT_TIMEOUT = 5
 DAEMON_TERMINATE_TIMEOUT = 10
 
 
-class L3overlaydTest(tests.L3overlayTest):
+class ExecutionError(Exception):
+    def __init__(self, message, command, returncode, stdout, stderr):
+        super().__init__(
+            "%s\n\nCommand: %s\n\nReturn code: %i\n\nstdout:\n%s\n\nstderr:\n%s" %
+                    (message, str.join(" ", command), returncode, stdout, stderr))
+
+
+class L3overlaydTest(BaseTest.Class):
     '''
     l3overlay unit test for executing l3overlayd.
     '''
@@ -65,9 +74,13 @@ class L3overlaydTest(tests.L3overlayTest):
         ) as process:
             try:
                 stdout_data, stderr_data = process.communicate(timeout=DAEMON_WAIT_TIMEOUT)
-                raise RuntimeError(
-                    "daemon terminated, timeout expected, return code %i\n\nstdout:\n%s\n\nstderr:\n%s" %
-                        (process.returncode, stdout_data.decode("UTF-8"), stderr_data.decode("UTF-8")))
+                raise ExecutionError(
+                    "l3overlayd terminated unexpectedly",
+                    command,
+                    process.returncode,
+                    stdout_data.decode("UTF-8"),
+                    stderr_data.decode("UTF-8"),
+                )
             except subprocess.TimeoutExpired:
                 pass
 
@@ -80,9 +93,14 @@ class L3overlaydTest(tests.L3overlayTest):
             except subprocess.TimeoutExpired as e:
                 process.kill()
                 stdout_data, stderr_data = process.communicate()
-                raise RuntimeError("daemon did not terminate when expected, output:\n%s" %
-                        stdout_data.decode("UTF-8"))
+                raise ExecutionError(
+                    "l3overlayd did not terminate when expected",
+                    command,
+                    process.returncode,
+                    stdout_data.decode("UTF-8"),
+                    stderr_data.decode("UTF-8"),
+                )
 
 
 if __name__ == "__main__":
-    tests.main()
+    unittest.main()

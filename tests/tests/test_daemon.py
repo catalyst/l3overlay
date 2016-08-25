@@ -19,12 +19,14 @@
 
 
 import os
-import tests
+import unittest
 
 import l3overlay.daemon
 
+from tests.base import BaseTest
 
-class DaemonTest(tests.L3overlayTest):
+
+class DaemonTest(BaseTest.Class):
     '''
     l3overlay unit test for reading Daemon objects.
     '''
@@ -187,4 +189,4 @@ Arguments: %s''' % (str.join(", ", (e.__name__ for e in exceptions)), gc))
 
 
 if __name__ == "__main__":
-    tests.main()
+    unittest.main()

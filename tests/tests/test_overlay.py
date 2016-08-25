@@ -19,7 +19,7 @@
 
 
 import os
-import tests
+import unittest
 
 from l3overlay import overlay
 from l3overlay import util
@@ -27,7 +27,7 @@ from l3overlay import util
 from tests.base.overlay import OverlayBaseTest
 
 
-class OverlayTest(OverlayBaseTest):
+class OverlayTest(OverlayBaseTest.Class):
     '''
     l3overlay unit test for reading Overlay objects.
     '''
@@ -164,5 +164,18 @@ class OverlayTest(OverlayBaseTest):
         )
 
 
+    def test_section(self):
+        '''
+        Test that unsupported section types are properly handled by the overlay.
+        '''
+
+        self.assert_fail(
+            None,
+            util.random_string(8),
+            {util.random_string(4): util.random_string(16)},
+            overlay.UnsupportedSectionTypeError,
+        )
+
+
 if __name__ == "__main__":
-    tests.main()
+    unittest.main()

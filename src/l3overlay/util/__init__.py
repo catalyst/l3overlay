@@ -214,6 +214,11 @@ def ip_network_get(value):
     is not a valid IP network. Supports both IPv4 and IPv6.
     '''
 
+    if isinstance(value, ipaddress.IPv4Address) or isinstance(value, ipaddress.IPv6Address):
+        raise GetError(
+            "%s not allowed to be converted to IP network" % type(value).__name__,
+        )
+
     try:
         return ipaddress.ip_network(value)
     except ValueError:
@@ -240,6 +245,11 @@ def ip_address_get(value):
     Get an IP address from a string. Raises a GetError if the string
     is not a valid IP address. Supports both IPv4 and IPv6.
     '''
+
+    if isinstance(value, ipaddress.IPv4Network) or isinstance(value, ipaddress.IPv6Network):
+        raise GetError(
+            "%s not allowed to be converted to IP address, use class attributes" % type(value).__name__,
+        )
 
     try:
         return ipaddress.ip_address(value)
@@ -285,7 +295,7 @@ def netmask_dd_to_cidr(netmask):
         seg = int(segment)
 
         if seg > 255 or seg < 0:
-            raise ValueError("invalid dotted decimal netmask %s" % netmask)
+            raise GetError("invalid dotted decimal netmask %s" % netmask)
 
         integer += (seg << (24 - (8 * index)))
 
@@ -306,18 +316,21 @@ def netmask_get(value, use_ipv6=False):
 
     maxlen = 128 if use_ipv6 else 32
 
-    if re.match("\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3}", value):
+    if isinstance(value, str) and re.match("\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3}", value):
         if use_ipv6:
-            raise ValueError("dotted decimal netmask invalid when use_ipv6 is true, use CIDR instead")
+            raise GetError("dotted decimal netmask invalid when use_ipv6 is true, use CIDR instead")
 
         return netmask_dd_to_cidr(value)
 
-    cidr = int(value)
+    try:
+        cidr = int(value)
 
-    if cidr > maxlen or cidr < 0:
-        raise ValueError("valid CIDR netmask %i, must be within range 0 < x < 128" % cidr)
+        if cidr > maxlen or cidr < 0:
+            raise GetError("CIDR netmask %i out of given range 0 < x < %i" % (cidr, maxlen))
 
-    return cidr
+        return cidr
+    except ValueError:
+        raise GetError("value '%s' not a valid netmask" % value)
 
 
 def bird_prefix_get(value):
