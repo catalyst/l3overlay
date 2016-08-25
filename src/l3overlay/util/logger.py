@@ -74,6 +74,7 @@ class Logger(Worker):
         self.logger.setLevel(self.log_level)
 
         self.logger.addHandler(self.logger_handler)
+        self.logger.debug("started logger")
 
         self.set_started()
 
