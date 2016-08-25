@@ -81,13 +81,10 @@ def create(dry_run, logger, ipdb, name):
     if dry_run:
         return Bridge(logger, ipdb, None, name)
 
+    # Remove any existing interfaces with the given name. It could have
+    # ports attached to it already.
     if name in ipdb.by_name.keys():
-        interface = ipdb.interfaces[name]
-
-        if interface.kind != IF_TYPE:
-            Interface(None, ipdb, interface, name).remove()
-        else:
-            return Bridge(logger, ipdb, interface, name)
+        Interface(None, ipdb, ipdb.interfaces[name], name).remove()
 
     interface = ipdb.create(ifname=name, kind=IF_TYPE)
     ipdb.commit()
