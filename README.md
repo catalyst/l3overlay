@@ -103,22 +103,26 @@ An example configuration needed to get a working overlay set up may look somethi
 
 ### global.conf
 
-    [global]
-    logging-level=INFO
-    use-ipsec=true
-    ipsec-psk={psk}
+```ini
+[global]
+logging-level=INFO
+use-ipsec=true
+ipsec-psk={psk}
+```
 
 ### overlays/example.conf (on node example-1)
 
-    [overlay]
-    name=example
-    asn=64666
-    linknet-pool=198.51.100.0/24
-    this-node=example-1
-    node-0=example-1 192.0.2.1
-    node-1=example-2 192.0.2.2
-    node-2=example-3 192.0.2.3
-    node-3=example-4 192.0.2.4
+```ini
+[overlay]
+name=example
+asn=64666
+linknet-pool=198.51.100.0/24
+this-node=example-1
+node-0=example-1 192.0.2.1
+node-1=example-2 192.0.2.2
+node-2=example-3 192.0.2.3
+node-3=example-4 192.0.2.4
+```
 
 Global configuration
 --------------------
@@ -180,7 +184,7 @@ Configuration settings for the overlay, and the mesh tunnels which make the comm
 The name the overlay will be referred to. Also used to name the network namespace.
 
 #### asn
-* Type: **integer**
+* Type: **integer**, range 0 <= **asn** <= 65535
 * Required: **yes**
 
 The BGP autonomous system (AS) number the overlay will configure the mesh tunnel routing system with.
@@ -219,7 +223,7 @@ The location to the fwbuilder script used to build the firewall settings inside 
 
 ### [static-dummy:*{name}*]
 
-This section is used to define a dummy interface in the overlay. Used internally as a component of a `[static-overlay-link]`.
+This section is used to define a dummy interface in the overlay.
 
 #### address
 * Type: **ip address**
@@ -415,25 +419,25 @@ This section is used to define a static BGP protocol in the BIRD routing daemon,
 * Type: **ip address**
 * Required: **yes**
 
-The neighbor BGP node's IP address.
+The neighbour BGP node's IP address.
 
 #### local
 * Type: **ip address**
 * Required: no
 
-The local IP address used to make the BGP connection with the neighbor. Optional.
+The local IP address used to make the BGP connection with the neighbour. Optional.
 
 #### local-asn
-* Type: **integer**
+* Type: **integer**, range 0 <= **local-asn** <= 65535
 * Required: no
 
 The BGP autonomous system (AS) number used to identify the AS the local node is part of. The default value is the ASN number set for the overlay (the `asn` value in the `[overlay]` section).
 
 #### neighbor-asn
-* Type: **integer**
+* Type: **integer**, range 0 <= **neighbor-asn** <= 65535
 * Required: no
 
-The BGP autonomous system (AS) number used to identify the AS the neighbor node is part of.  The default value is the ASN number set for the overlay (the `asn` value in the `[overlay]` section).
+The BGP autonomous system (AS) number used to identify the AS the neighbour node is part of.  The default value is the ASN number set for the overlay (the `asn` value in the `[overlay]` section).
 
 #### bfd
 * Type: **boolean**
