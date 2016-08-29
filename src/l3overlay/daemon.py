@@ -130,7 +130,7 @@ class Daemon(worker.Worker):
             self._interface_names = set()
 
             self.mesh_links = set()
-            self.root_ipdb = pyroute2.IPDB()
+            self.root_ipdb = pyroute2.IPDB() if not self.dry_run else None
         except Exception as e:
             if self.logger.is_running():
                 self.logger.exception(e)
