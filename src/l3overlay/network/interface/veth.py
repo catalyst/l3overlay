@@ -43,7 +43,7 @@ def get(dry_run, logger, ipdb, name):
     logger.debug("getting runtime state for %s interface '%s'" % (IF_TYPE, name))
 
     if dry_run:
-        return VETH(logger, ipdb, name)
+        return VETH(logger, None, None, name)
 
     if name in ipdb.by_name.keys():
         interface = ipdb.interfaces[name]
@@ -51,7 +51,7 @@ def get(dry_run, logger, ipdb, name):
         if interface.kind != IF_TYPE:
             raise UnexpectedTypeError(name, interface.kind, IF_TYPE)
 
-        return VETH(logger, ipdb, name)
+        return VETH(logger, ipdb, interface, name)
     else:
         raise NotFoundError(name, IF_TYPE, True)
 
@@ -64,14 +64,17 @@ def create(dry_run, logger, ipdb, name, peer_name):
     logger.debug("creating %s pair '%s' and '%s'" % (IF_TYPE, name, peer_name))
 
     if dry_run:
-        return VETH(logger, None, name)
+        return VETH(logger, None, None, name)
 
     if name in ipdb.by_name.keys():
         interface = ipdb.interfaces[name]
-        if interface.kind != IF_TYPE or interface.peer != peer_name:
-            Interface(None, ipdb, name).remove()
-    else:
-        ipdb.create(ifname=name, kind="veth", peer=peer_name)
-        ipdb.commit()
 
-    return VETH(logger, ipdb, name)
+        if interface.kind != IF_TYPE or interface.peer != peer_name:
+            Interface(None, ipdb, interface, name).remove()
+        else:
+            return VETH(logger, ipdb, interface, name)
+
+    interface = ipdb.create(ifname=name, kind="veth", peer=peer_name)
+    ipdb.commit()
+
+    return VETH(logger, ipdb, interface, name)

@@ -58,7 +58,7 @@ def get(dry_run, logger, ipdb, name):
     logger.debug("getting runtime state for %s interface '%s'" % (IF_TYPE, name))
 
     if dry_run:
-        return Bridge(logger, None, name)
+        return Bridge(logger, None, None, name)
 
     if name in ipdb.by_name.keys():
         interface = ipdb.interfaces[name]
@@ -66,7 +66,7 @@ def get(dry_run, logger, ipdb, name):
         if interface.kind != IF_TYPE:
             raise UnexpectedTypeError(name, interface.kind, IF_TYPE)
 
-        return Bridge(logger, ipdb, name)
+        return Bridge(logger, ipdb, interface, name)
     else:
         raise NotFoundError(name, IF_TYPE, True)
 
@@ -79,14 +79,14 @@ def create(dry_run, logger, ipdb, name):
     logger.debug("creating %s interface '%s'" % (IF_TYPE, name))
 
     if dry_run:
-        return Bridge(logger, None, name)
+        return Bridge(logger, None, None, name)
 
     # Remove any existing interfaces with the given name. It could have
     # ports attached to it already.
     if name in ipdb.by_name.keys():
-        Interface(None, ipdb, name).remove()
+        Interface(None, ipdb, ipdb.interfaces[name], name).remove()
 
     interface = ipdb.create(ifname=name, kind=IF_TYPE)
     ipdb.commit()
 
-    return Bridge(logger, ipdb, name)
+    return Bridge(logger, ipdb, interface, name)
