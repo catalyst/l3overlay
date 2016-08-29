@@ -111,6 +111,7 @@ class VETH(Interface):
         self.logger.info("starting static veth '%s'" % self.name)
 
         inner_if_ipdb = None
+
         if self.inner_namespace:
             self.inner_netns.start()
             inner_if_ipdb = self.inner_netns.ipdb
@@ -173,6 +174,9 @@ class VETH(Interface):
             dummy_if.up()
             bridge_if.up()
 
+        if self.inner_namespace:
+            self.inner_netns.stop()
+
         self.logger.info("finished starting static veth '%s'" % self.name)
 
 
@@ -184,7 +188,9 @@ class VETH(Interface):
         self.logger.info("stopping static veth '%s'" % self.name)
 
         inner_if_ipdb = None
+
         if self.inner_namespace:
+            self.inner_netns.start()
             inner_if_ipdb = self.inner_netns.ipdb
         else:
             inner_if_ipdb = self.inner_ipdb
@@ -195,8 +201,8 @@ class VETH(Interface):
 
         veth.get(self.dry_run, self.logger, inner_if_ipdb, self.inner_name).remove()
 
-        if self.inner_namespace and not self.inner_overlay:
-             self.inner_netns.stop()
+        if self.inner_namespace:
+            self.inner_netns.stop()
 
         self.logger.info("finished stopping static veth '%s'" % self.name)
 

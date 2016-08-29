@@ -21,6 +21,7 @@
 from l3overlay import util
 
 from l3overlay.network import interface
+from l3overlay.network import netns
 
 from l3overlay.network.interface import bridge
 from l3overlay.network.interface import dummy
@@ -61,7 +62,7 @@ class OverlayLink(Interface):
         self.outer_asn = overlay.asn
 
         self.inner_overlay = self.daemon.overlays[self.inner_overlay_name]
-        self.inner_netns = self.inner_overlay.netns
+        self.inner_netns = netns.get(self.inner_overlay_name)
         self.inner_asn = self.inner_overlay.asn
 
         self.dummy_name = self.daemon.interface_name(self.name, limit=13)
@@ -85,6 +86,9 @@ class OverlayLink(Interface):
         '''
 
         self.logger.info("starting static overlay link '%s'" % self.name)
+
+        # Start the network namespace object for the linked overlay.
+        self.inner_netns.start()
 
         # Create the inner and outer veth interfaces, which link the
         # overlays together. At the same time, move the inner veth
@@ -136,6 +140,10 @@ class OverlayLink(Interface):
         dummy_if.up()
         bridge_if.up()
 
+        # Stop the network namespace object for the linked overlay,
+        # to remove its process from memory.
+        self.inner_netns.stop()
+
         self.logger.info("finished starting static overlay link '%s'" % self.name)
 
 
@@ -146,9 +154,13 @@ class OverlayLink(Interface):
 
         self.logger.info("stopping static overlay link '%s'" % self.name)
 
+        self.inner_netns.start()
+
         bridge.get(self.dry_run, self.logger, self.netns.ipdb, self.bridge_name).remove()
         dummy.get(self.dry_run, self.logger, self.netns.ipdb, self.dummy_name).remove()
         veth.get(self.dry_run, self.logger, self.netns.ipdb, self.outer_name).remove()
+
+        self.inner_netns.stop()
 
         self.logger.info("finished stopping static overlay link '%s'" % self.name)
 

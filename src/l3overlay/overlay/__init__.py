@@ -230,6 +230,8 @@ class Overlay(Worker):
 
         self.logger.info("starting overlay")
 
+        # Start the network namespace object, so the overlay's
+        # network namespace can be manipulated.
         self.netns.start()
 
         self.logger.debug("creating overlay root directory")
@@ -244,6 +246,11 @@ class Overlay(Worker):
         self.bgp_process.start()
 
         self.firewall_process.start()
+
+        # Shut down the overlay's network namespace object, to
+        # reduce memory consumption by the network namespace's
+        # pyroute2 process.
+        self.netns.stop()
 
         self.logger.info("finished starting overlay")
 
@@ -272,7 +279,6 @@ class Overlay(Worker):
             mt.stop()
             mt.remove()
 
-        self.netns.stop()
         self.netns.remove()
 
         self.logger.debug("removing overlay root directory")
