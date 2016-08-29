@@ -65,7 +65,7 @@ class Interface(object):
     description = "interface"
 
 
-    def __init__(self, logger, ipdb, interface, name):
+    def __init__(self, logger, ipdb, name):
         '''
         Set up network interface internal fields and runtime state.
         '''
@@ -73,8 +73,9 @@ class Interface(object):
         self.logger = logger
 
         self.ipdb = ipdb
-        self.interface = interface
         self.name = name
+
+        self.interface = ipdb.interfaces[name] if ipdb else None
 
         self.removed = False
 
@@ -137,6 +138,7 @@ class Interface(object):
             self.ipdb.commit()
 
         self.ipdb = netns.ipdb
+        self.interface = self.ipdb.interfaces[self.name]
 
 
     def up(self):
@@ -211,10 +213,10 @@ def get(dry_run, logger, ipdb, name):
     logger.debug("getting runtime state for interface '%s'" % name)
 
     if dry_run:
-        return Interface(logger, ipdb, None, name)
+        return Interface(logger, None, name)
 
     if name in ipdb.by_name.keys():
-        return Interface(logger, ipdb, ipdb.interfaces[name], name)
+        return Interface(logger, ipdb, name)
     else:
         raise NotFoundError(name)
 
@@ -228,10 +230,10 @@ def netns_set(dry_run, logger, ipdb, name, netns):
     logger.debug("moving interface '%s' to network namespace '%s'" % (name, netns.name))
 
     if dry_run:
-        return Interface(logger, netns.ipdb, None, name)
+        return Interface(logger, None, name)
 
     if name not in netns.ipdb.by_name.keys():
         ipdb.interfaces[name].net_ns_fd = netns.name
         ipdb.commit()
 
-    return Interface(logger, netns.ipdb, netns.ipdb.interfaces[name], name)
+    return Interface(logger, netns.ipdb, name)

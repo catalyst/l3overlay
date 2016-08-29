@@ -43,7 +43,7 @@ def get(dry_run, logger, ipdb, name):
     logger.debug("getting runtime state for %s interface '%s'" % (IF_TYPE, name))
 
     if dry_run:
-        return Dummy(logger, ipdb, None, name)
+        return Dummy(logger, None, name)
 
     if name in ipdb.by_name.keys():
         interface = ipdb.interfaces[name]
@@ -51,7 +51,7 @@ def get(dry_run, logger, ipdb, name):
         if interface.kind != IF_TYPE:
             raise UnexpectedTypeError(name, interface.kind, IF_TYPE)
 
-        return Dummy(logger, ipdb, interface, name)
+        return Dummy(logger, ipdb, name)
     else:
         raise NotFoundError(name, IF_TYPE, True)
 
@@ -64,17 +64,15 @@ def create(dry_run, logger, ipdb, name):
     logger.debug("creating %s interface '%s'" % (IF_TYPE, name))
 
     if dry_run:
-        return Dummy(logger, ipdb, None, name)
+        return Dummy(logger, None, name)
 
     if name in ipdb.by_name.keys():
         interface = ipdb.interfaces[name]
 
         if interface.kind != IF_TYPE:
-            Interface(None, ipdb, interface, name).remove()
-        else:
-            return Dummy(logger, ipdb, interface, name)
+            Interface(None, ipdb, name).remove()
+    else:
+        ipdb.create(ifname=name, kind=IF_TYPE)
+        ipdb.commit()
 
-    interface = ipdb.create(ifname=name, kind=IF_TYPE)
-    ipdb.commit()
-
-    return Dummy(logger, ipdb, interface, name)
+    return Dummy(logger, ipdb, name)

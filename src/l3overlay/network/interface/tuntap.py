@@ -32,14 +32,13 @@ class Tuntap(Interface):
     TUN/TAP interface-specific functions.
     '''
 
-    def __init__(self, logger, ipdb, interface, name, mode):
+    def __init__(self, logger, ipdb, name, mode):
         '''
         '''
 
-        super().__init__(logger, ipdb, interface, name)
+        super().__init__(logger, ipdb, name)
 
-        self.mode = mode
-        self.description = "%s interface" % self.mode
+        self.description = "%s interface" % mode
 
 
 def get(dry_run, logger, ipdb, name):
@@ -50,7 +49,7 @@ def get(dry_run, logger, ipdb, name):
     logger.debug("getting runtime state for %s interface '%s'" % (IF_TYPE, name))
 
     if dry_run:
-        return Tuntap(logger, ipdb, None, name, None)
+        return Tuntap(logger, None, name, IF_TYPE)
 
     if name in ipdb.by_name.keys():
         interface = ipdb.interfaces[name]
@@ -58,7 +57,7 @@ def get(dry_run, logger, ipdb, name):
         if interface.kind != IF_TYPE:
             raise UnexpectedTypeError(name, interface.kind, IF_TYPE)
 
-        return Tuntap(logger, ipdb, interface, name, interface.mode)
+        return Tuntap(logger, ipdb, name, interface.mode)
     else:
         raise NotFoundError(name, IF_TYPE, True)
 
@@ -71,28 +70,25 @@ def create(dry_run, logger, ipdb, name, mode="tap", uid=0, gid=0, ifr=None):
     logger.debug("creating %s interface '%s'" % (mode, name))
 
     if dry_run:
-        return Tuntap(logger, ipdb, None, name, mode)
+        return Tuntap(logger, None, name, mode)
 
     if name in ipdb.by_name.keys():
         interface = ipdb.interfaces[name]
-
         if (interface.kind != IF_TYPE or
                 interface.mode != mode or
                 interface.uid != uid or
                 interface.gid != gid or
                 interface.ifr != ifr):
-            Interface(None, ipdb, interface, name).remove()
-        else:
-            return Tuntap(logger, ipdb, interface, name, mode)
+            Interface(None, ipdb, name).remove()
+    else:
+        ipdb.create(
+            ifname=name,
+            kind=IF_TYPE,
+            mode=mode,
+            uid=uid,
+            gid=gid,
+            ifr=ifr,
+        )
+        ipdb.commit()
 
-    interface = ipdb.create(
-        ifname=name,
-        kind=IF_TYPE,
-        mode=mode,
-        uid=uid,
-        gid=gid,
-        ifr=ifr,
-    )
-    ipdb.commit()
-
-    return Tuntap(logger, ipdb, interface, name, mode)
+    return Tuntap(logger, ipdb, name, mode)

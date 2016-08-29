@@ -32,17 +32,7 @@ class VLAN(Interface):
     VLAN-specific functions.
     '''
 
-    def __init__(self, logger, ipdb, interface, name, link, id):
-        '''
-        Set up vlan interface internal fields.
-        '''
-
-        super().__init__(logger, ipdb, interface, name)
-
-        self.link = link
-        self.id = id
-
-        self.description = "%s interface" % IF_TYPE
+    description = "%s interface" % IF_TYPE
 
 
 def get(dry_run, logger, ipdb, name):
@@ -53,7 +43,7 @@ def get(dry_run, logger, ipdb, name):
     logger.debug("getting runtime state for %s interface '%s'" % (IF_TYPE, name))
 
     if dry_run:
-        return VLAN(logger, ipdb, None, name, None, None)
+        return VLAN(logger, None, name)
 
     if name in ipdb.by_name.keys():
         interface = ipdb.interfaces[name]
@@ -61,7 +51,7 @@ def get(dry_run, logger, ipdb, name):
         if interface.kind != IF_TYPE:
             raise UnexpectedTypeError(name, interface.kind, IF_TYPE)
 
-        return VLAN(ipdb, interface, name, interface.peer)
+        return VLAN(logger, ipdb, name)
     else:
         raise NotFoundError(name, IF_TYPE, True)
 
@@ -75,19 +65,16 @@ def create(dry_run, logger, ipdb, name, link, id):
 
 
     if dry_run:
-        return VLAN(logger, ipdb, None, name, link, id)
+        return VLAN(logger, None, name)
 
     if name in ipdb.by_name.keys():
         interface = ipdb.interfaces[name]
-
         if (interface.kind != IF_TYPE or
                 ipdb.by_index[interface.link] != link or
                 interface.vlan_id != id):
-            Interface(None, ipdb, interface, name).remove()
-        else:
-            return VLAN(logger, ipdb, interface, name, interface.link, interface.id)
+            Interface(None, ipdb, name).remove()
+    else:
+        ipdb.create(ifname=name, kind=IF_TYPE, link=link, vlan_id=id)
+        ipdb.commit()
 
-    interface = ipdb.create(ifname=name, kind=IF_TYPE, link=link, vlan_id=id)
-    ipdb.commit()
-
-    return VLAN(ipdb, interface, name, link, id)
+    return VLAN(logger, ipdb, name)

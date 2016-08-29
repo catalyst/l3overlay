@@ -32,14 +32,13 @@ class GRE(Interface):
     GRE tunnel-specific functions.
     '''
 
-    def __init__(self, logger, ipdb, interface, name, kind):
+    def __init__(self, logger, ipdb, name, kind):
         '''
         '''
 
-        super().__init__(logger, ipdb, interface, name)
+        super().__init__(logger, ipdb, name)
 
-        self.kind = kind
-        self.description = "%s interface" % self.kind
+        self.description = "%s interface" % kind
 
 
 def get(dry_run, logger, ipdb, name):
@@ -50,7 +49,7 @@ def get(dry_run, logger, ipdb, name):
     logger.debug("getting runtime state for %s interface '%s'" % (str.join("/", IF_TYPES), name))
 
     if dry_run:
-        return GRE(logger, ipdb, None, name, None)
+        return GRE(logger, None, name, "gre")
 
     if name in ipdb.by_name.keys():
         interface = ipdb.interfaces[name]
@@ -58,7 +57,7 @@ def get(dry_run, logger, ipdb, name):
         if interface.kind not in IF_TYPES:
             raise UnexpectedTypeError(name, interface.kind, str.join("/", IF_TYPES))
 
-        return GRE(logger, ipdb, interface, name, interface.kind)
+        return GRE(logger, ipdb, name, interface.kind)
     else:
         raise NotFoundError(name, str.join("/", IF_TYPES), True)
 
@@ -74,11 +73,14 @@ def create(dry_run, logger, ipdb, name,
     logger.debug("creating %s interface '%s'" % (kind, name))
 
     if dry_run:
-        return GRE(logger, ipdb, None, name, kind)
+        return GRE(logger, None, name, kind)
+
+    if key:
+        ikey = key
+        okey = key
 
     if name in ipdb.by_name.keys():
         interface = ipdb.interfaces[name]
-
         if (interface.kind not in IF_TYPES or
                 interface.gre_local != str(local) or
                 interface.gre_remote != str(remote) or
@@ -88,26 +90,20 @@ def create(dry_run, logger, ipdb, name,
                 interface.gre_ikey != ikey or
                 interface.gre_okey != okey or
                 interface.gre_ttl != ttl):
-            Interface(None, ipdb, interface, name).remove()
-        else:
-            return GRE(logger, ipdb, interface, name, interface.kind)
+            Interface(None, ipdb, name).remove()
+    else:
+        ipdb.create(
+            ifname=name,
+            kind=kind,
+            gre_local=str(local),
+            gre_remote=str(remote),
+            gre_link=link,
+            gre_iflags=iflags,
+            gre_oflags=oflags,
+            gre_ikey=ikey,
+            gre_okey=okey,
+            gre_ttl=ttl,
+        )
+        ipdb.commit()
 
-    if key is not None:
-        ikey = key
-        okey = key
-
-    interface = ipdb.create(
-        ifname=name,
-        kind=kind,
-        gre_local=str(local),
-        gre_remote=str(remote),
-        gre_link=link,
-        gre_iflags=iflags,
-        gre_oflags=oflags,
-        gre_ikey=ikey,
-        gre_okey=okey,
-        gre_ttl=ttl,
-    )
-    ipdb.commit()
-
-    return GRE(logger, ipdb, interface, name, kind)
+    return GRE(logger, ipdb, name, kind)
