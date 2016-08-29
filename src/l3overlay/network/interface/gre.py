@@ -64,7 +64,9 @@ def get(dry_run, logger, ipdb, name):
 
 
 def create(dry_run, logger, ipdb, name,
-        local, remote, kind="gre", ttl=16, key=None, ikey=None, okey=None, iflags=32, oflags=32):
+        local, remote, kind="gre",
+        link=None, iflags=32, oflags=32, key=None, ikey=None, okey=None,
+        ttl=16): # for other parameters, look in pyroute2/netlink/rtnl/ifinfmsg.py
     '''
     Create a gre/gretap interface object, using a given interface name.
     '''
@@ -80,11 +82,12 @@ def create(dry_run, logger, ipdb, name,
         if (interface.kind not in IF_TYPES or
                 interface.gre_local != str(local) or
                 interface.gre_remote != str(remote) or
-                interface.gre_ttl != ttl or
+                interface.gre_link != link or
+                interface.gre_iflags != iflags or
+                interface.gre_oflags != oflags or
                 interface.gre_ikey != ikey or
                 interface.gre_okey != okey or
-                interface.gre_iflags != iflags or
-                interface.gre_oflags != oflags):
+                interface.gre_ttl != ttl):
             Interface(None, ipdb, interface, name).remove()
         else:
             return GRE(logger, ipdb, interface, name, interface.kind)
@@ -98,11 +101,12 @@ def create(dry_run, logger, ipdb, name,
         kind=kind,
         gre_local=str(local),
         gre_remote=str(remote),
-        gre_ttl=ttl,
-        gre_ikey=ikey,
-        gre_okey=okey,
+        gre_link=link,
         gre_iflags=iflags,
         gre_oflags=oflags,
+        gre_ikey=ikey,
+        gre_okey=okey,
+        gre_ttl=ttl,
     )
     ipdb.commit()
 

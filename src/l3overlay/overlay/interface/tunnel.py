@@ -24,6 +24,19 @@ from l3overlay.network.interface import gre
 
 from l3overlay.overlay.interface.base import Interface
 
+from l3overlay.util.exception.l3overlayerror import L3overlayError
+
+
+class NonUniqueTunnelError(L3overlayError):
+    def __init__(self, tunnel):
+        super().__init__("more than one tunnel without link value for address pair (%s, %s)" %
+                (tunnel.local, tunnel.remote))
+
+class LinkNumUnavailableError(L3overlayError):
+    def __init__(self, tunnel):
+        super().__init__("more than one tunnel using link value %s for address pair (%s, %s)" %
+                (tunnel.link, tunnel.local, tunnel.remote))
+
 
 class Tunnel(Interface):
     '''
@@ -31,7 +44,7 @@ class Tunnel(Interface):
     '''
 
     def __init__(self, logger, name,
-                mode, local, remote, address, netmask):
+                mode, local, remote, address, netmask, link):
         '''
         Set up static tunnel internal fields.
         '''
@@ -43,6 +56,7 @@ class Tunnel(Interface):
         self.remote = remote
         self.address = address
         self.netmask = netmask
+        self.link = link
 
 
     def setup(self, daemon, overlay):
@@ -52,8 +66,22 @@ class Tunnel(Interface):
 
         super().setup(daemon, overlay)
 
+        unique = self.daemon.gre_link_add(local, remote)
+
+        # Static tunnel link numbers cannot be automatically generated,
+        # because the link number value needs to be the same on both sides.
+
+        # If a link number is not specified and there is already a tunnel
+        # using the given link number, it means there is at least two tunnels
+        # in l3overlay with the same address pair that do not use a key, so
+        # raise an error.
+        if not self.link and not unique:
+            raise NonUniqueTunnelError(self)
+        # Unique link number specified, more than one tunnel using it.
+        elif self.link and not unique:
+            raise LinkNumUnavailableError(self)
+
         self.tunnel_name = self.daemon.interface_name(self.name)
-        self.key = self.daemon.gre_key(self.local, self.remote)
 
 
     def is_ipv6(self):
@@ -80,7 +108,7 @@ class Tunnel(Interface):
             self.local,
             self.remote,
             kind=self.mode,
-            key=self.key,
+            link=self.link,
         )
         tunnel_if.add_ip(self.address, self.netmask)
         tunnel_if.up()
@@ -99,6 +127,14 @@ class Tunnel(Interface):
 
         self.logger.info("finished stopping static tunnel '%s'" % self.name)
 
+
+    def remove(self):
+        '''
+        Remove the static tunnel.
+        '''
+
+        self.daemon.gre_link_remove(self.link)
+
 Interface.register(Tunnel)
 
 
@@ -112,9 +148,10 @@ def read(logger, name, config):
     remote = util.ip_address_get(config["remote"])
     address = util.ip_address_get(config["address"])
     netmask = util.netmask_get(config["netmask"], util.ip_address_is_v6(address))
+    link = util.integer_get(config["link"]) if "link" in config else None
 
     return Tunnel(logger, name,
-            mode, local, remote, address, netmask)
+            mode, local, remote, address, netmask, link)
 
 
 def write(tunnel, config):
@@ -127,3 +164,6 @@ def write(tunnel, config):
     config["remote"] = str(tunnel.remote)
     config["address"] = str(tunnel.address)
     config["netmask"] = str(tunnel.netmask)
+
+    if tunnel.link:
+        config["link"] = str(tunnel.link)

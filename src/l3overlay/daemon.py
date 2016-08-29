@@ -125,7 +125,8 @@ class Daemon(worker.Worker):
         try:
             self.set_settingup()
 
-            self._gre_keys = {}
+            self._gre_links_list = {}
+            self._gre_links_unique = {}
             self._interface_names = set()
 
             self.mesh_links = set()
@@ -244,20 +245,58 @@ class Daemon(worker.Worker):
             raise
 
 
-    def gre_key(self, local, remote):
+    def gre_link_add(self, local, remote, value):
         '''
-        Return a unique (to this daemon) key value for the given
+        Add a unique (to this daemon) link value for the given
+        (local, remote) link. Returns True if the link value was not
+        added before, False otherwise.
+        '''
+
+        link = (local, remote)
+
+        if link not in self._gre_links_list:
+            self._gre_links_list[link] = set()
+
+        if value not in self._gre_links_list[link]:
+            self._gre_links_list[link].add(value)
+            return True
+
+        return False
+
+
+    def gre_link_remove(self, local, remote, value):
+        '''
+        Remove a unique (to this daemon) link value for the given
+        (local, remote) link. Returns True if the link value was
+        added before, False otherwise.
+        '''
+
+        if value in self._gre_links_list[link]:
+            self._gre_links_list[link].remove(value)
+            return True
+
+        return False
+
+
+    def gre_link_unique(self, local, remote):
+        '''
+        Return a unique (to this daemon) link value for the given
         (local, remote) link.
         '''
 
         link = (local, remote)
 
-        if link not in self._gre_keys:
-            self._gre_keys[link] = -1
+        if link not in self._gre_links_list:
+            self._gre_links_list[link] = set()
+        if link not in self._gre_links_unique:
+            self._gre_links_unique[link] = 0
 
-        self._gre_keys[link] += 1
+        while self._gre_links_unique[link] in self._gre_links_list[link]:
+            self._gre_links_unique[link] += 1
 
-        return self._gre_keys[link]
+        self._gre_links_list[link].add(self._gre_links_unique[link])
+
+        return self._gre_links_unique[link]
 
 
     def interface_name(self, name, suffix=None, limit=15):

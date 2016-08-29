@@ -99,7 +99,7 @@ class MeshTunnel(Interface):
             self.physical_local,
             self.physical_remote,
             kind="gretap",
-            key=self.daemon.gre_key(self.physical_local, self.physical_remote),
+            link=self.daemon.gre_link_unique(self.physical_local, self.physical_remote),
         )
 
         root_veth_if = veth.create(

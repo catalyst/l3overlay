@@ -248,25 +248,31 @@ The mode in which the GRE tunnel will operate, layer 2 (`gretap`) or layer 3 (`g
 * Type: **ip address**
 * Required: **yes**
 
-The local endpoint IP address assigned to the GRE tunnel.
+The local endpoint IP address assigned to the static tunnel.
 
 #### remote
 * Type: **ip address**
 * Required: **yes**
 
-The remote endpoint IP address assigned to the GRE tunnel.
+The remote endpoint IP address assigned to the static tunnel.
 
 #### address
 * Type: **ip address**
 * Required: **yes**
 
-The IP address assigned to the GRE tunnel interface.
+The IP address assigned to the static tunnel interface.
 
 #### netmask
 * Type: **subnet mask**
 * Required: **yes**
 
-The subnet mask for the GRE tunnel interface address.
+The subnet mask for the static tunnel interface address.
+
+#### link
+* Type: **integer**
+* Required: **yes**, **IF** there is more than one tunnel using the address pair
+
+The unique link number for this static tunnel. Required when there is more than one tunnel using the address pair (`local`, `remote`). Checks are run on all GRE/GRETAP tunnel interfaces created by l3overlay to assert this requirement.
 
 ### [static-tuntap:*{name}*]
 
