@@ -65,6 +65,25 @@ class OverlayBaseTest(object):
         ##
         #
 
+
+        def value_get(self, overlay, section, k):
+            '''
+            Get the value from the given section and key on the overlay.
+            '''
+
+            key = k.replace("-", "_")
+
+            if section == "overlay":
+                return vars(overlay)[key]
+            elif section.startswith("static"):
+                name = util.section_name_get(section)
+                for i in overlay.interfaces:
+                    if name == i.name:
+                        return vars(i)[key]
+            else:
+                raise RuntimeError("unknown section type '%s'" % section)
+
+
         def _overlay_conf_copy(self, section, key, value):
             '''
             Make a deep copy of the overlay configuration dictionary,
@@ -73,14 +92,15 @@ class OverlayBaseTest(object):
 
             oc = copy.deepcopy(self.overlay_conf)
 
-            if section:
-                if section not in oc:
-                    oc[section] = {}
-                oc[section][key] = value
-            elif key:
-                if key not in oc:
-                    oc[key] = {}
-                oc[key] = value
+            if value is not None:
+                if section:
+                    if section not in oc:
+                        oc[section] = {}
+                    oc[section][key] = value
+                elif key:
+                    if key not in oc:
+                        oc[key] = {}
+                    oc[key] = value
 
             return oc
 

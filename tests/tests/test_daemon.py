@@ -39,6 +39,14 @@ class DaemonTest(BaseTest.Class):
     #
 
 
+    def value_get(self, daemon, section, key):
+        '''
+        Get the value from the given section and key on the daemon.
+        '''
+
+        return vars(daemon)[section][key] if section else vars(daemon)[key]
+
+
     def assert_success(self, section, key, value):
         '''
         Try and read an l3overlay daemon using the given arguments.

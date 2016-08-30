@@ -460,7 +460,7 @@ For a fully configured and routed link between overlays, consider using a `[stat
 * Type: **boolean**
 * Required: no
 
-Attaches the outer interface of the static veth to a bridge interface, along with a dummy interface. This allows both `inner-address` and `outer-address` to be used at the same time.
+Attaches the outer interface of the static veth to a bridge interface, along with a dummy interface. This allows both `inner-address` and `outer-address` to be used at the same time. The default value is `false`.
 
 With this option set, `inner-address` goes to the inner interface as normal, but `outer-address` will be assigned to the bridge interface rather than being directly assigned to the inner interface.
 

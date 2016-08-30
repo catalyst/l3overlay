@@ -90,6 +90,14 @@ class BaseTest(object):
         #
 
 
+        def value_get(self, obj, section, key):
+            '''
+            Get the value from the given section and key on the object.
+            '''
+
+            raise NotImplementedError()
+
+
         def assert_success(self, section, key, value):
             '''
             Assertion abstract method for success.
@@ -120,6 +128,17 @@ class BaseTest(object):
         ##
         #
 
+
+        def assert_default(self, section, key):
+            '''
+            Test that the default value works properly when reprocessed.
+            '''
+
+            obj = self.assert_success(section, key, None)
+            value = self.value_get(obj, section, key)
+            self.assert_success(section, key, value)
+
+
         def assert_value(self, section, key, value, test_default=False):
             '''
             Test that key is properly handled by the object.
@@ -127,9 +146,7 @@ class BaseTest(object):
 
             # Test default value, if specified.
             if test_default:
-                obj = self.assert_success(section, key, None)
-                value = vars(obj)[section][key] if section else vars(obj)[key]
-                self.assert_success(section, key, value)
+                self.assert_default(section, key)
 
             # Test value.
             self.assert_success(section, key, value)
@@ -142,9 +159,7 @@ class BaseTest(object):
 
             # Test default value, if specified.
             if test_default:
-                obj = self.assert_success(section, key, None)
-                value = vars(obj)[section][key] if section else vars(obj)[key]
-                self.assert_success(section, key, value)
+                self.assert_default(section, key)
 
             # Test valid values.
             self.assert_success(section, key, True)
@@ -174,9 +189,7 @@ class BaseTest(object):
 
             # Test default value, if specified.
             if test_default:
-                obj = self.assert_success(section, key, None)
-                value = vars(obj)[section][key] if section else vars(obj)[key]
-                self.assert_success(section, key, value)
+                self.assert_default(section, key)
 
             # Test valid values.
             self.assert_success(section, key, _minval)
@@ -202,9 +215,7 @@ class BaseTest(object):
 
             # Test default value, if specified.
             if test_default:
-                obj = self.assert_success(section, key, None)
-                value = vars(obj)[section][key] if section else vars(obj)[key]
-                self.assert_success(section, key, value)
+                self.assert_default(section, key)
 
             # Test valid values.
             if valid_value:
@@ -247,9 +258,7 @@ class BaseTest(object):
 
             # Test default value, if specified.
             if test_default:
-                obj = self.assert_success(section, key, None)
-                value = vars(obj)[section][key] if section else vars(obj)[key]
-                self.assert_success(section, key, value)
+                self.assert_default(section, key)
 
             # Test valid values.
             for v in vvs:
@@ -295,9 +304,7 @@ class BaseTest(object):
 
             # Test default value, if specified.
             if test_default:
-                obj = self.assert_success(section, key, None)
-                value = vars(obj)[section][key] if section else vars(obj)[key]
-                self.assert_success(section, key, value)
+                self.assert_default(section, key)
 
             # Test valid values.
             self.assert_success(section, key, 3325256704)
@@ -323,9 +330,7 @@ class BaseTest(object):
 
             # Test default value, if specified.
             if test_default:
-                obj = self.assert_success(section, key, None)
-                value = vars(obj)[section][key] if section else vars(obj)[key]
-                self.assert_success(section, key, value)
+                self.assert_default(section, key)
 
             # Test valid values.
             self.assert_success(section, key, 3221225985)
@@ -348,6 +353,10 @@ class BaseTest(object):
             '''
             Test that key, of type 'netmask', is properly handled by the object.
             '''
+
+            # Test default value, if specified.
+            if test_default:
+                self.assert_default(section, key)
 
             # Test valid values.
             self.assert_success(section, key, "8")
@@ -393,9 +402,7 @@ class BaseTest(object):
 
             # Test default value, if specified.
             if test_default:
-                obj = self.assert_success(section, key, None)
-                value = vars(obj)[section][key] if section else vars(obj)[key]
-                self.assert_success(section, key, value)
+                self.assert_default(section, key)
 
             # Test valid values.
             for e in enum:
@@ -415,10 +422,7 @@ class BaseTest(object):
 
             # Test default value, if specified.
             if test_default:
-                obj = self.assert_success(section, key, None)
-                value = vars(obj)[section][key] if section else vars(obj)[key]
-                self.assertTrue(os.path.isabs(value))
-                self.assert_success(section, key, value)
+                self.assert_default(section, key)
 
             # Test valid values.
             if valid_path:
@@ -440,11 +444,9 @@ class BaseTest(object):
             # Test default value, if specified.
             if test_default:
                 obj = self.assert_success(section, key, None)
-                value = vars(obj)[section][key] if section else vars(obj)[key]
-
+                value = self.value_get(obj, section, key)
                 for f in value:
                     self.assertTrue(os.path.isabs(f))
-
                 self.assert_success(section, key, value)
 
             # Test valid values.

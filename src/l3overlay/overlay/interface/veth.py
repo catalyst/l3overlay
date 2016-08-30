@@ -28,6 +28,7 @@ from l3overlay.network.interface import dummy
 from l3overlay.network.interface import veth
 
 from l3overlay.overlay.interface.base import Interface
+from l3overlay.overlay.interface.base import ReadError
 
 
 class VETH(Interface):
@@ -225,9 +226,12 @@ def read(logger, name, config):
     elif inner_address:
         netmask = util.netmask_get(config["netmask"], util.ip_address_is_v6(inner_address))
 
-    if inner_address and outer_address:
+    if inner_address is not None and outer_address is not None:
+        if not outer_interface_bridged:
+            raise ReadError("inner-address and outer-address can only be defined at the same time if outer-interface-bridged is true")
+
         if type(inner_address) != type(outer_address):
-            raise ValueError("inner-address '%s' (%s) and outer-address '%s' (%s) must be the same type of IP address" %
+            raise ReadError("inner-address '%s' (%s) and outer-address '%s' (%s) must be the same type of IP address" %
                     (str(inner_address), str(type(inner_address)),
                         str(outer_address), str(type(outer_address))))
 

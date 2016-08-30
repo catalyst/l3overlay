@@ -60,7 +60,7 @@ class StaticTuntapTest(StaticInterfaceBaseTest.Class):
 
     def test_mode(self):
         '''
-        Test that 'mode' is properly handled by the static tunnel interface.
+        Test that 'mode' is properly handled by the static tuntap interface.
         '''
 
         self.assert_enum(self.section, "mode", ["tun", "tap"])
@@ -68,7 +68,7 @@ class StaticTuntapTest(StaticInterfaceBaseTest.Class):
 
     def test_address_netmask(self):
         '''
-        Test that 'address' and 'netmask' are properly handled by the static dummy interface.
+        Test that 'address' and 'netmask' are properly handled by the static tuntap interface.
         '''
 
         self.assert_address_netmask(self.section, "address", "netmask")
@@ -76,7 +76,7 @@ class StaticTuntapTest(StaticInterfaceBaseTest.Class):
 
     def test_uid(self):
         '''
-        Test that 'uid' is properly handled by the static bgp protocol.
+        Test that 'uid' is properly handled by the static tuntap interface.
         '''
 
         self.assert_integer(self.section, "uid", minval=0)
@@ -84,7 +84,7 @@ class StaticTuntapTest(StaticInterfaceBaseTest.Class):
 
     def test_gid(self):
         '''
-        Test that 'gid' is properly handled by the static bgp protocol.
+        Test that 'gid' is properly handled by the static tuntap interface.
         '''
 
         self.assert_integer(self.section, "gid", minval=0)

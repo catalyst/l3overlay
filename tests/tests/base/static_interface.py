@@ -51,7 +51,7 @@ class StaticInterfaceBaseTest(object):
             self.section = "%s:%s" % (self.section_type, self.section_name)
 
             self.overlay_conf["overlay"]["name"] = self.section_name
-
+            self.overlay_conf[self.section] = {}
 
         #
         ##

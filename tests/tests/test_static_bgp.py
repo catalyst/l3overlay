@@ -93,7 +93,7 @@ class StaticBGPTest(StaticInterfaceBaseTest.Class):
         Test that 'bfd' is properly handled by the static bgp protocol.
         '''
 
-        self.assert_boolean(self.section, "bfd")
+        self.assert_boolean(self.section, "bfd", test_default=True)
 
 
     def test_ttl_security(self):
@@ -101,7 +101,7 @@ class StaticBGPTest(StaticInterfaceBaseTest.Class):
         Test that 'ttl-security' is properly handled by the static bgp protocol.
         '''
 
-        self.assert_boolean(self.section, "ttl-security")
+        self.assert_boolean(self.section, "ttl-security", test_default=True)
 
 
     def test_description(self):
