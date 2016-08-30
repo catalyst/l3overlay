@@ -94,8 +94,8 @@ def read(logger, name, config):
     neighbor = util.ip_address_get(config["neighbor"])
     local = util.ip_address_get(config["local"]) if "local" in config else None
 
-    local_asn = util.integer_get(config["local-asn"]) if "local-asn" in config else None
-    neighbor_asn = util.integer_get(config["neighbor-asn"]) if "neighbor-asn" in config else None
+    local_asn = util.integer_get(config["local-asn"], minval=0, maxval=65535) if "local-asn" in config else None
+    neighbor_asn = util.integer_get(config["neighbor-asn"], minval=0, maxval=65535) if "neighbor-asn" in config else None
 
     bfd = util.boolean_get(config["bfd"]) if "bfd" in config else False
     ttl_security = util.boolean_get(config["ttl-security"]) if "ttl-security" in config else False

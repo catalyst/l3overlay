@@ -344,20 +344,27 @@ def bird_prefix_get(value):
     http://bird.network.cz/?get_doc&f=bird-5.html#ss5.2
     '''
 
+    netmask_pattern = "-?[0-9][0-9]*"
+    netmask_range_pattern = "^\{[0-9][0-9]*,[0-9][0-9]*\}$"
+    netmask_operator_pattern = "^[+-]$"
+
     prefix = re.split("/", value)
+
+    address = None
+    netmask = None
 
     # Get the IP address and convert it to an IP address object using
     # ip_address_get, to ensure it is a real IP address.
     try:
         address = ip_address_get(prefix[0])
-    except ValueError:
-        raise ValueError("invalid BIRD prefix '%s', invalid address segment" % value)
+    except GetError:
+        raise GetError("invalid BIRD prefix '%s', invalid address segment" % value)
 
     # Check for a valid netmask in the netmask segment.
     try:
-        netmask = netmask_get(re.match("[0-9][0-9]*", prefix[1]).group(), ip_address_is_v6(address))
-    except ValueError:
-        raise ValueError("invalid BIRD prefix '%s', invalid netmask segment" % value)
+        netmask = netmask_get(re.match(netmask_pattern, prefix[1]).group(), ip_address_is_v6(address))
+    except GetError:
+        raise GetError("invalid BIRD prefix '%s', invalid netmask segment" % value)
 
     # The interesting part about BIRD prefixes, syntatically, is in the
     # netmask segment, which can not just be CIDR numbers, but can also be
@@ -370,19 +377,19 @@ def bird_prefix_get(value):
     #                        have a prefix length of between 20 to 24.
     #
     # This part checks that the syntax for those expressions is correct.
-    expr = re.sub("^%i" % netmask, "", prefix[1])
+    expr = prefix[1][len(str(netmask)):]
 
     if expr:
-        if not re.match("^[+-]$", expr) and re.match("^\{[0-9][0-9]*,[0-9][0-9]*\}$", expr):
-            netmasks = re.findall("[0-9][0-9]*", expr)
+        if re.match(netmask_range_pattern, expr):
+            netmasks = re.findall(netmask_pattern, expr)
 
-            for n in netmask:
+            for n in netmasks:
                 try:
-                    netmask = netmask_get(n, ip_address_is_v6(address))
-                except ValueError:
-                    raise ValueError("invalid BIRD prefix '%s', invalid netmask %i in expression segment" % (value, n))
-        else:
-            raise ValueError("invalid BIRD prefix '%s', invalid expression segment" % value)
+                    netmask_get(n, ip_address_is_v6(address))
+                except Get:
+                    raise GetError("invalid BIRD prefix '%s', invalid netmask %i in expression segment" % (value, n))
+        elif not re.match(netmask_operator_pattern, expr):
+            raise GetError("invalid BIRD prefix '%s', invalid expression segment" % value)
 
     # All checks have passed. Return the value unmodified.
     return value
