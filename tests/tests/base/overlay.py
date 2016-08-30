@@ -110,6 +110,9 @@ class OverlayBaseTest(object):
             Assumes it will fail, and raises a RuntimeError if it doesn't.
             '''
 
+            if not exceptions:
+                raise RuntimeError("no exceptions to test for")
+
             try:
                 oc = self._overlay_conf_copy(section, key, value)
 

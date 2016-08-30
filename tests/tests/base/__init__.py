@@ -169,7 +169,7 @@ class BaseTest(object):
 
             vvs = string.digits
 
-            _minval = minval if minval is not None else 0
+            _minval = minval if minval is not None else -1
             _maxval = maxval if maxval is not None else max(_minval + 1, 11)
 
             # Test default value, if specified.

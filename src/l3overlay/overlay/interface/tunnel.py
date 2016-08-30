@@ -158,14 +158,14 @@ def read(logger, name, config):
     address = util.ip_address_get(config["address"])
     netmask = util.netmask_get(config["netmask"], util.ip_address_is_v6(address))
 
-    key = util.integer_get(config["key"]) if "key" in config else None
-    ikey = util.integer_get(config["ikey"]) if "ikey" in config else None
-    okey = util.integer_get(config["okey"]) if "okey" in config else None
+    key = util.integer_get(config["key"], minval=0) if "key" in config else None
+    ikey = util.integer_get(config["ikey"], minval=0) if "ikey" in config else None
+    okey = util.integer_get(config["okey"], minval=0) if "okey" in config else None
 
-    if ikey and not okey:
+    if key is None and ikey is not None and okey is None:
         raise ReadError("ikey defined but okey undefined in overlay '%s'" % name)
 
-    if okey and not ikey:
+    if key is None and ikey is None and okey is not None:
         raise ReadError("okey defined but ikey undefined in overlay '%s'" % name)
 
     return Tunnel(
