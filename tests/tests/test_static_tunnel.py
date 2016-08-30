@@ -64,7 +64,7 @@ class StaticTunnelTest(StaticInterfaceBaseTest.Class):
 
     def test_mode(self):
         '''
-        Test that 'local' is properly handled by the static tunnel interface.
+        Test that 'mode' is properly handled by the static tunnel interface.
         '''
 
         self.assert_enum(self.section, "mode", ["gre", "gretap"])

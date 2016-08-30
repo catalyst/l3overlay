@@ -31,7 +31,7 @@ class Tuntap(Interface):
     '''
 
     def __init__(self, logger, name,
-            mode, uid, gid, address, netmask):
+            mode, address, netmask, uid, gid):
         '''
         Set up static tuntap internal state.
         '''
@@ -39,10 +39,10 @@ class Tuntap(Interface):
         super().__init__(logger, name)
 
         self.mode = mode
-        self.uid = uid
-        self.gid = gid
         self.address = address
         self.netmask = netmask
+        self.uid = uid
+        self.gid = gid
 
 
     def setup(self, daemon, overlay):
@@ -106,13 +106,13 @@ def read(logger, name, config):
     '''
 
     mode = util.enum_get(config["mode"], ["tun", "tap"])
-    uid = util.integer_get(config["uid"])
-    gid = util.integer_get(config["gid"])
     address = util.ip_address_get(config["address"])
     netmask = util.netmask_get(config["netmask"], util.ip_address_is_v6(address))
+    uid = util.integer_get(config["uid"], minval=0) if "uid" in config else None
+    gid = util.integer_get(config["gid"], minval=0) if "gid" in config else None
 
     return Tuntap(logger, name,
-            mode, uid, gid, address, netmask)
+            mode, address, netmask, uid, gid)
 
 
 def write(tuntap, config):
@@ -121,7 +121,7 @@ def write(tuntap, config):
     '''
 
     config["mode"] = tuntap.mode.lower()
-    config["uid"] = str(tuntap.uid)
-    config["gid"] = str(tuntap.gid)
     config["address"] = str(tuntap.address)
     config["netmask"] = str(tuntap.netmask)
+    config["uid"] = str(tuntap.uid)
+    config["gid"] = str(tuntap.gid)
