@@ -68,33 +68,44 @@ To ensure that l3overlay starts with the system using the `/etc/init.d` script, 
 
     sudo update-rc.d l3overlay defaults
 
-All of the directories and files that `l3overlayd` uses can be specified on the command line. The command `l3overlayd --help` documents the command line switches which can be used:
+The command `l3overlayd --help` documents the optional arguments which can be used. Many of the optional arguments have equivalents in `global.conf`, and if both are defined, the command line arguments override the configuration values.
 
-    usage: l3overlayd [-h] [-gc FILE] [-ocd DIR] [-oc FILE [FILE ...]] [-td DIR]
-                      [-fsd DIR] [-Ld DIR] [-lf FILE] [-pf FILE]
+```
+usage: l3overlayd [-h] [-dr] [-ll LEVEL] [-ui] [-im] [-ocd DIR] [-td DIR]
+                  [-fsd DIR] [-Ld DIR] [-gc FILE] [-oc FILE [FILE ...]]
+                  [-l FILE] [-p FILE] [-ic FILE] [-is FILE]
 
-    Construct one or more MPLS-like VRF networks using IPsec tunnels and network
-    namespaces.
+Construct one or more MPLS-like VRF networks using IPsec tunnels and network
+namespaces.
 
-    optional arguments:
-      -h, --help            show this help message and exit
-      -gc FILE, --global-conf FILE
-                            use FILE as the global configuration file
-      -ocd DIR, --overlay-conf-dir DIR
-                            use DIR as the overlay conf search directory
-      -oc FILE [FILE ...], --overlay-conf FILE [FILE ...]
-                            configure the overlay defined in FILE, disables
-                            overlay config directory searching
-      -td DIR, --template-dir DIR
-                            use DIR as the configuration template search directory
-      -fsd DIR, --fwbuilder-script-dir DIR
-                            use DIR as the fwbuilder script search directory
-      -Ld DIR, --lib-dir DIR
-                            use DIR as the runtime data directory
-      -lf FILE, --log-file FILE
-                            log output to FILE
-      -pf FILE, --pid-file FILE
-                            use FILE as the PID lock file
+optional arguments:
+  -h, --help            show this help message and exit
+  -dr, --dry-run        test configuration and daemon without modifying the
+                        system
+  -ll LEVEL, --log-level LEVEL
+                        use LEVEL as the logging level parameter
+  -ui, --use-ipsec      use IPsec encapsulation on the overlay mesh
+  -im, --ipsec-manage   operate in IPsec daemon management mode
+  -ocd DIR, --overlay-conf-dir DIR
+                        use DIR as the overlay conf search directory
+  -td DIR, --template-dir DIR
+                        use DIR as the configuration template search directory
+  -fsd DIR, --fwbuilder-script-dir DIR
+                        use DIR as the fwbuilder script search directory
+  -Ld DIR, --lib-dir DIR
+                        use DIR as the runtime data directory
+  -gc FILE, --global-conf FILE
+                        use FILE as the global configuration file
+  -oc FILE [FILE ...], --overlay-conf FILE [FILE ...]
+                        configure the overlay defined in FILE, disables
+                        overlay config directory searching
+  -l FILE, --log FILE   log output to FILE
+  -p FILE, --pid FILE   write the daemon PID to FILE
+  -ic FILE, --ipsec-conf FILE
+                        write IPsec configuration to FILE
+  -is FILE, --ipsec-secrets FILE
+                        write IPsec secrets to FILE
+```
 
 Example configuration
 ----------------------
@@ -137,6 +148,12 @@ If an IPsec PSK is stored in the global configuration, the permissions should be
 
 All `global.conf` configuration values come under the `[global]` section.
 
+#### dry-run
+* Type: **boolean**
+* Required: no
+
+Specifies whether or not to make any changes to the system during operation. Used for development and configuration testing purposes. The default value is `false`.
+
 #### log-level
 * Type: **enum**
 * Required: no
@@ -167,6 +184,54 @@ If `true`, l3overlay will assume that it is to manage the IPsec daemon. When it 
 If `false`, l3overlay will assume that IPsec is being managed elsewhere. In this mode, it will install the IPsec configuration to `l3overlay.conf` under the `/etc/ipsec.d` directory, and stub file will not be installed to `/etc/ipsec.secrets`, instead relying on an existing one to include `/etc/ipsec.l3overlay.secrets`. When starting IPsec, `l3overlayd` will start the IPsec daemon if it is not running, but it will only make sure that its tunnels are started and stopped when `l3overlayd` is being started and stopped, respectively.
 
 Note that if this option is set to `false`, then `l3overlayd` will **NOT** manage IPsec, as it is assumed that the user will want to configure IPsec themselves. A suitable `/etc/ipsec.conf` and `/etc/ipsec.secrets` file **MUST** be provided, which will include the l3overlay IPsec configuration files described above.
+
+#### lib-dir
+* Type: **filepath**, absolute
+* Required: no
+
+Specifies the directory to store `l3overlayd` runtime state information. The default value is `/var/lib/l3overlay`.
+
+#### fwbuilder-script-dir
+* Type: **filepath**, absolute
+* Required: no
+
+Specifies the directory to look for `fwbuilder-script` relative paths defined in overlay configurations. The default value is found using the `l3overlayd` search mechanism defined in the *Installation* section, looking for a directory named `fwbuilder-scripts`.
+
+#### overlay-conf-dir
+* Type: **filepath**, absolute
+* Required: no
+
+Specifies the directory to look for overlay configuration files. The default value is found using the `l3overlayd` search mechanism defined in the *Installation* section, looking for a directory named `overlays`.
+
+#### template-dir
+* Type: **filepath**, absolute
+* Required: no
+
+Specifies the directory to look for the configuration template files. The default value is found using the `l3overlayd` search mechanism defined in the *Installation* section, looking for a directory named `templates`.
+
+#### log
+* Type: **filepath**, absolute
+* Required: no
+
+Specifies the file path to write logging output to. `l3overlayd` does not log output to any file by default.
+
+#### pid
+* Type: **filepath**, absolute
+* Required: no
+
+Specifies the file path to write the PID file to. The default value is `/var/run/l3overlayd.pid`.
+
+#### ipsec-conf
+* Type: **filepath**, absolute
+* Required: no
+
+Specifies the file path to write the IPsec configuration file to. The default value is `/etc/ipsec/l3overlay.conf`.
+
+#### ipsec-secrets
+* Type: **filepath**, absolute
+* Required: no
+
+Specifies the file path to write the IPsec secrets file to. The default value is `/etc/ipsec.secrets` if `ipsec-manage` is `true`, and `/etc/ipsec.l3overlay.secrets` if `ipsec-manage` is `false`.
 
 Overlay configuration
 ---------------------
