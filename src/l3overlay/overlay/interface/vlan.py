@@ -162,7 +162,7 @@ def read(logger, name, config):
     Create a static vlan from the given configuration object.
     '''
 
-    id = util.integer_get(config["id"])
+    id = util.integer_get(config["id"], minval=0, maxval=4096)
     physical_interface = util.name_get(config["physical-interface"])
     address = util.ip_address_get(config["address"])
     netmask = util.netmask_get(config["netmask"], util.ip_address_is_v6(address))
