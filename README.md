@@ -272,11 +272,27 @@ The IP address assigned to the static tunnel interface.
 
 The subnet mask for the static tunnel interface address.
 
-#### link
+#### key
 * Type: **integer**
-* Required: **yes**, **IF** there is more than one tunnel using the address pair
+* Required: **yes**, **IF** there is more than one tunnel using the address pair and `ikey`/`okey` are not used
 
-The unique link number for this static tunnel. Required when there is more than one tunnel using the address pair (`local`, `remote`). Checks are run on all GRE/GRETAP tunnel interfaces created by l3overlay to assert this requirement.
+The unique (to the system) key number for this static tunnel address pair (`local`, `remote`). The peer's tunnel interface should use the same key nunber.
+
+#### ikey
+* Type: **integer**
+* Required: **yes**, **IF** there is more than one tunnel using the address pair and `key` is not used
+
+The unique (to the system) input key number for this static tunnel address pair (`local`, `remote`). The peer's output key number should be the same value.
+
+If this option is used, `okey` is also required to be used.
+
+#### okey
+* Type: **integer**
+* Required: **yes**, **IF** there is more than one tunnel using the address pair and `key` is not used
+
+The unique output key number for this static tunnel address pair (`local`, `remote`). The peer's input key number should be the same value.
+
+If this option is used, `ikey` is also required to be used.
 
 ### [static-tuntap:*{name}*]
 

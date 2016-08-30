@@ -66,6 +66,8 @@ class MeshTunnel(Interface):
         self.root_veth_name = "%sv0" % self.name
         self.netns_veth_name = "%sv1" % self.name
 
+        self.key = self.daemon.gre_key_unique(self.physical_local, self.physical_remote)
+
         self.daemon.mesh_links.add((self.physical_local, self.physical_remote))
 
 
@@ -99,7 +101,7 @@ class MeshTunnel(Interface):
             self.physical_local,
             self.physical_remote,
             kind="gretap",
-            link=self.daemon.gre_link_unique(self.physical_local, self.physical_remote),
+            key=self.key,
         )
 
         root_veth_if = veth.create(

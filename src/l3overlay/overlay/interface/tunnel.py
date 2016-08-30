@@ -23,19 +23,20 @@ from l3overlay import util
 from l3overlay.network.interface import gre
 
 from l3overlay.overlay.interface.base import Interface
+from l3overlay.overlay.interface.base import ReadError
 
 from l3overlay.util.exception.l3overlayerror import L3overlayError
 
 
 class NonUniqueTunnelError(L3overlayError):
     def __init__(self, tunnel):
-        super().__init__("more than one tunnel without link value for address pair (%s, %s)" %
+        super().__init__("more than one tunnel without key value for address pair (%s, %s)" %
                 (tunnel.local, tunnel.remote))
 
-class LinkNumUnavailableError(L3overlayError):
-    def __init__(self, tunnel):
-        super().__init__("more than one tunnel using link value %s for address pair (%s, %s)" %
-                (tunnel.link, tunnel.local, tunnel.remote))
+class KeyNumUnavailableError(L3overlayError):
+    def __init__(self, tunnel, key):
+        super().__init__("more than one tunnel using key value %s for address pair (%s, %s)" %
+                (key, tunnel.local, tunnel.remote))
 
 
 class Tunnel(Interface):
@@ -44,7 +45,8 @@ class Tunnel(Interface):
     '''
 
     def __init__(self, logger, name,
-                mode, local, remote, address, netmask, link):
+                mode, local, remote, address, netmask,
+                key, ikey, okey):
         '''
         Set up static tunnel internal fields.
         '''
@@ -56,7 +58,10 @@ class Tunnel(Interface):
         self.remote = remote
         self.address = address
         self.netmask = netmask
-        self.link = link
+
+        self.key = key
+        self.ikey = ikey
+        self.okey = okey
 
 
     def setup(self, daemon, overlay):
@@ -66,20 +71,22 @@ class Tunnel(Interface):
 
         super().setup(daemon, overlay)
 
-        unique = self.daemon.gre_link_add(local, remote)
+        key = self.key if self.key else self.ikey
 
-        # Static tunnel link numbers cannot be automatically generated,
-        # because the link number value needs to be the same on both sides.
+        unique = self.daemon.gre_key_add(local, remote, key)
 
-        # If a link number is not specified and there is already a tunnel
-        # using the given link number, it means there is at least two tunnels
+        # Static tunnel key numbers cannot be automatically generated,
+        # because the key number value needs to be the same on both sides.
+
+        # If a key number is not specified and there is already a tunnel
+        # using the given key number, it means there is at least two tunnels
         # in l3overlay with the same address pair that do not use a key, so
         # raise an error.
-        if not self.link and not unique:
+        if not key and not unique:
             raise NonUniqueTunnelError(self)
-        # Unique link number specified, more than one tunnel using it.
-        elif self.link and not unique:
-            raise LinkNumUnavailableError(self)
+        # Unique key number specified, more than one tunnel using it.
+        elif key and not unique:
+            raise KeyNumUnavailableError(self, key)
 
         self.tunnel_name = self.daemon.interface_name(self.name)
 
@@ -108,7 +115,9 @@ class Tunnel(Interface):
             self.local,
             self.remote,
             kind=self.mode,
-            link=self.link,
+            key=self.key,
+            ikey=self.ikey,
+            okey=self.okey,
         )
         tunnel_if.add_ip(self.address, self.netmask)
         tunnel_if.up()
@@ -133,7 +142,7 @@ class Tunnel(Interface):
         Remove the static tunnel.
         '''
 
-        self.daemon.gre_link_remove(self.link)
+        self.daemon.gre_key_remove(self.key if self.key else self.ikey)
 
 Interface.register(Tunnel)
 
@@ -148,10 +157,22 @@ def read(logger, name, config):
     remote = util.ip_address_get(config["remote"])
     address = util.ip_address_get(config["address"])
     netmask = util.netmask_get(config["netmask"], util.ip_address_is_v6(address))
-    link = util.integer_get(config["link"]) if "link" in config else None
 
-    return Tunnel(logger, name,
-            mode, local, remote, address, netmask, link)
+    key = util.integer_get(config["key"]) if "key" in config else None
+    ikey = util.integer_get(config["ikey"]) if "ikey" in config else None
+    okey = util.integer_get(config["okey"]) if "okey" in config else None
+
+    if ikey and not okey:
+        raise ReadError("ikey defined but okey undefined in overlay '%s'" % name)
+
+    if okey and not ikey:
+        raise ReadError("okey defined but ikey undefined in overlay '%s'" % name)
+
+    return Tunnel(
+        logger, name,
+        mode, local, remote, address, netmask,
+        key, ikey, okey,
+    )
 
 
 def write(tunnel, config):
@@ -165,5 +186,9 @@ def write(tunnel, config):
     config["address"] = str(tunnel.address)
     config["netmask"] = str(tunnel.netmask)
 
-    if tunnel.link:
-        config["link"] = str(tunnel.link)
+    if tunnel.key:
+        config["key"] = str(tunnel.key)
+    if tunnel.ikey:
+        config["ikey"] = str(tunnel.ikey)
+    if tunnel.okey:
+        config["okey"] = str(tunnel.okey)
