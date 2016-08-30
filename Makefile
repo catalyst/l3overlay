@@ -71,6 +71,7 @@ PREFIX = /usr/local
 endif
 
 SBIN_DIR = $(PREFIX)/sbin
+CONFIG_DIR = $(PREFIX)/etc/l3overlay
 
 
 ##############################
@@ -142,7 +143,7 @@ config:
 	@echo -n > $(CONFIG)
 	@echo PREFIX=$(PREFIX) >> $(CONFIG)
 	@echo SBIN_DIR=$(SBIN_DIR) >> $(CONFIG)
-	@echo DATA_ROOT=$(DATA_ROOT) >> $(CONFIG)
+	@echo CONFIG_DIR=$(CONFIG_DIR) >> $(CONFIG)
 	@echo WITH_INIT_D=$(WITH_INIT_D) >> $(CONFIG)
 	@echo WITH_UPSTART=$(WITH_UPSTART) >> $(CONFIG)
 

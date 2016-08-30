@@ -77,11 +77,13 @@ with codecs.open(os.path.join(here, "README.md"), encoding="UTF-8") as f:
 config = config_read(os.path.join(here, ".config"))
 
 prefix = config["PREFIX"]
-
-l3overlayd = os.path.join(config["SBIN_DIR"], "l3overlayd")
+sbin_dir = config["SBIN_DIR"]
+config_dir = config["CONFIG_DIR"]
 
 with_init_d  = config["WITH_INIT_D"] if "WITH_INIT_D" in config else None
 with_upstart = config["WITH_UPSTART"] if "WITH_UPSTART" in config else None
+
+l3overlayd = os.path.join(sbin_dir, "l3overlayd")
 
 
 # Sanity check for Upstart config vs init.d script. These are mutually exclusive!
@@ -123,21 +125,21 @@ if with_init_d:
 # Map files to installation locations.
 data_files = [
     (
-        os.path.join(prefix, "etc", "l3overlay"),
+        config_dir,
         [
             os.path.join(here, "l3overlay", "global.conf"),
         ],
     ),
 
     (
-        os.path.join(prefix, "etc", "l3overlay", "overlays"),
+        os.path.join(config_dir, "overlays"),
         [
             os.path.join(here, "l3overlay", "overlays", "example.conf"),
         ],
     ),
 
     (
-        os.path.join(prefix, "etc", "l3overlay", "templates"),
+        os.path.join(config_dir, "templates"),
         [
             os.path.join(here, "l3overlay", "templates", "bird.conf"),
             os.path.join(here, "l3overlay", "templates", "ipsec.conf"),

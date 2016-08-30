@@ -35,7 +35,8 @@ Vagrant.configure("2") do |config|
         pip3 install pyroute2
         pip3 install jinja2
 
-        make -C /vagrant install PREFIX="/usr" CONFIG_DIR="/etc" WITH_UPSTART=1
+        make -C /vagrant test
+        make -C /vagrant install PREFIX="/usr" CONFIG_DIR="/etc/l3overlay" WITH_UPSTART=1
 
         rm -rf /etc/l3overlay/overlays
         cp /vagrant/vagrant/global.conf /etc/l3overlay/global.conf
