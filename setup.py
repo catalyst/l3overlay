@@ -110,7 +110,7 @@ if with_upstart or with_init_d:
     var_replace(
         os.path.join(here, "default", "l3overlay.in"),
         os.path.join(here, "default", "l3overlay"),
-        config, ["PREFIX"],
+        config, ["CONFIG_DIR"],
     )
 
 
@@ -193,7 +193,7 @@ setuptools.setup(
     data_files = data_files,
 
     packages = setuptools.find_packages(where=os.path.join(here, "src")),
-    package_dir = {"": os.path.join(here, "src")},
+    package_dir = {"": "src"},
 
     entry_points = {
         "console_scripts": ["l3overlayd = l3overlay:main"],

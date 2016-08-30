@@ -25,6 +25,7 @@ Vagrant.configure("2") do |config|
 
     config.vm.provision "shell", inline: <<-SHELL
         apt-get update
+        apt-get install -y dos2unix
         apt-get install -y iproute2
         apt-get install -y vlan
         apt-get install -y bird
@@ -38,7 +39,13 @@ Vagrant.configure("2") do |config|
         make -C /vagrant test
         make -C /vagrant install PREFIX="/usr" CONFIG_DIR="/etc/l3overlay" WITH_UPSTART=1
 
+        dos2unix /etc/default/l3overlay
+        dos2unix /etc/init/l3overlay.conf
+
+        echo "Removing /etc/l3overlay/overlays... "
         rm -rf /etc/l3overlay/overlays
+
+        echo "Installing /vagrant/vagrant/global.conf to /etc/l3overlay/global.conf... "
         cp /vagrant/vagrant/global.conf /etc/l3overlay/global.conf
     SHELL
 
@@ -46,7 +53,9 @@ Vagrant.configure("2") do |config|
         l3overlay1.vm.network "private_network", ip: "192.168.50.2"
 
         l3overlay1.vm.provision "shell", inline: <<-SHELL
+            echo "Installing /vagrant/vagrant/l3overlay-1/overlays to /etc/l3overlay/overlays... "
             cp -R /vagrant/vagrant/l3overlay-1/overlays /etc/l3overlay/overlays
+
             service l3overlay start
         SHELL
     end
@@ -55,7 +64,9 @@ Vagrant.configure("2") do |config|
         l3overlay2.vm.network "private_network", ip: "192.168.50.3"
 
         l3overlay2.vm.provision "shell", inline: <<-SHELL
+            echo "Installing /vagrant/vagrant/l3overlay-2/overlays to /etc/l3overlay/overlays... "
             cp -R /vagrant/vagrant/l3overlay-2/overlays /etc/l3overlay/overlays
+
             service l3overlay start
         SHELL
     end
