@@ -27,6 +27,7 @@ from l3overlay import util
 from l3overlay.util.worker import Worker
 from l3overlay.util.worker import NotYetStartedError
 
+
 class Logger(Worker):
     '''
     Logger.
