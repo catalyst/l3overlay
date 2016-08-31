@@ -81,7 +81,7 @@ class VLAN(Interface):
         physical_if = interface.get(
             self.dry_run,
             self.logger,
-            self.daemon.root_ipdb,
+            self.root_ipdb,
             self.physical_interface,
         )
 
@@ -89,7 +89,7 @@ class VLAN(Interface):
         vlan_if = vlan.create(
             self.dry_run,
             self.logger,
-            self.netns.ipdb,
+            self.root_ipdb,
             self.vlan_name,
             physical_if, 
             self.id,
@@ -99,7 +99,7 @@ class VLAN(Interface):
         root_veth_if = veth.create(
             self.dry_run,
             self.logger,
-            self.daemon.root_ipdb,
+            self.root_ipdb,
             self.root_veth_name,
             self.netns_veth_name,
         )
@@ -108,7 +108,7 @@ class VLAN(Interface):
         netns_veth_if = interface.netns_set(
             self.dry_run,
             self.logger,
-            self.netns.ipdb,
+            self.root_ipdb,
             self.netns_veth_name,
             self.netns,
         )
@@ -122,7 +122,7 @@ class VLAN(Interface):
         bridge_if = bridge.create(
             self.dry_run,
             self.logger,
-            self.daemon.root_ipdb,
+            self.root_ipdb,
             self.bridge_name,
         )
 
@@ -148,9 +148,9 @@ class VLAN(Interface):
 
         self.logger.info("stopping static vlan '%s'" % self.name)
 
-        bridge.get(self.dry_run, self.logger, self.daemon.root_ipdb, self.bridge_name).remove()
-        veth.get(self.dry_run, self.logger, self.netns.ipdb, self.root_veth_name).remove()
-        vlan.get(self.dry_run, self.logger, self.netns.ipdb, self.vlan_name).remove()
+        bridge.get(self.dry_run, self.logger, self.root_ipdb, self.bridge_name).remove()
+        veth.get(self.dry_run, self.logger, self.root_ipdb, self.root_veth_name).remove()
+        vlan.get(self.dry_run, self.logger, self.root_ipdb, self.vlan_name).remove()
 
         self.logger.info("finished stopping static vlan '%s'" % self.name)
 

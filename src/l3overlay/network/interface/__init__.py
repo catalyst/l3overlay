@@ -44,12 +44,14 @@ class NotRemovedError(L3overlayError):
                     ))
 
 class NotFoundError(L3overlayError):
-    def __init__(self, name, kind = None, netns = False):
-        super().__init__("unable to find %s with name '%s' in %s namespace" %
+    def __init__(self, name, kind=None, netns=False, ipdb=False):
+        s = "network namespace" if netns else "root namespace"
+        structure = "IPDB" if ipdb else s
+        super().__init__("unable to find %s with name '%s' in %s" %
                 (
+                    "%s interface" % kind if kind else "interface",
                     name,
-                    kind if kind else "interface",
-                    "network" if netns else "root",
+                    structure,
                 ))
 
 class UnexpectedTypeError(L3overlayError):
@@ -121,7 +123,7 @@ class Interface(object):
             self.interface.set_mtu(mtu).commit()
 
 
-    def netns_set(netns):
+    def netns_set(self, netns):
         '''
         Move the interface into a chosen network namespace.
         '''
@@ -132,11 +134,12 @@ class Interface(object):
         if self.logger:
             self.logger.debug("moving %s '%s' to network namespace '%s'" % (self.description, self.name, netns.name))
 
-        if self.interface and self.name not in netns.ipdb.by_name.keys():
+        if self.interface:
             self.interface.net_ns_fd = netns.name
             self.ipdb.commit()
 
-        self.ipdb = netns.ipdb
+            self.ipdb = netns.ipdb
+            self.interface = netns.ipdb.interfaces[self.name]
 
 
     def up(self):
@@ -225,13 +228,16 @@ def netns_set(dry_run, logger, ipdb, name, netns):
     interface object from the network namespace.
     '''
 
+    if not dry_run and name in ipdb.by_name.keys():
+        interface = Interface(logger, ipdb, ipdb.interfaces[name], name)
+        interface.netns_set(netns)
+        return interface
+
     logger.debug("moving interface '%s' to network namespace '%s'" % (name, netns.name))
 
     if dry_run:
         return Interface(logger, None, None, name)
-
-    if name not in netns.ipdb.by_name.keys():
-        ipdb.interfaces[name].net_ns_fd = netns.name
-        ipdb.commit()
-
-    return Interface(logger, netns.ipdb, netns.ipdb.interfaces[name], name)
+    elif name in netns.ipdb.by_name.keys():
+        return Interface(logger, netns.ipdb, netns.ipdb.interfaces[name], name)
+    else:
+        raise NotFoundError(name, ipdb=True)

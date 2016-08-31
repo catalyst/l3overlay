@@ -63,7 +63,6 @@ def create(dry_run, logger, ipdb, name, link, id):
 
     logger.debug("creating %s interface '%s'" % (IF_TYPE, name))
 
-
     if dry_run:
         return VLAN(logger, None, None, name)
 
@@ -77,7 +76,7 @@ def create(dry_run, logger, ipdb, name, link, id):
         else:
             return VLAN(logger, ipdb, interface, name)
 
-    interface = ipdb.create(ifname=name, kind=IF_TYPE, link=link, vlan_id=id)
+    interface = ipdb.create(ifname=name, kind=IF_TYPE, link=link.interface, vlan_id=id)
     ipdb.commit()
 
     return VLAN(logger, ipdb, interface, name)

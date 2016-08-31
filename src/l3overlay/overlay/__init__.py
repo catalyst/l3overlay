@@ -269,6 +269,10 @@ class Overlay(Worker):
 
         self.logger.info("stopping overlay")
 
+        # Restart the overlay's network namespace object, after
+        # shutting it down to conserve memory.
+        self.netns.start()
+
         self.bgp_process.stop()
 
         for interface in self.interfaces:
@@ -279,6 +283,9 @@ class Overlay(Worker):
             mt.stop()
             mt.remove()
 
+        # We're done with the overlay network namespace. Stop it,
+        # and remove the namespace.
+        self.netns.stop()
         self.netns.remove()
 
         self.logger.debug("removing overlay root directory")

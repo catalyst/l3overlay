@@ -23,7 +23,7 @@ from l3overlay.network.interface import NotFoundError
 from l3overlay.network.interface import UnexpectedTypeError
 
 
-IF_TYPE = "tuntap"
+IF_TYPES = ["tun", "tap"]
 
 
 class Tuntap(Interface):
@@ -43,26 +43,27 @@ class Tuntap(Interface):
 
 def get(dry_run, logger, ipdb, name):
     '''
-    Return a tuntap interface object for the given interface name.
+    Return a tun/tap interface object for the given interface name.
     '''
 
-    logger.debug("getting runtime state for %s interface '%s'" % (IF_TYPE, name))
+    logger.debug("getting runtime state for %s interface '%s'" % (str.join("/", IF_TYPES), name))
 
     if dry_run:
-        return Tuntap(logger, None, None, name, IF_TYPE)
+        return Tuntap(logger, None, None, name, "tun")
 
     if name in ipdb.by_name.keys():
         interface = ipdb.interfaces[name]
 
-        if interface.kind != IF_TYPE:
-            raise UnexpectedTypeError(name, interface.kind, IF_TYPE)
+        if interface.kind not in IF_TYPES:
+            raise UnexpectedTypeError(name, interface.kind, str.join("/", IF_TYPES))
 
-        return Tuntap(logger, ipdb, interface, name, interface.mode)
+        return Tuntap(logger, ipdb, interface, name, interface.kind)
     else:
-        raise NotFoundError(name, IF_TYPE, True)
+        raise NotFoundError(name, str.join("/", IF_TYPES), True)
 
 
-def create(dry_run, logger, ipdb, name, mode="tap", uid=0, gid=0, ifr=None):
+def create(dry_run, logger, ipdb, name,
+        mode="tap", uid=0, gid=0, ifr=None):
     '''
     Create a tuntap interface object, using a given interface name.
     '''
@@ -75,8 +76,7 @@ def create(dry_run, logger, ipdb, name, mode="tap", uid=0, gid=0, ifr=None):
     if name in ipdb.by_name.keys():
         interface = ipdb.interfaces[name]
 
-        if (interface.kind != IF_TYPE or
-                interface.mode != mode or
+        if (interface.kind not in IF_TYPES or
                 interface.uid != uid or
                 interface.gid != gid or
                 interface.ifr != ifr):
@@ -86,7 +86,7 @@ def create(dry_run, logger, ipdb, name, mode="tap", uid=0, gid=0, ifr=None):
 
     interface = ipdb.create(
         ifname=name,
-        kind=IF_TYPE,
+        kind="tuntap",
         mode=mode,
         uid=uid,
         gid=gid,

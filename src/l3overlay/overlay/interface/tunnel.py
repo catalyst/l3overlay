@@ -73,7 +73,7 @@ class Tunnel(Interface):
 
         key = self.key if self.key else self.ikey
 
-        unique = self.daemon.gre_key_add(local, remote, key)
+        unique = self.daemon.gre_key_add(self.local, self.remote, self.key)
 
         # Static tunnel key numbers cannot be automatically generated,
         # because the key number value needs to be the same on both sides.
@@ -142,7 +142,7 @@ class Tunnel(Interface):
         Remove the static tunnel.
         '''
 
-        self.daemon.gre_key_remove(self.key if self.key else self.ikey)
+        self.daemon.gre_key_remove(self.local, self.remote, self.key if self.key else self.ikey)
 
 Interface.register(Tunnel)
 

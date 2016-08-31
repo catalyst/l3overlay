@@ -174,6 +174,9 @@ class Worker(metaclass=abc.ABCMeta):
         self._states["settingup"] = False
         self._states["setup"] = True
 
+        self._states["removing"] = False
+        self._states["removed"] = False
+
 
     def is_starting(self):
         '''
@@ -227,6 +230,9 @@ class Worker(metaclass=abc.ABCMeta):
 
         self._states["starting"] = False
         self._states["started"] = True
+
+        self._states["stopping"] = False
+        self._states["stopped"] = False
 
 
     def is_running(self):
@@ -298,6 +304,7 @@ class Worker(metaclass=abc.ABCMeta):
         self._states["stopping"] = False
         self._states["stopped"] = True
 
+        self._states["starting"] = False
         self._states["started"] = False
 
 
@@ -354,6 +361,7 @@ class Worker(metaclass=abc.ABCMeta):
         self._states["removing"] = False
         self._states["removed"] = True
 
+        self._states["settingup"] = False
         self._states["setup"] = False
 
 
