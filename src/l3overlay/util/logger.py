@@ -20,6 +20,7 @@
 
 import logging
 import os
+import stat
 
 from l3overlay import util
 
@@ -57,6 +58,7 @@ class Logger(Worker):
         if self.log:
             util.directory_create(os.path.dirname(self.log))
             self.logger_handler = logging.FileHandler(self.log)
+            os.chmod(self.log, stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH)
         else:
             self.logger_handler = logging.NullHandler()
 
