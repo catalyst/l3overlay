@@ -62,7 +62,7 @@ class OverlayLink(Interface):
         self.outer_asn = overlay.asn
 
         self.inner_overlay = self.daemon.overlays[self.inner_overlay_name]
-        self.inner_netns = netns.get(self.inner_overlay_name)
+        self.inner_netns = netns.get(self.dry_run, self.logger, self.inner_overlay_name)
         self.inner_asn = self.inner_overlay.asn
 
         self.dummy_name = self.daemon.interface_name(self.name, limit=13)
