@@ -23,51 +23,27 @@ Vagrant.configure("2") do |config|
 
     config.vm.box = "ubuntu/trusty64"
 
+    config.vm.provision "file", source: "vagrant/setup-l3overlay", destination: "/tmp"
+
     config.vm.provision "shell", inline: <<-SHELL
         apt-get update
         apt-get install -y dos2unix
-        apt-get install -y iproute2
-        apt-get install -y vlan
-        apt-get install -y bird
-        apt-get install -y strongswan
-        apt-get install -y make
-        apt-get install -y git
-        apt-get install -y python3-pip
-        pip3 install pyroute2
-        pip3 install jinja2
 
-        make -C /vagrant test
-        make -C /vagrant install PREFIX="/usr" CONFIG_DIR="/etc/l3overlay" WITH_UPSTART=1
-
-        dos2unix /etc/default/l3overlay
-        dos2unix /etc/init/l3overlay.conf
-
-        echo "Removing /etc/l3overlay/overlays... "
-        rm -rf /etc/l3overlay/overlays
-
-        echo "Installing /vagrant/vagrant/global.conf to /etc/l3overlay/global.conf... "
-        cp /vagrant/vagrant/global.conf /etc/l3overlay/global.conf
+        echo '#!/bin/sh' > /usr/local/bin/setup-l3overlay
+        echo 'test ! -d /vagrant || cp /vagrant/vagrant/setup-l3overlay /tmp/setup-l3overlay || exit $?' >> /usr/local/bin/setup-l3overlay
+        echo 'dos2unix /tmp/setup-l3overlay || exit $?' >> /usr/local/bin/setup-l3overlay
+        echo 'chmod +x /tmp/setup-l3overlay || exit $?' >> /usr/local/bin/setup-l3overlay
+        echo '/tmp/setup-l3overlay $@ || exit $?' >> /usr/local/bin/setup-l3overlay
+        chmod +x /usr/local/bin/setup-l3overlay
     SHELL
 
     config.vm.define "l3overlay-1" do |l3overlay1|
         l3overlay1.vm.network "private_network", ip: "192.168.50.2"
-
-        l3overlay1.vm.provision "shell", inline: <<-SHELL
-            echo "Installing /vagrant/vagrant/l3overlay-1/overlays to /etc/l3overlay/overlays... "
-            cp -R /vagrant/vagrant/l3overlay-1/overlays /etc/l3overlay/overlays
-
-            service l3overlay start
-        SHELL
+        l3overlay1.vm.provision "shell", inline: "setup-l3overlay l3overlay-1"
     end
 
     config.vm.define "l3overlay-2" do |l3overlay2|
         l3overlay2.vm.network "private_network", ip: "192.168.50.3"
-
-        l3overlay2.vm.provision "shell", inline: <<-SHELL
-            echo "Installing /vagrant/vagrant/l3overlay-2/overlays to /etc/l3overlay/overlays... "
-            cp -R /vagrant/vagrant/l3overlay-2/overlays /etc/l3overlay/overlays
-
-            service l3overlay start
-        SHELL
+        l3overlay2.vm.provision "shell", inline: "setup-l3overlay l3overlay-2"
     end
 end

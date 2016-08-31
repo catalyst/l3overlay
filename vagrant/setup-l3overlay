@@ -1,0 +1,62 @@
+#!/bin/sh
+#
+# IPsec overlay network manager (l3overlay)
+# vagrant/setup-l3overlay - l3overlay provisioning script for Vagrant test environment
+#
+# Copyright (c) 2016 Catalyst.net Ltd
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+
+box=$1
+
+if [ -z "${box}" ]
+then
+    echo "usage: $(basename ${0}) <BOX>"
+    exit 1
+fi
+
+if [ $(id -u) -ne 0 ]
+then
+    echo "This script needs root privileges."
+    exit 2
+fi
+
+apt-get install -y iproute2
+apt-get install -y vlan
+apt-get install -y bird
+apt-get install -y strongswan
+apt-get install -y make
+apt-get install -y git
+apt-get install -y python3-pip
+pip3 install pyroute2
+pip3 install jinja2
+
+service l3overlay stop || true
+
+make -C /vagrant test
+make -C /vagrant install PREFIX="/usr" CONFIG_DIR="/etc/l3overlay" WITH_UPSTART=1
+
+dos2unix /etc/default/l3overlay
+dos2unix /etc/init/l3overlay.conf
+
+echo "Removing /etc/l3overlay/overlays... "
+rm -rf /etc/l3overlay/overlays
+
+echo "Installing /vagrant/vagrant/global.conf to /etc/l3overlay/global.conf... "
+cp /vagrant/vagrant/global.conf /etc/l3overlay/global.conf
+
+echo "Installing /vagrant/vagrant/${box}/overlays to /etc/l3overlay/overlays... "
+cp -R "/vagrant/vagrant/${box}/overlays" /etc/l3overlay/overlays
+
+service l3overlay start
