@@ -36,6 +36,10 @@ from l3overlay.util import worker
 from l3overlay.util.exception.l3overlayerror import L3overlayError
 
 
+class KeyAddedTwiceError(L3overlayError):
+    def __init__(self, local, remote, key):
+        super().__init__("key '%s' added twice for link (%s, %s)" % (key, local, remote))
+
 class NoOverlayConfError(L3overlayError):
     def __init__(self):
         super().__init__("no overlay configuration files found")
@@ -125,8 +129,7 @@ class Daemon(worker.Worker):
         try:
             self.set_settingup()
 
-            self._gre_keys_list = {}
-            self._gre_keys_unique = {}
+            self._gre_keys = {}
             self._interface_names = set()
 
             self.mesh_links = set()
@@ -245,60 +248,36 @@ class Daemon(worker.Worker):
             raise
 
 
-    def gre_key_add(self, local, remote, value):
+    def gre_key_add(self, local, remote, key):
         '''
         Add a unique (to this daemon) key value for the given
-        (local, remote) link. Returns True if the key value was not
-        added before, False otherwise.
-        '''
-
-        link = (local, remote)
-
-        if link not in self._gre_keys_list:
-            self._gre_keys_list[link] = set()
-
-        if value not in self._gre_keys_list[link]:
-            self._gre_keys_list[link].add(value)
-            return True
-
-        return False
-
-
-    def gre_key_remove(self, local, remote, value):
-        '''
-        Remove a unique (to this daemon) key value for the given
-        (local, remote) link. Returns True if the key value was
-        added before, False otherwise.
-        '''
-
-        link = (local, remote)
-
-        if value in self._gre_keys_list[link]:
-            self._gre_keys_list[link].remove(value)
-            return True
-
-        return False
-
-
-    def gre_key_unique(self, local, remote):
-        '''
-        Return a unique (to this daemon) key value for the given
         (local, remote) link.
         '''
 
         link = (local, remote)
 
-        if link not in self._gre_keys_list:
-            self._gre_keys_list[link] = set()
-        if link not in self._gre_keys_unique:
-            self._gre_keys_unique[link] = 0
+        if link not in self._gre_keys:
+            self._gre_keys[link] = set()
 
-        while self._gre_keys_unique[link] in self._gre_keys_list[link]:
-            self._gre_keys_unique[link] += 1
+        if key in self._gre_keys[link]:
+            raise KeyUsedTwiceError(local, remote, key)
+        else:
+            self._gre_keys[link].add(key)
 
-        self._gre_keys_list[link].add(self._gre_keys_unique[link])
 
-        return self._gre_keys_unique[link]
+    def gre_key_remove(self, local, remote, key):
+        '''
+        Remove a unique (to this daemon) key value for the given
+        (local, remote) link.
+        '''
+
+        link = (local, remote)
+
+        if link not in self._gre_keys:
+            return
+
+        if key in self._gre_keys[link]:
+            self._gre_keys[link].remove(key)
 
 
     def interface_name(self, name, suffix=None, limit=15):

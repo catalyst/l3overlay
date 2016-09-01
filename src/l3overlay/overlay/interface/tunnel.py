@@ -73,20 +73,8 @@ class Tunnel(Interface):
 
         key = self.key if self.key else self.ikey
 
-        unique = self.daemon.gre_key_add(self.local, self.remote, self.key)
-
-        # Static tunnel key numbers cannot be automatically generated,
-        # because the key number value needs to be the same on both sides.
-
-        # If a key number is not specified and there is already a tunnel
-        # using the given key number, it means there is at least two tunnels
-        # in l3overlay with the same address pair that do not use a key, so
-        # raise an error.
-        if not key and not unique:
-            raise NonUniqueTunnelError(self)
-        # Unique key number specified, more than one tunnel using it.
-        elif key and not unique:
-            raise KeyNumUnavailableError(self, key)
+        if key:
+            self.daemon.gre_key_add(self.local, self.remote, key)
 
         self.tunnel_name = self.daemon.interface_name(self.name)
 

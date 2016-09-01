@@ -66,8 +66,9 @@ class MeshTunnel(Interface):
         self.root_veth_name = "%sv0" % self.name
         self.netns_veth_name = "%sv1" % self.name
 
-        self.key = self.daemon.gre_key_unique(self.physical_local, self.physical_remote)
+        self.asn = self.overlay.asn
 
+        self.daemon.gre_key_add(self.physical_local, self.physical_remote, self.asn)
         self.daemon.mesh_links.add((self.physical_local, self.physical_remote))
 
 
@@ -100,7 +101,7 @@ class MeshTunnel(Interface):
             "gretap",
             self.physical_local,
             self.physical_remote,
-            key = self.key,
+            key = self.asn,
             root_ipdb = self.root_ipdb,
         )
 
@@ -154,6 +155,14 @@ class MeshTunnel(Interface):
         gre.get(self.dry_run, self.logger, self.name, "gretap", root_ipdb=self.root_ipdb).remove()
 
         self.logger.info("finished stopping mesh tunnel '%s'" % self.name)
+
+
+    def remove(self):
+        '''
+        Remove the mesh tunnel.
+        '''
+
+        self.daemon.gre_key_remove(self.physical_local, self.physical_remote, self.asn)
 
 Interface.register(MeshTunnel)
 
