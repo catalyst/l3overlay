@@ -56,15 +56,11 @@ class VETH(Interface):
         if self.interface:
             if self.peer in self.ipdb.by_name.keys():
                 if self.logger:
-                    desc = "%s '%s'" % (
-                        self.netns.description,
-                        self.netns.name,
-                    ) if self.netns else "root namespace"
                     self.logger.debug("getting %s '%s' peer '%s' in %s" % (
                         self.description,
                         self.name,
                         self.peer,
-                        desc,
+                        self.netns.description if self.netns else "root namespace",
                     ))
                 return VETH(
                     self.logger,
@@ -77,12 +73,11 @@ class VETH(Interface):
 
             elif peer_netns and self.peer in peer_netns.ipdb.by_name.keys():
                 if self.logger:
-                    self.logger.debug("getting %s '%s' peer '%s' in remote %s '%s'" % (
+                    self.logger.debug("getting %s '%s' peer '%s' in remote %s" % (
                         self.description,
                         self.name,
                         self.peer,
                         self.netns.description,
-                        self.netns.name,
                     ))
                 return VETH(
                     self.logger,
@@ -112,15 +107,11 @@ class VETH(Interface):
         # dry-run = true
         else:
             if self.logger:
-                desc = "%s '%s'" % (
-                    self.netns.description,
-                    self.netns.name,
-                ) if self.netns else "root namespace"
                 self.logger.debug("getting %s '%s' peer '%s' in %s" % (
                     self.description,
                     self.name,
                     self.peer,
-                    desc,
+                    self.netns.description if self.netns else "root namespace",
                 ))
             return VETH(
                 self.logger,

@@ -35,8 +35,8 @@ def _log_get(logger, name, description, netns, root_ipdb):
     '''
 
     if netns:
-        logger.debug("getting runtime state for %s '%s' in %s '%s'" %
-                (description, name, netns.description, netns.name))
+        logger.debug("getting runtime state for %s '%s' in %s" %
+                (description, name, netns.description))
     elif root_ipdb:
         logger.debug("getting runtime state %s '%s' in root namespace" %
                 (description, name))

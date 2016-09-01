@@ -103,8 +103,8 @@ class Interface(object):
         self._check_state()
 
         if self.logger:
-            self.logger.debug("moving %s '%s' to %s '%s'" %
-                    (self.description, self.name, netns.description, netns.name))
+            self.logger.debug("moving %s '%s' to %s" %
+                    (self.description, self.name, netns.description))
 
         if self.interface:
             if self.netns == netns:
