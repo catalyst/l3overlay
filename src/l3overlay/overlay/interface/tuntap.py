@@ -74,11 +74,11 @@ class Tuntap(Interface):
         tuntap_if = tuntap.create(
             self.dry_run,
             self.logger,
-            self.netns.ipdb,
             self.tuntap_name,
             self.mode,
             self.uid,
             self.gid,
+            netns = self.netns,
         )
         tuntap_if.add_ip(self.address, self.netmask)
         tuntap_if.up()
@@ -93,7 +93,7 @@ class Tuntap(Interface):
 
         self.logger.info("stopping static tuntap '%s'" % self.name)
 
-        tuntap.get(self.dry_run, self.logger, self.netns.ipdb, self.tuntap_name).remove()
+        tuntap.get(self.dry_run, self.logger, self.tuntap_name, self.mode, netns=self.netns).remove()
 
         self.logger.info("finished stopping static tuntap '%s'" % self.name)
 

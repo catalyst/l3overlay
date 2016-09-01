@@ -18,12 +18,15 @@
 #
 
 
-from l3overlay.network.interface import Interface
-from l3overlay.network.interface import NotFoundError
-from l3overlay.network.interface import UnexpectedTypeError
+from l3overlay.network import interface
+
+from l3overlay.network.interface.base import Interface
+
+from l3overlay.network.interface.exception import NotFoundError
 
 
 IF_TYPE = "bridge"
+IF_DESCRIPTION = "%s interface" % IF_TYPE
 
 
 class Bridge(Interface):
@@ -32,7 +35,7 @@ class Bridge(Interface):
     bridge-specific functions.
     '''
 
-    description = "%s interface" % IF_TYPE
+    description = IF_DESCRIPTION
 
 
     def add_port(self, added_if):
@@ -50,43 +53,47 @@ class Bridge(Interface):
             self.interface.add_port(added_if.interface).commit()
 
 
-def get(dry_run, logger, ipdb, name):
+def get(dry_run, logger, name, netns=None, root_ipdb=None):
     '''
-    Return a bridge interface object for the given interface name.
+    Tries to find a bridge interface with the given name in the
+    chosen namespace and returns it.
     '''
 
-    logger.debug("getting runtime state for %s interface '%s'" % (IF_TYPE, name))
+    interface._log_get(logger, name, IF_DESCRIPTION, netns, root_ipdb)
 
     if dry_run:
-        return Bridge(logger, None, None, name)
+        return Bridge(logger, name, None, netns, root_ipdb)
 
-    if name in ipdb.by_name.keys():
-        interface = ipdb.interfaces[name]
+    ipdb = interface._ipdb_get(name, IF_DESCRIPTION, netns, root_ipdb)
+    existing_if = interface._interface_get(name, ipdb, IF_TYPE)
 
-        if interface.kind != IF_TYPE:
-            raise UnexpectedTypeError(name, interface.kind, IF_TYPE)
-
-        return Bridge(logger, ipdb, interface, name)
+    if existing_if:
+        return Bridge(logger, name, existing_if, netns, root_ipdb)
     else:
-        raise NotFoundError(name, IF_TYPE, True)
+        raise NotFoundError(name, IF_DESCRIPTION, netns, root_ipdb)
 
 
-def create(dry_run, logger, ipdb, name):
+def create(dry_run, logger, name, netns=None, root_ipdb=None):
     '''
     Create a bridge interface object, using a given interface name.
     '''
 
-    logger.debug("creating %s interface '%s'" % (IF_TYPE, name))
+    interface._log_create(logger, name, IF_DESCRIPTION, netns, root_ipdb)
 
     if dry_run:
-        return Bridge(logger, None, None, name)
+        return Bridge(logger, name, None, netns, root_ipdb)
 
-    # Remove any existing interfaces with the given name. It could have
-    # ports attached to it already.
-    if name in ipdb.by_name.keys():
-        Interface(None, ipdb, ipdb.interfaces[name], name).remove()
+    ipdb = interface._ipdb_get(name, IF_DESCRIPTION, netns, root_ipdb)
+    existing_if = interface._interface_get(name, ipdb)
 
-    interface = ipdb.create(ifname=name, kind=IF_TYPE)
+    # Always remove any existing interfaces with the given name.
+    # Even if it is already a bridge, it could have ports attached
+    # to it already. Ideally, this function should be idempotent, but
+    # it's not really possible for bridges.
+    if existing_if:
+        Interface(None, name, existing_if, netns, root_ipdb).remove()
+
+    new_if = ipdb.create(ifname=name, kind=IF_TYPE)
     ipdb.commit()
 
-    return Bridge(logger, ipdb, interface, name)
+    return Bridge(logger, name, new_if, netns, root_ipdb)

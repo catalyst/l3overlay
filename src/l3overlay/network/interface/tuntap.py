@@ -18,9 +18,11 @@
 #
 
 
-from l3overlay.network.interface import Interface
-from l3overlay.network.interface import NotFoundError
-from l3overlay.network.interface import UnexpectedTypeError
+from l3overlay.network import interface
+
+from l3overlay.network.interface.base import Interface
+
+from l3overlay.network.interface.exception import NotFoundError
 
 
 IF_TYPES = ["tun", "tap"]
@@ -32,59 +34,64 @@ class Tuntap(Interface):
     TUN/TAP interface-specific functions.
     '''
 
-    def __init__(self, logger, ipdb, interface, name, mode):
+    def __init__(self, logger, name, interface, netns, root_ipdb, mode):
         '''
         '''
 
-        super().__init__(logger, ipdb, interface, name)
+        super().__init__(logger, name, interface, netns, root_ipdb)
 
         self.description = "%s interface" % mode
 
 
-def get(dry_run, logger, ipdb, name):
+def get(dry_run, logger, name, mode, netns=None, root_ipdb=None):
     '''
-    Return a tun/tap interface object for the given interface name.
+    Tries to find a tun/tap interface with the given name in the
+    chosen namespace and returns it.
     '''
 
-    logger.debug("getting runtime state for %s interface '%s'" % (str.join("/", IF_TYPES), name))
+    description = "%s interface" % mode
+
+    interface._log_get(logger, name, description, netns, root_ipdb)
 
     if dry_run:
-        return Tuntap(logger, None, None, name, "tun")
+        return Tuntap(logger, name, None, netns, root_ipdb, mode)
 
-    if name in ipdb.by_name.keys():
-        interface = ipdb.interfaces[name]
+    ipdb = interface._ipdb_get(name, description, netns, root_ipdb)
+    existing_if = interface._interface_get(name, ipdb, mode)
 
-        if interface.kind not in IF_TYPES:
-            raise UnexpectedTypeError(name, interface.kind, str.join("/", IF_TYPES))
-
-        return Tuntap(logger, ipdb, interface, name, interface.kind)
+    if existing_if:
+        return Tuntap(logger, name, existing_if, netns, root_ipdb, mode)
     else:
-        raise NotFoundError(name, str.join("/", IF_TYPES), True)
+        raise NotFoundError(name, mode, netns, root_ipdb)
 
 
-def create(dry_run, logger, ipdb, name,
-        mode="tap", uid=0, gid=0, ifr=None):
+def create(dry_run, logger, name, mode,
+        uid=0, gid=0, ifr=None,
+        netns=None, root_ipdb=None):
     '''
-    Create a tuntap interface object, using a given interface name.
+    Create a tun/tap interface object, using a given interface name.
     '''
 
-    logger.debug("creating %s interface '%s'" % (mode, name))
+    description = "%s interface" % mode
+
+    interface._log_create(logger, name, description, netns, root_ipdb)
 
     if dry_run:
-        return Tuntap(logger, None, None, name, mode)
+        return Tuntap(logger, name, None, netns, root_ipdb, mode)
 
-    if name in ipdb.by_name.keys():
-        interface = ipdb.interfaces[name]
+    ipdb = interface._ipdb_get(name, description, netns, root_ipdb)
+    existing_if = interface._interface_get(name, ipdb)
 
-        if (interface.kind not in IF_TYPES or
-                interface.uid != uid or
-                interface.gid != gid or
-                interface.ifr != ifr):
-            Interface(None, ipdb, interface, name).remove()
+    if existing_if:
+        if (existing_if.kind not in IF_TYPES or
+                existing_if.uid != uid or
+                existing_if.gid != gid or
+                existing_if.ifr != ifr):
+            Interface(None, name, existing_if, netns, root_ipdb).remove()
         else:
-            return Tuntap(logger, ipdb, interface, name, mode)
+            return Tuntap(logger, name, existing_if, netns, root_ipdb, mode)
 
-    interface = ipdb.create(
+    new_if = ipdb.create(
         ifname=name,
         kind="tuntap",
         mode=mode,
@@ -94,4 +101,4 @@ def create(dry_run, logger, ipdb, name,
     )
     ipdb.commit()
 
-    return Tuntap(logger, ipdb, interface, name, mode)
+    return Tuntap(logger, name, new_if, netns, root_ipdb, mode)

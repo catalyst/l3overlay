@@ -18,12 +18,15 @@
 #
 
 
-from l3overlay.network.interface import Interface
-from l3overlay.network.interface import NotFoundError
-from l3overlay.network.interface import UnexpectedTypeError
+from l3overlay.network import interface
+
+from l3overlay.network.interface.base import Interface
+
+from l3overlay.network.interface.exception import NotFoundError
 
 
 IF_TYPE = "veth"
+IF_DESCRIPTION = "%s interface" % IF_TYPE
 
 
 class VETH(Interface):
@@ -32,49 +35,143 @@ class VETH(Interface):
     veth-specific functions.
     '''
 
-    description = "%s interface" % IF_TYPE
+    description = IF_DESCRIPTION
 
 
-def get(dry_run, logger, ipdb, name):
-    '''
-    Return a veth interface object for the given interface name.
-    '''
+    def __init__(self, logger, name, interface, netns, root_ipdb, peer):
+        '''
+        '''
 
-    logger.debug("getting runtime state for %s interface '%s'" % (IF_TYPE, name))
+        super().__init__(logger, name, interface, netns, root_ipdb)
 
-    if dry_run:
-        return VETH(logger, None, None, name)
-
-    if name in ipdb.by_name.keys():
-        interface = ipdb.interfaces[name]
-
-        if interface.kind != IF_TYPE:
-            raise UnexpectedTypeError(name, interface.kind, IF_TYPE)
-
-        return VETH(logger, ipdb, interface, name)
-    else:
-        raise NotFoundError(name, IF_TYPE, True)
+        self.peer = peer
 
 
-def create(dry_run, logger, ipdb, name, peer_name):
-    '''
-    Create a veth pair interface object, using a given interface name.
-    '''
+    def peer_get(self, peer_netns=None, peer_root_ipdb=None):
+        '''
+        Get the peer interface for this veth interface, if it is in the
+        same namespace. Return None if this is not the case.
+        '''
 
-    logger.debug("creating %s pair '%s' and '%s'" % (IF_TYPE, name, peer_name))
+        if self.interface:
+            if self.peer in self.ipdb.by_name.keys():
+                if self.logger:
+                    desc = "%s '%s'" % (
+                        self.netns.description,
+                        self.netns.name,
+                    ) if self.netns else "root namespace"
+                    self.logger.debug("getting %s '%s' peer '%s' in %s" % (
+                        self.description,
+                        self.name,
+                        self.peer,
+                        desc,
+                    ))
+                return VETH(
+                    self.logger,
+                    self.peer,
+                    self.ipdb.interfaces[self.peer],
+                    self.netns,
+                    self.root_ipdb,
+                    self.name,
+                )
 
-    if dry_run:
-        return VETH(logger, None, None, name)
+            elif peer_netns and self.peer in peer_netns.ipdb.by_name.keys():
+                if self.logger:
+                    self.logger.debug("getting %s '%s' peer '%s' in remote %s '%s'" % (
+                        self.description,
+                        self.name,
+                        self.peer,
+                        self.netns.description,
+                        self.netns.name,
+                    ))
+                return VETH(
+                    self.logger,
+                    self.peer,
+                    peer_netns.ipdb.interfaces[self.peer],
+                    peer_netns,
+                    None,
+                    self.name,
+                )
 
-    if name in ipdb.by_name.keys():
-        interface = ipdb.interfaces[name]
+            elif peer_root_ipdb and self.peer in peer_root_ipdb.by_name.keys():
+                if self.logger:
+                    self.logger.debug("getting %s '%s' peer '%s' in remote root namespace'" % (
+                        self.description,
+                        self.name,
+                        self.peer,
+                    ))
+                return VETH(
+                    self.logger,
+                    self.peer,
+                    peer_root_ipdb.interfaces[self.peer],
+                    None,
+                    peer_root_ipdb,
+                    self.name,
+                )
 
-        if interface.kind != IF_TYPE or interface.peer != peer_name:
-            Interface(None, ipdb, interface, name).remove()
+        # dry-run = true
         else:
-            return VETH(logger, ipdb, interface, name)
+            if self.logger:
+                desc = "%s '%s'" % (
+                    self.netns.description,
+                    self.netns.name,
+                ) if self.netns else "root namespace"
+                self.logger.debug("getting %s '%s' peer '%s' in %s" % (
+                    self.description,
+                    self.name,
+                    self.peer,
+                    desc,
+                ))
+            return VETH(
+                self.logger,
+                self.peer,
+                None,
+                self.netns,
+                self.root_ipdb,
+                self.name,
+            )
 
-    interface = ipdb.create(ifname=name, kind="veth", peer=peer_name)
+
+def get(dry_run, logger, name, peer, netns=None, root_ipdb=None):
+    '''
+    Tries to find a veth interface with the given name in the
+    chosen namespace and returns it.
+    '''
+
+    interface._log_get(logger, name, IF_DESCRIPTION, netns, root_ipdb)
+
+    if dry_run:
+        return VETH(logger, name, None, netns, root_ipdb, peer)
+
+    ipdb = interface._ipdb_get(name, IF_DESCRIPTION, netns, root_ipdb)
+    existing_if = interface._interface_get(name, ipdb, IF_TYPE)
+
+    if existing_if:
+        return VETH(logger, name, existing_if, netns, root_ipdb, peer)
+    else:
+        raise NotFoundError(name, IF_DESCRIPTION, netns, root_ipdb)
+
+
+def create(dry_run, logger, name, peer, netns=None, root_ipdb=None):
+    '''
+    Create a veth interface object, using a given interface name.
+    '''
+
+    interface._log_create(logger, name, IF_DESCRIPTION, netns, root_ipdb)
+
+    if dry_run:
+        return VETH(logger, name, None, netns, root_ipdb, peer)
+
+    ipdb = interface._ipdb_get(name, IF_DESCRIPTION, netns, root_ipdb)
+    existing_if = interface._interface_get(name, ipdb)
+
+    if existing_if:
+        if existing_if.kind != IF_TYPE or existing_if.peer != peer:
+            Interface(None, name, existing_if, netns, root_ipdb).remove()
+        else:
+            return VETH(logger, name, existing_if, netns, root_ipdb, peer)
+
+    new_if = ipdb.create(ifname=name, kind=IF_TYPE, peer=peer)
     ipdb.commit()
 
-    return VETH(logger, ipdb, interface, name)
+    return VETH(logger, name, new_if, netns, root_ipdb, peer)

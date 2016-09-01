@@ -96,35 +96,30 @@ class MeshTunnel(Interface):
         tunnel_if = gre.create(
             self.dry_run,
             self.logger,
-            self.root_ipdb,
             self.name,
+            "gretap",
             self.physical_local,
             self.physical_remote,
-            kind="gretap",
-            key=self.key,
+            key = self.key,
+            root_ipdb = self.root_ipdb,
         )
 
         root_veth_if = veth.create(
             self.dry_run,
             self.logger,
-            self.root_ipdb,
             self.root_veth_name,
             self.netns_veth_name,
+            root_ipdb = self.root_ipdb,
         )
 
-        netns_veth_if = interface.netns_set(
-            self.dry_run,
-            self.logger,
-            self.root_ipdb,
-            self.netns_veth_name,
-            self.netns,
-        )
+        netns_veth_if = root_veth_if.peer_get(peer_netns=self.netns)
+        netns_veth_if.netns_set(self.netns)
 
         bridge_if = bridge.create(
             self.dry_run,
             self.logger,
-            self.root_ipdb,
             self.bridge_name,
+            root_ipdb = self.root_ipdb,
         )
         bridge_if.add_port(tunnel_if)
         bridge_if.add_port(root_veth_if)
@@ -148,9 +143,15 @@ class MeshTunnel(Interface):
 
         self.logger.info("stopping mesh tunnel '%s'" % self.name)
 
-        bridge.get(self.dry_run, self.logger, self.root_ipdb, self.bridge_name).remove()
-        veth.get(self.dry_run, self.logger, self.root_ipdb, self.root_veth_name).remove()
-        gre.get(self.dry_run, self.logger, self.root_ipdb, self.name).remove()
+        bridge.get(self.dry_run, self.logger, self.bridge_name, root_ipdb=self.root_ipdb).remove()
+        veth.get(
+            self.dry_run,
+            self.logger,
+            self.root_veth_name,
+            self.netns_veth_name,
+            root_ipdb=self.root_ipdb,
+        ).remove()
+        gre.get(self.dry_run, self.logger, self.name, "gretap", root_ipdb=self.root_ipdb).remove()
 
         self.logger.info("finished stopping mesh tunnel '%s'" % self.name)
 

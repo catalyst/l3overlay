@@ -71,8 +71,8 @@ class Dummy(Interface):
         dummy_if = dummy.create(
             self.dry_run,
             self.logger,
-            self.netns.ipdb,
             self.dummy_name,
+            netns = self.netns,
         )
         dummy_if.add_ip(self.address, self.netmask)
         dummy_if.up()
@@ -87,7 +87,7 @@ class Dummy(Interface):
 
         self.logger.info("stopping static dummy '%s'" % self.name)
 
-        dummy.get(self.dry_run, self.logger, self.netns.ipdb, self.dummy_name).remove()
+        dummy.get(self.dry_run, self.logger, self.dummy_name, netns=self.netns).remove()
 
         self.logger.info("finished stopping static dummy '%s'" % self.name)
 

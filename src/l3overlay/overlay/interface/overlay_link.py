@@ -96,26 +96,21 @@ class OverlayLink(Interface):
         outer_if = veth.create(
             self.dry_run,
             self.logger,
-            self.netns.ipdb,
             self.outer_name,
             self.inner_name,
+            netns = self.netns,
         )
 
-        inner_if = interface.netns_set(
-            self.dry_run,
-            self.logger,
-            self.netns.ipdb,
-            self.inner_name,
-            self.inner_netns,
-        )
+        inner_if = outer_if.peer_get(peer_netns=self.inner_netns)
+        inner_if.netns_set(self.inner_netns)
 
         # Create a dummy interface for the outer veth interface to be
         # bridged with.
         dummy_if = dummy.create(
             self.dry_run,
             self.logger,
-            self.netns.ipdb,
             self.dummy_name,
+            netns = self.netns,
         )
 
         # Create the bridge interface for the dummy interface and the
@@ -123,8 +118,8 @@ class OverlayLink(Interface):
         bridge_if = bridge.create(
             self.dry_run,
             self.logger,
-            self.netns.ipdb,
             self.bridge_name,
+            netns = self.netns,
         )
         bridge_if.add_port(outer_if)
         bridge_if.add_port(dummy_if)
@@ -156,9 +151,9 @@ class OverlayLink(Interface):
 
         self.inner_netns.start()
 
-        bridge.get(self.dry_run, self.logger, self.netns.ipdb, self.bridge_name).remove()
-        dummy.get(self.dry_run, self.logger, self.netns.ipdb, self.dummy_name).remove()
-        veth.get(self.dry_run, self.logger, self.netns.ipdb, self.outer_name).remove()
+        bridge.get(self.dry_run, self.logger, self.bridge_name, netns=self.netns).remove()
+        dummy.get(self.dry_run, self.logger, self.dummy_name, netns=self.netns).remove()
+        veth.get(self.dry_run, self.logger, self.outer_name, self.inner_name, netns=self.netns).remove()
 
         self.inner_netns.stop()
 

@@ -18,12 +18,15 @@
 #
 
 
-from l3overlay.network.interface import Interface
-from l3overlay.network.interface import NotFoundError
-from l3overlay.network.interface import UnexpectedTypeError
+from l3overlay.network import interface
+
+from l3overlay.network.interface.base import Interface
+
+from l3overlay.network.interface.exception import NotFoundError
 
 
 IF_TYPE = "vlan"
+IF_DESCRIPTION = "%s interface" % IF_TYPE
 
 
 class VLAN(Interface):
@@ -32,51 +35,51 @@ class VLAN(Interface):
     VLAN-specific functions.
     '''
 
-    description = "%s interface" % IF_TYPE
+    description = IF_DESCRIPTION
 
 
-def get(dry_run, logger, ipdb, name):
+def get(dry_run, logger, name, netns=None, root_ipdb=None):
     '''
-    Return a vlan interface object for the given interface name.
+    Tries to find a vlan interface with the given name in the
+    chosen namespace and returns it.
     '''
 
-    logger.debug("getting runtime state for %s interface '%s'" % (IF_TYPE, name))
+    interface._log_get(logger, name, IF_DESCRIPTION, netns, root_ipdb)
 
     if dry_run:
-        return VLAN(logger, None, None, name)
+        return VLAN(logger, name, None, netns, root_ipdb)
 
-    if name in ipdb.by_name.keys():
-        interface = ipdb.interfaces[name]
+    ipdb = interface._ipdb_get(name, IF_DESCRIPTION, netns, root_ipdb)
+    existing_if = interface._interface_get(name, ipdb, IF_TYPE)
 
-        if interface.kind != IF_TYPE:
-            raise UnexpectedTypeError(name, interface.kind, IF_TYPE)
-
-        return VLAN(logger, ipdb, interface, name)
+    if existing_if:
+        return VLAN(logger, name, existing_if, netns, root_ipdb)
     else:
-        raise NotFoundError(name, IF_TYPE, True)
+        raise NotFoundError(name, IF_DESCRIPTION, netns, root_ipdb)
 
 
-def create(dry_run, logger, ipdb, name, link, id):
+def create(dry_run, logger, name, link, id, netns=None, root_ipdb=None):
     '''
     Create a vlan interface object, using a given interface name.
     '''
 
-    logger.debug("creating %s interface '%s'" % (IF_TYPE, name))
+    interface._log_create(logger, name, IF_DESCRIPTION, netns, root_ipdb)
 
     if dry_run:
-        return VLAN(logger, None, None, name)
+        return VLAN(logger, name, None, netns, root_ipdb)
 
-    if name in ipdb.by_name.keys():
-        interface = ipdb.interfaces[name]
+    ipdb = interface._ipdb_get(name, IF_DESCRIPTION, netns, root_ipdb)
+    existing_if = interface._interface_get(name, ipdb)
 
-        if (interface.kind != IF_TYPE or
-                ipdb.by_index[interface.link] != link or
-                interface.vlan_id != id):
-            Interface(None, ipdb, interface, name).remove()
+    if existing_if:
+        if (existing_if.kind != IF_TYPE or
+                ipdb.by_index[existing_if.link] != link or
+                existing_if.vlan_id != id):
+            Interface(None, name, existing_if, netns, root_ipdb).remove()
         else:
-            return VLAN(logger, ipdb, interface, name)
+            return VLAN(logger, name, existing_if, netns, root_ipdb)
 
-    interface = ipdb.create(ifname=name, kind=IF_TYPE, link=link.interface, vlan_id=id)
+    new_if = ipdb.create(ifname=name, kind=IF_TYPE, link=link.interface, vlan_id=id)
     ipdb.commit()
 
-    return VLAN(logger, ipdb, interface, name)
+    return VLAN(logger, name, new_if, netns, root_ipdb)

@@ -17,13 +17,15 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+from l3overlay.network import interface
 
-from l3overlay.network.interface import Interface
-from l3overlay.network.interface import NotFoundError
-from l3overlay.network.interface import UnexpectedTypeError
+from l3overlay.network.interface.base import Interface
+
+from l3overlay.network.interface.exception import NotFoundError
 
 
 IF_TYPE = "dummy"
+IF_DESCRIPTION = "%s interface" % IF_TYPE
 
 
 class Dummy(Interface):
@@ -32,49 +34,49 @@ class Dummy(Interface):
     subclass identification purposes.
     '''
 
-    description = "%s interface" % IF_TYPE
+    description = IF_DESCRIPTION
 
 
-def get(dry_run, logger, ipdb, name):
+def get(dry_run, logger, name, netns=None, root_ipdb=None):
     '''
-    Return a dummy interface object for the given interface name.
+    Tries to find a dummy interface with the given name in the
+    chosen namespace and returns it.
     '''
 
-    logger.debug("getting runtime state for %s interface '%s'" % (IF_TYPE, name))
+    interface._log_get(logger, name, IF_DESCRIPTION, netns, root_ipdb)
 
     if dry_run:
-        return Dummy(logger, None, None, name)
+        return Dummy(logger, name, None, netns, root_ipdb)
 
-    if name in ipdb.by_name.keys():
-        interface = ipdb.interfaces[name]
+    ipdb = interface._ipdb_get(name, IF_DESCRIPTION, netns, root_ipdb)
+    existing_if = interface._interface_get(name, ipdb, IF_TYPE)
 
-        if interface.kind != IF_TYPE:
-            raise UnexpectedTypeError(name, interface.kind, IF_TYPE)
-
-        return Dummy(logger, ipdb, interface, name)
+    if existing_if:
+        return Dummy(logger, name, existing_if, netns, root_ipdb)
     else:
-        raise NotFoundError(name, IF_TYPE, True)
+        raise NotFoundError(name, IF_DESCRIPTION, netns, root_ipdb)
 
 
-def create(dry_run, logger, ipdb, name):
+def create(dry_run, logger, name, netns=None, root_ipdb=None):
     '''
     Create a dummy interface object, using a given interface name.
     '''
 
-    logger.debug("creating %s interface '%s'" % (IF_TYPE, name))
+    interface._log_create(logger, name, IF_DESCRIPTION, netns, root_ipdb)
 
     if dry_run:
-        return Dummy(logger, None, None, name)
+        return Dummy(logger, name, None, netns, root_ipdb)
 
-    if name in ipdb.by_name.keys():
-        interface = ipdb.interfaces[name]
+    ipdb = interface._ipdb_get(name, IF_DESCRIPTION, netns, root_ipdb)
+    existing_if = interface._interface_get(name, ipdb)
 
-        if interface.kind != IF_TYPE:
-            Interface(None, ipdb, name).remove()
+    if existing_if:
+        if existing_if.kind != IF_TYPE:
+            Interface(None, name, existing_if, netns, root_ipdb).remove()
         else:
-            return Dummy(logger, ipdb, interface, name)
+            return Dummy(logger, name, existing_if, netns, root_ipdb)
 
-    interface = ipdb.create(ifname=name, kind=IF_TYPE)
+    new_if = ipdb.create(ifname=name, kind=IF_TYPE)
     ipdb.commit()
 
-    return Dummy(logger, ipdb, interface, name)
+    return Dummy(logger, name, new_if, netns, root_ipdb)

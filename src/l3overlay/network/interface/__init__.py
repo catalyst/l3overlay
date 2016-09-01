@@ -1,6 +1,6 @@
 #
 # IPsec overlay network manager (l3overlay)
-# l3overlay/network/interface/__init__.py - network interface base class and functions
+# l3overlay/network/interface/__init__.py - network interface functions
 #
 # Copyright (c) 2016 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify
@@ -18,226 +18,91 @@
 #
 
 
-import time
+from l3overlay.network.interface.base import Interface
 
-from l3overlay.util.exception.l3overlayerror import L3overlayError
-
-
-REMOVE_WAIT_MAX = 1.0
-REMOVE_WAIT_PERIOD = 0.001
+from l3overlay.network.interface.exception import GetError
+from l3overlay.network.interface.exception import NotFoundError
+from l3overlay.network.interface.exception import UnexpectedTypeError
 
 
-class RemovedThenModifiedError(L3overlayError):
-    def __init__(self, interface):
-        super().__init__("%s '%s' removed and then modified" %
-                (interface.description, interface.name))
+IF_DESCRIPTION = "interface"
 
-class NotRemovedError(L3overlayError):
-    def __init__(self, interface):
-        super().__init__(
-            "%s '%s' still exists even after waiting %s second%s for removal" %
-                    (
-                        interface.description,
-                        interface.name,
-                        REMOVE_WAIT_MAX,
-                        "s" if REMOVE_WAIT_MAX != 1.0 else "",
-                    ))
 
-class NotFoundError(L3overlayError):
-    def __init__(self, name, kind=None, netns=False, ipdb=False):
-        s = "network namespace" if netns else "root namespace"
-        structure = "IPDB" if ipdb else s
-        super().__init__("unable to find %s with name '%s' in %s" %
-                (
-                    "%s interface" % kind if kind else "interface",
-                    name,
-                    structure,
-                ))
-
-class UnexpectedTypeError(L3overlayError):
-    def __init__(self, name, kind, expected_kind):
-        super().__init__(
-            "found interface with name '%s' of kind '%s', expected '%s'" %
-                    (name, kind, expected_kind))
-
-class Interface(object):
+def _log_get(logger, name, description, netns, root_ipdb):
     '''
+    Internal helper method to write appropriate logging output
+    for network interface 'get' functions.
     '''
 
-    description = "interface"
+    if netns:
+        logger.debug("getting runtime state for %s '%s' in %s '%s'" %
+                (description, name, netns.description, netns.name))
+    elif root_ipdb:
+        logger.debug("getting runtime state %s '%s' in root namespace" %
+                (description, name))
 
 
-    def __init__(self, logger, ipdb, interface, name):
-        '''
-        Set up network interface internal fields and runtime state.
-        '''
-
-        self.logger = logger
-
-        self.ipdb = ipdb
-        self.interface = interface
-        self.name = name
-
-        self.removed = False
-
-
-    def _check_state(self):
-        '''
-        Check interface internal state.
-        '''
-
-        if self.removed:
-            raise RemovedThenModifiedError(self)
-
-
-    def add_ip(self, address, netmask):
-        '''
-        Add the given IP address (either a string, IPv4Address or IPv6Address)
-        with its netmask to the chosen interface.
-        '''
-
-        self._check_state()
-
-        if self.logger:
-            self.logger.debug("assigning IP address '%s/%i' to %s '%s'" % (str(address), netmask, self.description, self.name))
-
-        ip_tuple = (str(address), netmask)
-        ip_string = "%s/%i" % ip_tuple
-
-        if self.interface and ip_tuple not in self.interface.ipaddr:
-            self.interface.add_ip(ip_string).commit()
-
-
-    def set_mtu(self, mtu):
-        '''
-        Set the maximum transmission unit size on the chosen interface.
-        '''
-
-
-        self._check_state()
-
-        if self.logger:
-            self.logger.debug("setting MTU to %i on %s '%s'" % (mtu, self.description, self.name))
-
-        if self.interface:
-            self.interface.set_mtu(mtu).commit()
-
-
-    def netns_set(self, netns):
-        '''
-        Move the interface into a chosen network namespace.
-        '''
-
-
-        self._check_state()
-
-        if self.logger:
-            self.logger.debug("moving %s '%s' to network namespace '%s'" % (self.description, self.name, netns.name))
-
-        if self.interface:
-            self.interface.net_ns_fd = netns.name
-            self.ipdb.commit()
-
-            self.ipdb = netns.ipdb
-            self.interface = netns.ipdb.interfaces[self.name]
-
-
-    def up(self):
-        '''
-        Bring up the given interface.
-        '''
-
-        self._check_state()
-
-        if self.logger:
-            self.logger.debug("bringing up %s '%s'" % (self.description, self.name))
-
-        if self.interface:
-            self.interface.up().commit()
-
-
-    def down(self):
-        '''
-        Bring up the interface.
-        '''
-
-        self._check_state()
-
-        if self.logger:
-            self.logger.debug("bringing down %s '%s'" % (self.description, self.name))
-
-        if self.interface:
-            self.interface.down().commit()
-
-
-    def remove(self):
-        '''
-        Remove the interface, and mark it so this interface can no longer be
-        interacted with.
-        '''
-
-        self._check_state()
-
-        if self.logger:
-            self.logger.debug("removing %s '%s'" % (self.description, self.name))
-
-        if self.interface:
-            waited = 0.0
-
-            self.interface.down()
-            self.interface.remove().commit()
-
-            # pyroute2 seems to take a little while to actually execute
-            # an interface removal. Wait for the IPDB to register that the
-            # interface no longer exists.
-            # This stops waiting after a while, to prevent infinite loops.
-            while waited < REMOVE_WAIT_MAX:
-                if self.name not in self.ipdb.by_name.keys():
-                    self.removed = True
-                    break
-                time.sleep(REMOVE_WAIT_PERIOD)
-                waited += REMOVE_WAIT_PERIOD
-
-            if not self.removed:
-                raise NotRemovedError(self)
-
-        else:
-            self.removed = True
-
-
-def get(dry_run, logger, ipdb, name):
+def _log_create(logger, name, description, netns, root_ipdb):
     '''
-    Tries to find an interface with the given name in the chosen IPDB
-    and returns it. Throws a RuntimeError if it can't find it.
+    Internal helper method to write appropriate logging output
+    for network interface 'create' functions.
     '''
 
-    logger.debug("getting runtime state for interface '%s'" % name)
+    if netns:
+        logger.debug("creating %s '%s' in %s" %
+                (description, name, netns.description))
+    elif root_ipdb:
+        logger.debug("creating %s '%s' in root namespace" %
+                (description, name))
+
+
+def _ipdb_get(name, description, netns, root_ipdb):
+    '''
+    Get the applicable IPDB for the given interface name,
+    determined from one of netns and root_idpb.
+    '''
+
+    if netns:
+        return netns.ipdb
+    elif root_ipdb:
+        return root_ipdb
+    else:
+        raise GetError("netns and root_ipdb unspecified when processing %s '%s'" %
+                (description, name))
+
+
+def _interface_get(name, ipdb, *types):
+    '''
+    Tries to find an interface with the given name in the
+    chosen namespace and returns it.
+    '''
+
+    if name not in ipdb.by_name.keys():
+        return None
+
+    existing_if = ipdb.interfaces[name]
+
+    if types and existing_if.kind not in types:
+        raise UnexpectedTypeError(name, existing_if.kind, types)
+
+    return existing_if
+
+
+def get(dry_run, logger, name, netns=None, root_ipdb=None):
+    '''
+    Tries to find an interface with the given name in the
+    chosen namespace and returns it.
+    '''
+
+    _log_get(logger, name, IF_DESCRIPTION, netns, root_ipdb)
 
     if dry_run:
-        return Interface(logger, None, None, name)
+        return Interface(logger, name, None, netns, root_ipdb)
 
-    if name in ipdb.by_name.keys():
-        return Interface(logger, ipdb, ipdb.interfaces[name], name)
+    ipdb = _ipdb_get(name, IF_DESCRIPTION, netns, root_ipdb)
+    existing_if = _interface_get(name, ipdb)
+
+    if existing_if:
+        return Interface(logger, name, existing_if, netns, root_ipdb)
     else:
-        raise NotFoundError(name)
-
-
-def netns_set(dry_run, logger, ipdb, name, netns):
-    '''
-    Moves an interface into a chosen network namespace. Returns the
-    interface object from the network namespace.
-    '''
-
-    if not dry_run and name in ipdb.by_name.keys():
-        interface = Interface(logger, ipdb, ipdb.interfaces[name], name)
-        interface.netns_set(netns)
-        return interface
-
-    logger.debug("moving interface '%s' to network namespace '%s'" % (name, netns.name))
-
-    if dry_run:
-        return Interface(logger, None, None, name)
-    elif name in netns.ipdb.by_name.keys():
-        return Interface(logger, netns.ipdb, netns.ipdb.interfaces[name], name)
-    else:
-        raise NotFoundError(name, ipdb=True)
+        raise NotFoundError(name, IF_DESCRIPTION, netns, root_ipdb)

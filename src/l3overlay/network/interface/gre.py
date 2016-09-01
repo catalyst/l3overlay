@@ -18,9 +18,11 @@
 #
 
 
-from l3overlay.network.interface import Interface
-from l3overlay.network.interface import NotFoundError
-from l3overlay.network.interface import UnexpectedTypeError
+from l3overlay.network import interface
+
+from l3overlay.network.interface.base import Interface
+
+from l3overlay.network.interface.exception import NotFoundError
 
 
 IF_TYPES = ["gre", "gretap"]
@@ -32,81 +34,86 @@ class GRE(Interface):
     GRE tunnel-specific functions.
     '''
 
-    def __init__(self, logger, ipdb, interface, name, kind):
+    def __init__(self, logger, name, interface, netns, root_ipdb, kind):
         '''
         '''
 
-        super().__init__(logger, ipdb, interface, name)
+        super().__init__(logger, name, interface, netns, root_ipdb)
 
         self.description = "%s interface" % kind
 
 
-def get(dry_run, logger, ipdb, name):
+def get(dry_run, logger, name, kind, netns=None, root_ipdb=None):
     '''
-    Return a gre/gretap interface object for the given interface name.
+    Tries to find a gre/gretap interface with the given name in the
+    chosen namespace and returns it.
     '''
 
-    logger.debug("getting runtime state for %s interface '%s'" % (str.join("/", IF_TYPES), name))
+    description = "%s interface" % kind
+
+    interface._log_get(logger, name, description, netns, root_ipdb)
 
     if dry_run:
-        return GRE(logger, None, None, name, "gre")
+        return GRE(logger, name, None, netns, root_ipdb, kind)
 
-    if name in ipdb.by_name.keys():
-        interface = ipdb.interfaces[name]
+    ipdb = interface._ipdb_get(name, description, netns, root_ipdb)
+    existing_if = interface._interface_get(name, ipdb, kind)
 
-        if interface.kind not in IF_TYPES:
-            raise UnexpectedTypeError(name, interface.kind, str.join("/", IF_TYPES))
-
-        return GRE(logger, ipdb, interface, name, interface.kind)
+    if existing_if:
+        return GRE(logger, name, existing_if, netns, root_ipdb, kind)
     else:
-        raise NotFoundError(name, str.join("/", IF_TYPES), True)
+        raise NotFoundError(name, kind, netns, root_ipdb)
 
 
-def create(dry_run, logger, ipdb, name,
-        local, remote, kind="gre",
-        link=None, iflags=32, oflags=32, key=None, ikey=None, okey=None,
-        ttl=16): # for other parameters, look in pyroute2/netlink/rtnl/ifinfmsg.py
+def create(dry_run, logger, name, kind,
+        # for other parameters, look in pyroute2/netlink/rtnl/ifinfmsg.py
+        local, remote, link=None, iflags=32, oflags=32, key=None, ikey=None, okey=None, ttl=16,
+        netns=None, root_ipdb=None):
     '''
     Create a gre/gretap interface object, using a given interface name.
     '''
 
-    logger.debug("creating %s interface '%s'" % (kind, name))
+    description = "%s interface" % kind
+
+    interface._log_create(logger, name, description, netns, root_ipdb)
 
     if dry_run:
-        return GRE(logger, None, None, name, kind)
+        return GRE(logger, name, None, netns, root_ipdb, kind)
 
-    if key:
+    ipdb = interface._ipdb_get(name, description, netns, root_ipdb)
+    existing_if = interface._interface_get(name, ipdb)
+
+    if key is not None:
         ikey = key
         okey = key
 
-    if name in ipdb.by_name.keys():
-        interface = ipdb.interfaces[name]
-
-        if (interface.kind not in IF_TYPES or
-                interface.gre_local != str(local) or
-                interface.gre_remote != str(remote) or
-                interface.gre_link != link or
-                interface.gre_iflags != iflags or
-                interface.gre_oflags != oflags or
-                interface.gre_ikey != ikey or
-                interface.gre_okey != okey or
-                interface.gre_ttl != ttl):
-            Interface(None, ipdb, interface, name).remove()
+    if existing_if:
+        if (existing_if.kind not in IF_TYPES or
+                existing_if.gre_local != str(local) or
+                existing_if.gre_remote != str(remote) or
+                existing_if.gre_link != link or
+                existing_if.gre_iflags != iflags or
+                existing_if.gre_oflags != oflags or
+                existing_if.gre_ikey != ikey or
+                existing_if.gre_okey != okey or
+                existing_if.gre_ttl != ttl):
+            logger.debug("removing interface '%s'" % name)
+            Interface(None, name, existing_if, netns, root_ipdb).remove()
         else:
-            return GRE(logger, ipdb, interface, name, kind)
+            return GRE(logger, name, existing_if, netns, root_ipdb, kind)
 
-    interface = ipdb.create(
-        ifname=name,
-        kind=kind,
-        gre_local=str(local),
-        gre_remote=str(remote),
-        gre_link=link,
-        gre_iflags=iflags,
-        gre_oflags=oflags,
-        gre_ikey=ikey,
-        gre_okey=okey,
-        gre_ttl=ttl,
+    new_if = ipdb.create(
+        ifname = name,
+        kind = kind,
+        gre_local = str(local),
+        gre_remote = str(remote),
+        gre_link = link,
+        gre_iflags = iflags,
+        gre_oflags = oflags,
+        gre_ikey = ikey,
+        gre_okey = okey,
+        gre_ttl = ttl,
     )
     ipdb.commit()
 
-    return GRE(logger, ipdb, interface, name, kind)
+    return GRE(logger, name, new_if, netns, root_ipdb, kind)

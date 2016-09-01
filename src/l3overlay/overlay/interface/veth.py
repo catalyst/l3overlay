@@ -66,27 +66,15 @@ class VETH(Interface):
         # Get the outer interface network namespace.
         self.outer_netns = self.overlay.netns
 
-        # Get the inner interface network namespace.
-        # More complicated than it really should be.
-        inner_overlay = None
-        inner_netns = None
-
+        # Get the inner interface network namespace, if inner-namespace is set.
+        # Otherwise, use the root namespace.
         if self.inner_namespace:
-            try:
-                self.inner_overlay = self.daemon.overlays[self.inner_namespace]
-                self.inner_netns = self.inner_overlay.netns
-                self.inner_ipdb = None
-                self.logger.debug("setting inner namespace to overlay '%s'" % self.inner_namespace)
-            except KeyError:
-                self.logger.debug("setting inner namespace to network namespace '%s'" % self.inner_namespace)
-                self.inner_overlay = None
-                self.inner_netns = netns.get(self.dry_run, self.logger, self.inner_namespace)
-                self.inner_ipdb = None
+            self.logger.debug("setting inner namespace to network namespace '%s'" %
+                    self.inner_namespace)
+            self.inner_netns = netns.get(self.dry_run, self.logger, self.inner_namespace)
         else:
             self.logger.debug("setting inner namespace to root namespace")
-            self.inner_overlay = None
             self.inner_netns = None
-            self.inner_ipdb = self.daemon.root_ipdb
 
 
     def is_ipv6(self):
@@ -111,29 +99,20 @@ class VETH(Interface):
 
         self.logger.info("starting static veth '%s'" % self.name)
 
-        inner_if_ipdb = None
-
         if self.inner_namespace:
             self.inner_netns.start()
-            inner_if_ipdb = self.inner_netns.ipdb
-        else:
-            inner_if_ipdb = self.inner_ipdb
 
         inner_if = veth.create(
             self.dry_run,
             self.logger,
-            inner_if_ipdb,
             self.inner_name,
             self.outer_name,
+            netns=self.inner_netns if self.inner_namespace else None,
+            root_ipdb=self.root_ipdb if not self.inner_namespace else None,
         )
 
-        outer_if = interface.netns_set(
-            self.dry_run,
-            self.logger,
-            inner_if_ipdb,
-            self.outer_name,
-            self.outer_netns,
-        )
+        outer_if = inner_if.peer_get(peer_netns=self.outer_netns)
+        outer_if.netns_set(self.outer_netns)
 
         self.logger.debug("setting inner veth interface '%s' as the inner address interface" %
                 self.inner_name)
@@ -143,15 +122,15 @@ class VETH(Interface):
             dummy_if = dummy.create(
                 self.dry_run,
                 self.logger,
-                self.outer_netns.ipdb,
-                self.dummy_name
+                self.dummy_name,
+                netns = self.outer_netns,
             )
 
             bridge_if = bridge.create(
                 self.dry_run,
                 self.logger,
-                self.outer_netns.ipdb,
                 self.bridge_name,
+                netns = self.outer_netns,
             )
             bridge_if.add_port(outer_if)
             bridge_if.add_port(dummy_if)
@@ -188,19 +167,23 @@ class VETH(Interface):
 
         self.logger.info("stopping static veth '%s'" % self.name)
 
-        inner_if_ipdb = None
-
         if self.inner_namespace:
             self.inner_netns.start()
-            inner_if_ipdb = self.inner_netns.ipdb
-        else:
-            inner_if_ipdb = self.inner_ipdb
 
         if self.outer_interface_bridged:
-            bridge.get(self.dry_run, self.logger, self.outer_netns.ipdb, self.bridge_name).remove()
-            dummy.get(self.dry_run, self.logger, self.outer_netns.ipdb, self.dummy_name).remove()
+            bridge.get(
+                    self.dry_run, self.logger, self.bridge_name, netns=self.outer_netns.ipdb).remove()
+            dummy.get(
+                    self.dry_run, self.logger, self.dummy_name, netns=self.outer_netns.ipdb).remove()
 
-        veth.get(self.dry_run, self.logger, inner_if_ipdb, self.inner_name).remove()
+        veth.get(
+            self.dry_run,
+            self.logger,
+            self.inner_name,
+            self.outer_name,
+            netns = self.inner_netns if self.inner_namespace else None,
+            root_ipdb = self.root_ipdb if not self.inner_namespace else None,
+        ).remove()
 
         if self.inner_namespace:
             self.inner_netns.stop()

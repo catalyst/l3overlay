@@ -110,14 +110,14 @@ class Tunnel(Interface):
         tunnel_if = gre.create(
             self.dry_run,
             self.logger,
-            self.netns.ipdb,
             self.tunnel_name,
+            self.mode,
             self.local,
             self.remote,
-            kind=self.mode,
-            key=self.key,
-            ikey=self.ikey,
-            okey=self.okey,
+            key = self.key,
+            ikey = self.ikey,
+            okey = self.okey,
+            netns = self.netns,
         )
         tunnel_if.add_ip(self.address, self.netmask)
         tunnel_if.up()
@@ -132,7 +132,7 @@ class Tunnel(Interface):
 
         self.logger.info("stopping static tunnel '%s'" % self.name)
 
-        gre.get(self.dry_run, self.logger, self.netns.ipdb, self.tunnel_name).remove()
+        gre.get(self.dry_run, self.logger, self.tunnel_name, self.mode, netns=self.netns).remove()
 
         self.logger.info("finished stopping static tunnel '%s'" % self.name)
 
