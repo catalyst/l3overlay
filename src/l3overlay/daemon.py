@@ -86,37 +86,39 @@ class Daemon(worker.Worker):
         self.ipsec_secrets = ipsec_secrets
 
         self.overlays = overlays.copy()
-        self.sorted_overlays = Daemon.overlays_list_sorted(self.overlays)
+        self.sorted_overlays = self.overlays_list_sorted()
 
 
-    @staticmethod
-    def overlays_list_sorted(overlays):
+    def overlays_list_sorted(self):
         '''
         Resolve inter-overlay dependencies, and place a sorted list
         of overlays, where there would be no dependency issues upon
         starting them, in place of the existing list.
         '''
 
-        os = overlays.copy()
+        os = sorted(self.overlays.keys())
         sos = []
 
         while os:
-            Daemon._overlays_list_sorted(os, sos, os.pop(sorted(os.keys())[0]))
+            self._overlays_list_sorted(os, sos, self.overlays[os.pop(0)])
 
         return sos
 
 
-    @staticmethod
-    def _overlays_list_sorted(os, sos, o):
+    def _overlays_list_sorted(self, os, sos, o):
         '''
         Recursive helper method to overlays_list_sorted.
         '''
 
         for i in o.interfaces:
-            if isinstance(i, VETH) and i.inner_namespace in os:
-                Daemon._overlays_list_sorted(os, sos, os.pop(i.inner_namespace))
+            if isinstance(i, VETH) and i.inner_namespace in self.overlays:
+                inner_o = self.overlays[i.inner_namespace]
+                os.remove(inner_o)
+                self._overlays_list_sorted(os, sos, inner_o)
             elif isinstance(i, OverlayLink):
-                Daemon._overlays_list_sorted(os, sos, os.pop(i.inner_overlay_name))
+                inner_o = self.overlays[i.inner_overlay_name]
+                os.remove(inner_o)
+                self._overlays_list_sorted(os, sos, inner_o)
 
         sos.append(o)
 
