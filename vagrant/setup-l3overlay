@@ -32,31 +32,31 @@ then
     exit 2
 fi
 
-apt-get install -y iproute2
-apt-get install -y vlan
-apt-get install -y bird
-apt-get install -y strongswan
-apt-get install -y make
-apt-get install -y git
-apt-get install -y python3-pip
-pip3 install pyroute2
-pip3 install jinja2
+apt-get install -y iproute2 || exit $?
+apt-get install -y vlan || exit $?
+apt-get install -y bird || exit $?
+apt-get install -y strongswan || exit $?
+apt-get install -y make || exit $?
+apt-get install -y git || exit $?
+apt-get install -y python3-pip || exit $?
+pip3 install pyroute2 || exit $?
+pip3 install jinja2 || exit $?
 
 service l3overlay stop || true
 
-make -C /vagrant test
-make -C /vagrant install PREFIX="/usr" CONFIG_DIR="/etc/l3overlay" WITH_UPSTART=1
+make -C /vagrant test || exit $?
+make -C /vagrant install PREFIX="/usr" CONFIG_DIR="/etc/l3overlay" WITH_UPSTART=1 || exit $?
 
-dos2unix /etc/default/l3overlay
-dos2unix /etc/init/l3overlay.conf
+dos2unix /etc/default/l3overlay || exit $?
+dos2unix /etc/init/l3overlay.conf || exit $?
 
 echo "Removing /etc/l3overlay/overlays... "
-rm -rf /etc/l3overlay/overlays
+rm -rf /etc/l3overlay/overlays || exit $?
 
 echo "Installing /vagrant/vagrant/global.conf to /etc/l3overlay/global.conf... "
-cp /vagrant/vagrant/global.conf /etc/l3overlay/global.conf
+cp /vagrant/vagrant/global.conf /etc/l3overlay/global.conf || exit $?
 
 echo "Installing /vagrant/vagrant/${box}/overlays to /etc/l3overlay/overlays... "
-cp -R "/vagrant/vagrant/${box}/overlays" /etc/l3overlay/overlays
+cp -R "/vagrant/vagrant/${box}/overlays" /etc/l3overlay/overlays || exit $?
 
 service l3overlay start

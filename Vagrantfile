@@ -29,6 +29,11 @@ Vagrant.configure("2") do |config|
         apt-get update
         apt-get install -y dos2unix
 
+        echo 'net.ipv4.ip_forward=1' > /etc/sysctl.conf
+        echo 'net.ipv6.conf.all.forwarding=1' >> /etc/sysctl.conf
+
+        sysctl -p /etc/sysctl.conf
+
         echo '#!/bin/sh' > /usr/local/bin/setup-l3overlay
         echo 'test ! -d /vagrant || cp /vagrant/vagrant/setup-l3overlay /tmp/setup-l3overlay || exit $?' >> /usr/local/bin/setup-l3overlay
         echo 'dos2unix /tmp/setup-l3overlay || exit $?' >> /usr/local/bin/setup-l3overlay

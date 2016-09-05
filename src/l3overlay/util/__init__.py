@@ -186,10 +186,15 @@ def section_header(type, name):
 def section_split(section):
     '''
     Get the section type and name from the given section header.
+    Returns a two-element tuple containing each part of section.
+    If no section name is found, that element is None.
     '''
 
     parts = section.split(":")
-    return (name_get(parts[0]), name_get(parts[1]))
+    if len(parts) < 2:
+        return (name_get(parts[0]), None)
+    else:
+        return (name_get(parts[0]), name_get(parts[1]))
 
 
 def section_type_get(section):
