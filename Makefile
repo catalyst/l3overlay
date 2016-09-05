@@ -178,7 +178,7 @@ clean:
 	$(RMDIR) .tests
 	$(RMDIR) build
 	$(RMDIR) dist
-	$(RMDIR) $(NAME).egg-info
+	$(RMDIR) src/$(NAME).egg-info
 	for d in $(shell $(FIND) -name '__pycache__'); do \
 		$(RMDIR) $$d; \
 	done
