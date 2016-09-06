@@ -110,6 +110,11 @@ class Interface(object):
             if self.netns == netns:
                 return
 
+            if self.name in netns.ipdb.by_name.keys():
+                self.logger.debug("removing existing interface with name '%s' in %s" %
+                        (self.name, netns.description))
+                netns.interface_get(self.name).remove()
+
             self.interface.net_ns_fd = netns.name
             self.ipdb.commit()
 

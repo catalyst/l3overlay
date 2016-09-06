@@ -27,6 +27,8 @@ import pyroute2.netns.process.proxy
 
 from l3overlay import util
 
+from l3overlay.network import interface
+
 from l3overlay.util.exception.l3overlayerror import L3overlayError
 
 from l3overlay.util.worker import Worker
@@ -116,6 +118,14 @@ class NetNS(Worker):
             pyroute2.netns.remove(self.name)
 
         self.set_removed()
+
+
+    def interface_get(self, name):
+        '''
+        Get an interface of the given name from this namespace.
+        '''
+
+        return interface.get(self.dry_run, self.logger, name, netns=self)
 
 
     def Popen(self, *argv, **kwarg):
