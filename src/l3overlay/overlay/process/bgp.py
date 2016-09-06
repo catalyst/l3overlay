@@ -274,17 +274,25 @@ class Process(Worker):
                 stderr = subprocess.PIPE,
             )
 
-            stdout, stderr = bird_process.communicate()
+            try:
+                stdout, stderr = bird_process.communicate()
 
-            if bird_process.returncode != 0:
-                raise ProcessError(
-                    "'%s' encountered an error on execution" % bird,
-                    bird_process,
-                    stdout,
-                    stderr,
-                )
+                if bird_process.returncode != 0:
+                    raise ProcessError(
+                        "'%s' encountered an error on execution" % bird,
+                        bird_process,
+                        stdout,
+                        stderr,
+                    )
 
-            bird_process.release()
+                if stdout:
+                    self.logger.debug("stdout:\n%s" % (stdout.decode("UTF-8")))
+
+                if stderr:
+                    self.logger.debug("stderr:\n%s" % (stderr.decode("UTF-8")))
+
+            finally:
+                bird_process.release()
 
 
     def stop(self):
