@@ -32,6 +32,9 @@ then
     exit 2
 fi
 
+add-apt-repository -y ppa:cz.nic-labs/bird || exit $?
+apt-get update || exit $?
+
 apt-get install -y iproute2 || exit $?
 apt-get install -y vlan || exit $?
 apt-get install -y bird || exit $?
