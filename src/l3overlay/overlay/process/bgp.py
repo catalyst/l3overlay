@@ -34,6 +34,8 @@ from l3overlay.overlay.interface.tuntap import Tuntap
 from l3overlay.overlay.interface.veth import VETH
 from l3overlay.overlay.interface.vlan import VLAN
 
+from l3overlay.process import ProcessError
+
 from l3overlay.util.exception.l3overlayerror import L3overlayError
 
 from l3overlay.util.worker import Worker
@@ -254,15 +256,28 @@ class Process(Worker):
         else:
             self.logger.debug("starting BIRD using executable '%s'" % bird)
 
-            bird = self.netns.Popen([
-                bird,
+            bird_process = self.netns.Popen(
+                [
+                    bird,
                     "-c", self.bird_conf,
                     "-s", self.bird_ctl,
                     "-P", self.bird_pid,
-            ], stderr=subprocess.STDOUT)
+                ],
+                stdout = subprocess.PIPE,
+                stderr = subprocess.PIPE,
+            )
 
-            bird.wait()
-            bird.release()
+            stdout, stderr = bird_process.communicate()
+
+            if bird_process.returncode != 0:
+                raise ProcessError(
+                    "'%s' encountered an error on execution" % bird,
+                    bird_process,
+                    stdout,
+                    stderr,
+                )
+
+            bird_process.release()
 
 
     def stop(self):
