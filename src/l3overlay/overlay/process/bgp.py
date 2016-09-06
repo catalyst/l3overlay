@@ -176,6 +176,7 @@ class Process(Worker):
 
         if bird_config:
             bird_config["router_id"] = str(self.mesh_tunnels[0].virtual_local)
+            bird_config["listen_bgp_address"] = "0.0.0.0"
 
             self._start_bird_daemon(
                 self.bird,
@@ -188,6 +189,7 @@ class Process(Worker):
 
         if bird6_config:
             bird6_config["router_id"] = "192.0.2.1"
+            bird6_config["listen_bgp_address"] = "::"
 
             self._start_bird_daemon(
                 self.bird6,
