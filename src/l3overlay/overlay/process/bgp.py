@@ -148,8 +148,10 @@ class Process(Worker):
         bird6_config = {}
 
         if util.ip_network_is_v6(self.linknet_pool):
+            bird6_config["router_id"] = "192.0.2.1"
             bird6_config["mesh_tunnels"] = self.mesh_tunnels
         else:
+            bird_config["router_id"] = str(self.mesh_tunnels[0].virtual_local)
             bird_config["mesh_tunnels"] = self.mesh_tunnels
 
         for interface in self.interfaces:
