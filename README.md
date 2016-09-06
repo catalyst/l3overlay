@@ -11,7 +11,7 @@ The following software packages are required to run l3overlay:
 * **Python**, version **3.4** or later
 * **iproute2**
 * **BIRD** routing daemon, version **1.4.0** or later
-* **strongSwan** IPsec
+* **strongSwan** IPsec (if `use-ipsec` is set to `true` in `global.conf`)
 
 The following Python modules must also be installed:
 
@@ -165,7 +165,7 @@ Specifies the logging output level that l3overlay should use. The default value 
 * Type: **boolean**
 * Required: no
 
-Specifies whether or not IPsec should be used to encrypt the overlay mesh tunnels. The default value is `false`.
+Specifies whether or not IPsec should be used to encrypt the overlay mesh tunnels. The default value is `false`. If set to `true`, strongSwan should be installed on the system.
 
 #### ipsec-psk
 * Type: **hex**, 6-64 digits
