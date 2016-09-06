@@ -258,15 +258,18 @@ class Process(Worker):
                 sock.close()
 
         else:
-            self.logger.debug("starting BIRD using executable '%s'" % bird)
+            bird_command = [
+                bird,
+                "-c", bird_conf,
+                "-s", bird_ctl,
+                "-P", bird_pid,
+            ]
+
+            self.logger.debug("starting BIRD using command '%s'" %
+                    str.join(" ", bird_command))
 
             bird_process = self.netns.Popen(
-                [
-                    bird,
-                    "-c", bird_conf,
-                    "-s", bird_ctl,
-                    "-P", bird_pid,
-                ],
+                bird_command,
                 stdout = subprocess.PIPE,
                 stderr = subprocess.PIPE,
             )
