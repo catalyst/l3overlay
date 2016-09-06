@@ -261,9 +261,9 @@ class Process(Worker):
             bird_process = self.netns.Popen(
                 [
                     bird,
-                    "-c", self.bird_conf,
-                    "-s", self.bird_ctl,
-                    "-P", self.bird_pid,
+                    "-c", bird_conf,
+                    "-s", bird_ctl,
+                    "-P", bird_pid,
                 ],
                 stdout = subprocess.PIPE,
                 stderr = subprocess.PIPE,
