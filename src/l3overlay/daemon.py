@@ -112,13 +112,18 @@ class Daemon(worker.Worker):
 
         for i in o.interfaces:
             if isinstance(i, VETH) and i.inner_namespace in self.overlays:
-                inner_o = self.overlays[i.inner_namespace]
-                os.remove(inner_o)
-                self._overlays_list_sorted(os, sos, inner_o)
+                try:
+                    os.remove(i.inner_namespace)
+                except ValueError:
+                    continue
+                self._overlays_list_sorted(os, sos, self.overlays[i.inner_namespace])
+
             elif isinstance(i, OverlayLink):
-                inner_o = self.overlays[i.inner_overlay_name]
-                os.remove(inner_o)
-                self._overlays_list_sorted(os, sos, inner_o)
+                try:
+                    os.remove(i.inner_overlay_name)
+                except ValueError:
+                    continue
+                self._overlays_list_sorted(os, sos, self.overlays[i.inner_overlay_name])
 
         sos.append(o)
 
