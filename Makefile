@@ -150,7 +150,7 @@ config:
 
 test:
 	@for t in $(shell $(FIND) $(TESTS_BIN_DIR) -maxdepth 1 -name 'test_*.py'); do \
-		PYTHONPATH=$(TESTS_SRC_DIR):$(SRC_DIR) $(PYTHON) $$t; \
+		PYTHONPATH=$(TESTS_SRC_DIR):$(SRC_DIR) $(PYTHON) $$t || exit $$?; \
 	done
 
 
