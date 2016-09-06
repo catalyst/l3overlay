@@ -647,7 +647,7 @@ def pid_kill(pid=None, pid_file=None, signal=signal.SIGTERM, timeout=10):
         while t < timeout and pid_exists(pid=p):
             time.sleep(1)
             t += 0.1
-        if pid_exists(pid, pid_file):
+        if pid_exists(pid=p):
             raise RuntimeError("unable to terminate PID %s using signal '%s'" % (p, signal))
 
 
