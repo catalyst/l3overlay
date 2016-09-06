@@ -27,6 +27,7 @@ import re
 import os
 import random
 import shutil
+import signal
 import string
 import sys
 
@@ -630,6 +631,24 @@ def pid_exists(pid=None, pid_file=None):
     '''
 
     return True if pid_get(pid, pid_file) else False
+
+
+def pid_kill(pid=None, pid_file=None, signal=signal.SIGTERM, timeout=10):
+    '''
+    Sends a signal to the process of the given PID or PID file, and waits
+    for it to terminate.
+    '''
+
+    p = pid_get(pid, pid_file)
+
+    if pid:
+        t = 0.0
+        os.kill(p, signal)
+        while t < timeout and pid_exists(pid=p):
+            time.sleep(1)
+            t += 0.1
+        if pid_exists(pid, pid_file):
+            raise RuntimeError("unable to terminate PID %s using signal '%s'" % (p, signal))
 
 
 #

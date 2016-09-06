@@ -305,13 +305,8 @@ class Process(Worker):
         self.logger.info("stopping BGP process")
 
         if not self.dry_run:
-            pid = util.pid_get(pid_file=self.bird_pid)
-            pid6 = util.pid_get(pid_file=self.bird6_pid)
-
-            if pid:
-                os.kill(pid, signal.SIGTERM)
-            if pid6:
-                os.kill(pid6, signal.SIGTERM)
+            util.pid_kill(pid_file=self.bird_pid)
+            util.pid_kill(pid_file=self.bird6_pid)
 
         self.logger.debug("removing BIRD control socket directory")
         if not self.dry_run:
