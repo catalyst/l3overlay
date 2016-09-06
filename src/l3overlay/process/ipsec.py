@@ -52,6 +52,10 @@ class Process(Worker):
         self.logger = daemon.logger
 
         self.use_ipsec = daemon.use_ipsec
+
+        if not self.use_ipsec:
+            return
+
         self.ipsec_manage = daemon.ipsec_manage
         self.ipsec_psk = daemon.ipsec_psk
 

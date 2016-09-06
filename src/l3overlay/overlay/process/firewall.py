@@ -45,16 +45,18 @@ class Process(Worker):
         Start the firewall process.
         '''
 
+        if not self.fwbuilder_script:
+            return
+
         self.set_starting()
 
-        if self.fwbuilder_script:
-            self.logger.debug("starting firewall")
+        self.logger.debug("starting firewall")
 
-            fwbuilder = self.netns.Popen([self.fwbuilder_script], stderr=subprocess.STDOUT)
-            fwbuilder.wait()
-            fwbuilder.release()
+        fwbuilder = self.netns.Popen([self.fwbuilder_script], stderr=subprocess.STDOUT)
+        fwbuilder.wait()
+        fwbuilder.release()
 
-            self.logger.debug("finished starting firewall")
+        self.logger.debug("finished starting firewall")
 
         self.set_started()
 
