@@ -581,11 +581,12 @@ def pid_get(pid=None, pid_file=None):
 
     if pid_file is not None:
         if os.path.exists(pid_file):
+            data = None
             with open(pid_file, "r") as f:
-                pid_file_data = f.read().strip()
+                data = f.read().strip()
 
-            if len(pid_file_data) > 0 and re.match("[0-9][0-9]*", pid_file_data):
-                pid = int(pid_file_data)
+            if len(data) > 0 and re.match("[0-9][0-9]*", data):
+                pid = int(data)
             else:
                 # Invalid PID file. Remove it.
                 os.remove(pid_file)
