@@ -25,6 +25,7 @@ import unittest
 
 from l3overlay import util
 
+from tests.base import SRC_DIR
 from tests.base import BaseTest
 
 
@@ -58,7 +59,15 @@ class L3overlaydTest(BaseTest.Class):
         designed to test each static interface type.
         '''
 
-        command = [util.command_path("python3"), "-c", "import l3overlay; l3overlay.main()"]
+        test_py = os.path.join(self.tmp_dir, "test.py")
+
+        with open(test_py, "w") as f:
+            f.write('''
+import importlib.machinery
+l3overlay = importlib.machinery.SourceFileLoader("l3overlay", "%s/l3overlay/__init__.py").load_module()
+l3overlay.main()''' % SRC_DIR)
+
+        command = [util.command_path("python3"), test_py]
 
         for key, value in self.global_conf.items():
             arg = "--%s" % key.replace("_", "-")
