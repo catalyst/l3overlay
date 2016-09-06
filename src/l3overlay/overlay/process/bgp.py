@@ -148,10 +148,8 @@ class Process(Worker):
         bird6_config = {}
 
         if util.ip_network_is_v6(self.linknet_pool):
-            bird6_config["router_id"] = "192.0.2.1"
             bird6_config["mesh_tunnels"] = self.mesh_tunnels
         else:
-            bird_config["router_id"] = str(self.mesh_tunnels[0].virtual_local)
             bird_config["mesh_tunnels"] = self.mesh_tunnels
 
         for interface in self.interfaces:
@@ -177,6 +175,8 @@ class Process(Worker):
                 self.bird_config_add(bc, "vlans", interface)
 
         if bird_config:
+            bird_config["router_id"] = str(self.mesh_tunnels[0].virtual_local)
+
             self._start_bird_daemon(
                 self.bird,
                 self.bird_conf,
@@ -187,6 +187,8 @@ class Process(Worker):
             )
 
         if bird6_config:
+            bird6_config["router_id"] = "192.0.2.1"
+
             self._start_bird_daemon(
                 self.bird6,
                 self.bird6_conf,
