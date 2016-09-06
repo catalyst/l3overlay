@@ -96,8 +96,8 @@ class Process(Worker):
 
         self.bird_conf_template = util.template_read(self.template_dir, "bird.conf")
 
-        self.bird = util.command_path("bird") if not self.dry_run else None
-        self.bird6 = util.command_path("bird6") if not self.dry_run else None
+        self.bird = util.command_path("bird") if not self.dry_run else "/usr/sbin/bird"
+        self.bird6 = util.command_path("bird6") if not self.dry_run else "/usr/sbin/bird6"
 
 
     def bird_config_add(self, bird_config, key, value):
