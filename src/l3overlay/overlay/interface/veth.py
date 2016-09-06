@@ -172,9 +172,18 @@ class VETH(Interface):
 
         if self.outer_interface_bridged:
             bridge.get(
-                    self.dry_run, self.logger, self.bridge_name, netns=self.outer_netns.ipdb).remove()
+                self.dry_run,
+                self.logger,
+                self.bridge_name,
+                netns = self.outer_netns,
+            ).remove()
+
             dummy.get(
-                    self.dry_run, self.logger, self.dummy_name, netns=self.outer_netns.ipdb).remove()
+                self.dry_run,
+                self.logger,
+                self.dummy_name,
+                netns = self.outer_netns,
+            ).remove()
 
         veth.get(
             self.dry_run,
