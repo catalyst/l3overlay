@@ -372,7 +372,11 @@ class ValueReader(object):
         config_key = key.lower().replace("_", "-")
 
         if self.args and arg_key in self.args and self.args[arg_key] is not None:
-            return util.path_get(self.args[arg_key], relative_dir=os.getcwd())
+            cwd = os.getcwd()
+            return util.path_get(
+                    self.args[arg_key],
+                    relative_dir=cwd if cwd else util.path_my_dir(),
+            )
         elif self.config and config_key in self.config and self.config[config_key] is not None:
             return util.path_get(self.config[config_key], relative_dir=os.path.dirname(self.conf))
         else:
