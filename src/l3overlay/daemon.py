@@ -374,7 +374,7 @@ class ValueReader(object):
         if self.args and arg_key in self.args and self.args[arg_key] is not None:
             return util.path_get(self.args[arg_key], relative_dir=os.getcwd())
         elif self.config and config_key in self.config and self.config[config_key] is not None:
-            return util.path_get(self.config[config_key], relative_dir=os.dirname(self.conf))
+            return util.path_get(self.config[config_key], relative_dir=os.path.dirname(self.conf))
         else:
             return default
 
