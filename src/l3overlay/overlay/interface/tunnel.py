@@ -25,7 +25,7 @@ from l3overlay.network.interface import gre
 from l3overlay.overlay.interface.base import Interface
 from l3overlay.overlay.interface.base import ReadError
 
-from l3overlay.util.exception.l3overlayerror import L3overlayError
+from l3overlay.util.exception import L3overlayError
 
 
 class NonUniqueTunnelError(L3overlayError):

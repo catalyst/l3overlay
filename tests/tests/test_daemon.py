@@ -21,6 +21,8 @@
 import os
 import unittest
 
+from l3overlay import util
+
 import l3overlay.daemon
 
 from tests.base import BaseTest
@@ -144,12 +146,7 @@ Arguments: %s''' % (str.join(", ", (e.__name__ for e in exceptions)), gc))
         Test that 'overlay_conf_dir' is properly handled by the daemon.
         '''
 
-        self.assert_path(
-            None,
-            "template_dir",
-            valid_path = self.global_conf["overlay_conf_dir"],
-            test_default = True,
-        )
+        self.assert_path(None, "template_dir", test_default = True)
 
 
     def test_template_dir(self):
@@ -189,11 +186,30 @@ Arguments: %s''' % (str.join(", ", (e.__name__ for e in exceptions)), gc))
         Test that 'overlay_conf' is properly handled by the daemon.
         '''
 
-        self.assert_path_iterable(
+        overlay_conf_dir = self.global_conf["overlay_conf_dir"]
+
+        # Test absolute paths.
+        self.assert_success(
             None,
             "overlay_conf",
-            valid_paths = (os.path.join(self.global_conf["overlay_conf_dir"], f) for f in os.listdir(self.global_conf["overlay_conf_dir"])),
+            [os.path.join(overlay_conf_dir, f) for f in os.listdir(overlay_conf_dir)],
         )
+
+        # Test relative paths.
+        self.assert_success(
+            None,
+            "overlay_conf",
+            [os.path.relpath(os.path.join(overlay_conf_dir, f)) for f in os.listdir(overlay_conf_dir)],
+        )
+
+        # Test non-existent paths.
+        self.assert_fail(None, "overlay_conf", [util.random_string(16)], FileNotFoundError)
+
+        # Test invalid values.
+        self.assert_fail(None, "overlay_conf", "", util.GetError)
+        self.assert_fail(None, "overlay_conf", 1, l3overlay.daemon.ReadError)
+        self.assert_fail(None, "overlay_conf", [""], util.GetError)
+        self.assert_fail(None, "overlay_conf", [1], util.GetError)
 
 
 if __name__ == "__main__":

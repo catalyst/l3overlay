@@ -33,7 +33,7 @@ import sys
 
 import distutils.spawn
 
-from l3overlay.util.exception.l3overlayerror import L3overlayError
+from l3overlay.util.exception import L3overlayError
 
 
 #
@@ -161,19 +161,25 @@ def name_get(value):
     return name
 
 
-def path_get(value):
+def path_get(value, relative_dir=None):
     '''
     Check that the given value is a fully qualified file system path, raising
-    GetError if it isn't.
+    GetError if it isn't, or, if an optional directory is passed in,
+    concatenate the value with that and return it.
     '''
 
     if not isinstance(value, str):
         raise GetError("non-string value '%s' not a valid file system path" % str(value))
 
-    if not os.path.isabs(value):
-        raise GetError("value '%s' not a fully qualified file system path" % value)
+    if not value:
+        raise GetError("empty string not a valid file system path")
 
-    return value
+    if os.path.isabs(value):
+        return value
+    elif relative_dir is not None:
+        return os.path.join(relative_dir, value)
+    else:
+        raise GetError("value '%s' not a fully qualified file system path" % value)
 
 
 def section_header(type, name):

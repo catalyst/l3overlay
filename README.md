@@ -186,49 +186,49 @@ If `false`, l3overlay will assume that IPsec is being managed elsewhere. In this
 Note that if this option is set to `false`, then `l3overlayd` will **NOT** manage IPsec, as it is assumed that the user will want to configure IPsec themselves. A suitable `/etc/ipsec.conf` and `/etc/ipsec.secrets` file **MUST** be provided, which will include the l3overlay IPsec configuration files described above.
 
 #### lib-dir
-* Type: **filepath**, absolute
+* Type: **filepath**
 * Required: no
 
 Specifies the directory to store `l3overlayd` runtime state information. The default value is `/var/lib/l3overlay`.
 
 #### fwbuilder-script-dir
-* Type: **filepath**, absolute
+* Type: **filepath**
 * Required: no
 
 Specifies the directory to look for `fwbuilder-script` relative paths defined in overlay configurations. The default value is found using the `l3overlayd` search mechanism defined in the *Installation* section, looking for a directory named `fwbuilder-scripts`.
 
 #### overlay-conf-dir
-* Type: **filepath**, absolute
+* Type: **filepath**
 * Required: no
 
 Specifies the directory to look for overlay configuration files. The default value is found using the `l3overlayd` search mechanism defined in the *Installation* section, looking for a directory named `overlays`.
 
 #### template-dir
-* Type: **filepath**, absolute
+* Type: **filepath**
 * Required: no
 
 Specifies the directory to look for the configuration template files. The default value is found using the `l3overlayd` search mechanism defined in the *Installation* section, looking for a directory named `templates`.
 
 #### log
-* Type: **filepath**, absolute
+* Type: **filepath**
 * Required: no
 
 Specifies the file path to write logging output to. `l3overlayd` does not log output to any file by default.
 
 #### pid
-* Type: **filepath**, absolute
+* Type: **filepath**
 * Required: no
 
 Specifies the file path to write the PID file to. The default value is `/var/run/l3overlayd.pid`.
 
 #### ipsec-conf
-* Type: **filepath**, absolute
+* Type: **filepath**
 * Required: no
 
 Specifies the file path to write the IPsec configuration file to. The default value is `/etc/ipsec/l3overlay.conf`.
 
 #### ipsec-secrets
-* Type: **filepath**, absolute
+* Type: **filepath**
 * Required: no
 
 Specifies the file path to write the IPsec secrets file to. The default value is `/etc/ipsec.secrets` if `ipsec-manage` is `true`, and `/etc/ipsec.l3overlay.secrets` if `ipsec-manage` is `false`.

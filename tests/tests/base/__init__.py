@@ -415,7 +415,7 @@ class BaseTest(object):
             self.assert_fail(section, key, 1, util.GetError)
 
 
-        def assert_path(self, section, key, valid_path=None, test_default=False):
+        def assert_path(self, section, key, absolute=True, relative=True, test_default=False):
             '''
             Test that key, of type path, is properly handled by the object.
             '''
@@ -425,37 +425,28 @@ class BaseTest(object):
                 self.assert_default(section, key)
 
             # Test valid values.
-            if valid_path:
-                self.assert_success(section, key, valid_path)
-            else:
-                self.assert_success(section, key, os.path.join(self.tmp_dir, "assert_path"))
+            if absolute:
+                self.assert_success(section, key, os.path.join(self.tmp_dir, "assert_path.txt"))
+
+            if relative:
+                self.assert_success(section, key, "../assert_path.txt")
 
             # Test invalid values.
+            if not absolute:
+                self.assert_fail(
+                    section,
+                    key,
+                    os.path.join(self.tmp_dir, "assert_path.txt"),
+                    util.GetError,
+                )
+
+            if not relative:
+                self.assert_fail(
+                    section,
+                    key,
+                    os.path.join("..", "assert_path.txt"),
+                    util.GetError,
+                )
+
             self.assert_fail(section, key, "", util.GetError)
-            self.assert_fail(section, key, util.random_string(16), util.GetError)
             self.assert_fail(section, key, 1, util.GetError)
-
-
-        def assert_path_iterable(self, section, key, valid_paths=None, test_default=False):
-            '''
-            Test that key, of type path, is properly handled by the object.
-            '''
-
-            # Test default value, if specified.
-            if test_default:
-                obj = self.assert_success(section, key, None)
-                value = self.value_get(obj, section, key)
-                for f in value:
-                    self.assertTrue(os.path.isabs(f))
-                self.assert_success(section, key, value)
-
-            # Test valid values.
-            if valid_paths:
-                self.assert_success(section, key, valid_paths)
-            else:
-                self.assert_success(section, key, os.path.join(self.tmp_dir, "assert_path_iterable"))
-
-            # Test invalid values.
-            self.assert_fail(section, key, [""], util.GetError)
-            self.assert_fail(section, key, [util.random_string(16)], util.GetError)
-            self.assert_fail(section, key, [1], util.GetError)

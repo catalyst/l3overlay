@@ -37,7 +37,7 @@ from l3overlay.overlay.process import firewall as firewall_process
 
 from l3overlay.util import logger
 
-from l3overlay.util.exception.l3overlayerror import L3overlayError
+from l3overlay.util.exception import L3overlayError
 
 from l3overlay.util.worker import Worker
 

@@ -29,7 +29,7 @@ from l3overlay import util
 
 from l3overlay.network import interface
 
-from l3overlay.util.exception.l3overlayerror import L3overlayError
+from l3overlay.util.exception import L3overlayError
 
 from l3overlay.util.worker import Worker
 from l3overlay.util.worker import NotYetStartedError

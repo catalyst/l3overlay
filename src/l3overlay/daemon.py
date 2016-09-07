@@ -33,7 +33,7 @@ from l3overlay.process import ipsec as ipsec_process
 from l3overlay.util import logger
 from l3overlay.util import worker
 
-from l3overlay.util.exception.l3overlayerror import L3overlayError
+from l3overlay.util.exception import L3overlayError
 
 
 class KeyAddedTwiceError(L3overlayError):
@@ -43,6 +43,9 @@ class KeyAddedTwiceError(L3overlayError):
 class NoOverlayConfError(L3overlayError):
     def __init__(self):
         super().__init__("no overlay configuration files found")
+
+class ReadError(L3overlayError):
+    pass
 
 
 class Daemon(worker.Worker):
@@ -324,12 +327,14 @@ class ValueReader(object):
     Helper class for the read() method.
     '''
 
-    def __init__(self, args, config):
+    def __init__(self, args, conf, config):
         '''
         Set up value reader internal state.
         '''
 
         self.args = args
+
+        self.conf = conf
         self.config = config
 
 
@@ -352,6 +357,28 @@ class ValueReader(object):
             return default
 
 
+    def path_get(self, key, default=None):
+        '''
+        Get a key, and check the argument list and global configuration,
+        in that order, for a corresponding value.
+
+        If one is not found, return default.
+
+        This version is specifically for path type objects, and properly
+        handles relative names.
+        '''
+
+        arg_key = key.lower().replace("-", "_")
+        config_key = key.lower().replace("_", "-")
+
+        if self.args and arg_key in self.args and self.args[arg_key] is not None:
+            return util.path_get(self.args[arg_key], relative_dir=os.getcwd())
+        elif self.config and config_key in self.config and self.config[config_key] is not None:
+            return util.path_get(self.config[config_key], relative_dir=os.dirname(self.conf))
+        else:
+            return default
+
+
 def read(args):
     '''
     Create a daemon object using the given argument dictionary.
@@ -362,7 +389,7 @@ def read(args):
     global_conf = args["global_conf"] if "global_conf" in args else None
     global_config = util.config(global_conf)["global"] if global_conf else None
 
-    reader = ValueReader(args, global_config)
+    reader = ValueReader(args, global_conf, global_config)
 
     # Get enough configuration to start a logger.
     log = reader.get("log")
@@ -388,47 +415,56 @@ def read(args):
         ipsec_psk = util.hex_get_string(_psk, min=6, max=64) if _psk is not None else None
 
         # Get required directory paths.
-        lib_dir = util.path_get(reader.get(
+        lib_dir = reader.path_get(
             "lib-dir",
             os.path.join(util.path_root(), "var", "lib", "l3overlay"),
-        ))
+        )
         overlay_dir = os.path.join(lib_dir, "overlays")
 
-        fwbuilder_script_dir = util.path_get(reader.get(
+        fwbuilder_script_dir = reader.path_get(
             "fwbuilder-script-dir",
             util.path_search("fwbuilder_scripts"),
-        ))
-        overlay_conf_dir = util.path_get(reader.get(
+        )
+        overlay_conf_dir = reader.path_get(
             "overlay-conf-dir",
             util.path_search("overlays"),
-        ))
-        template_dir = util.path_get(reader.get(
+        )
+        template_dir = reader.path_get(
             "template-dir",
             util.path_search("templates"),
-        ))
+        )
 
         # Get required file paths.
-        pid = util.path_get(reader.get(
+        pid = reader.path_get(
             "pid",
             os.path.join(util.path_root(), "var", "run", "l3overlayd.pid"),
-        ))
+        )
 
-        ipsec_conf = util.path_get(reader.get(
+        ipsec_conf = reader.path_get(
             "ipsec-conf",
             os.path.join(util.path_root(), "etc", "ipsec.d", "l3overlay.conf"),
-        ))
-        ipsec_secrets = util.path_get(reader.get(
+        )
+        ipsec_secrets = reader.path_get(
             "ipsec-secrets",
-              os.path.join(util.path_root(), "etc", "ipsec.secrets" if ipsec_manage else "ipsec.l3overlay.secrets"),
-        ))
+            os.path.join(util.path_root(), "etc",
+                    "ipsec.secrets" if ipsec_manage else "ipsec.l3overlay.secrets"),
+        )
 
         # Get overlay configuration file paths.
-        overlay_confs = reader.get("overlay-conf")
+        overlay_confs = args["overlay_conf"] if "overlay_conf" in args else None
 
         if overlay_confs is not None:
-            overlay_confs = (util.path_get(oc) for oc in overlay_confs)
+            if isinstance(overlay_confs, str):
+                overlay_confs = dict(util.path_get(overlay_confs, relative_dir=os.getcwd()))
+            elif isinstance(overlay_confs, list) or isinstance(overlay_confs, dict):
+                overlay_confs = (util.path_get(oc, relative_dir=os.getcwd()) for oc in overlay_confs)
+            else:
+                raise ReadError("expected string, list or dict for overlay_confs, got %s: %s" %
+                        (type(overlay_confs), overlay_confs))
+
         elif overlay_conf_dir is not None:
             overlay_confs = (os.path.join(overlay_conf_dir, oc) for oc in os.listdir(overlay_conf_dir))
+
         else:
             raise NoOverlayConfError()
 

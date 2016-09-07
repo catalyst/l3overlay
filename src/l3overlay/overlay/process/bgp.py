@@ -36,7 +36,7 @@ from l3overlay.overlay.interface.vlan import VLAN
 
 from l3overlay.process import ProcessError
 
-from l3overlay.util.exception.l3overlayerror import L3overlayError
+from l3overlay.util.exception import L3overlayError
 
 from l3overlay.util.worker import Worker
 
