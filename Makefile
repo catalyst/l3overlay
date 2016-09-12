@@ -97,14 +97,20 @@ TESTS_BIN_DIR = tests/tests
 TESTS_SRC_DIR = tests
 
 # Detect usable Python command, if not defined by the user.
+ifndef PYTHON
 PYTHON_MAJOR_VER = $(shell python3 -V | sed 's:^Python \([0-9][0-9]*\)\..*$$:\1:')
 PYTHON_MINOR_VER = $(shell python3 -V | sed 's:^Python [0-9][0-9]*\.\([0-9][0-9]*\)\..*$$:\1:')
+ifeq ($(shell test $(PYTHON_MAJOR_VER) -eq 3 -a $(PYTHON_MINOR_VER) -ge 4 && echo true), true)
+PYTHON = $(shell which python3)
+endif
+endif
 
-ifeq ($(shell test $(PYTHON_MAJOR_VER) -eq 3 -a $(PYTHON_MINOR_VER) -ge 4 && echo true)), true)
-PYTHON ?= $(shell which python3)
-else
-PYTHON ?= $(shell which python3.5)
-PYTHON ?= $(shell which python3.4)
+ifndef PYTHON
+PYTHON = $(shell which python3.5)
+endif
+
+ifndef PYTHON
+PYTHON = $(shell which python3.4)
 endif
 
 ifndef PYTHON
