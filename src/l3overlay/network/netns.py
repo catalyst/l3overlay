@@ -128,7 +128,7 @@ class NetNS(Worker):
         return interface.get(self.dry_run, self.logger, name, netns=self)
 
 
-    def Popen(self, *argv, **kwarg):
+    def Popen(self, *args, **kwargs):
         '''
         Start a process in this network namespace using the Popen interface.
         '''
@@ -150,7 +150,7 @@ class NetNS(Worker):
                 stderr=subprocess.DEVNULL,
             )
         else:
-            return pyroute2.netns.process.proxy.NSPopen(self.name, *argv, **kwarg)
+            return pyroute2.netns.process.proxy.NSPopen(self.name, *args, **kwargs)
 
 Worker.register(NetNS)
 
