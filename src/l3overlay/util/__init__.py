@@ -31,8 +31,6 @@ import signal
 import string
 import sys
 
-import distutils.spawn
-
 from l3overlay.util.exception import L3overlayError
 
 
@@ -541,7 +539,7 @@ def command_path(command, not_found_ok=False):
     '''
     '''
 
-    path = distutils.spawn.find_executable(command)
+    path = shutil.which(command)
 
     if not not_found_ok and not path:
         raise RuntimeError("cannot find '%s' executable path" % command)
