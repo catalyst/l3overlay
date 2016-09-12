@@ -96,8 +96,20 @@ SRC_DIR   = src
 TESTS_BIN_DIR = tests/tests
 TESTS_SRC_DIR = tests
 
-# At this point, l3overlayd only supports Python >= 3.4.
-PYTHON = python3.4
+# Detect usable Python command, if not defined by the user.
+PYTHON_MAJOR_VER = $(shell python3 -V | sed 's:^Python \([0-9][0-9]*\)\..*$$:\1:')
+PYTHON_MINOR_VER = $(shell python3 -V | sed 's:^Python [0-9][0-9]*\.\([0-9][0-9]*\)\..*$$:\1:')
+
+ifeq ($(shell test $(PYTHON_MAJOR_VER) -eq 3 -a $(PYTHON_MINOR_VER) -ge 4 && echo true)), true)
+PYTHON ?= $(shell which python3)
+else
+PYTHON ?= $(shell which python3.5)
+PYTHON ?= $(shell which python3.4)
+endif
+
+ifndef PYTHON
+$(error $(NAME) only supports Python >= 3.4.0)
+endif
 
 # An alternative to this if the default doesn't work:
 # PIP = $(PYTHON) -m pip
