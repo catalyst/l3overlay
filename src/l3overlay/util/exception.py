@@ -1,6 +1,6 @@
 #
 # IPsec overlay network manager (l3overlay)
-# l3overlay/util/exception/l3overlayerror.py - l3overlay error base calss
+# l3overlay/util/exception.py - exception base class
 #
 # Copyright (c) 2016 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify
