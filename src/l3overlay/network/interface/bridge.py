@@ -18,6 +18,8 @@
 #
 
 
+import time
+
 from l3overlay.network import interface
 
 from l3overlay.network.interface.base import Interface
@@ -51,6 +53,17 @@ class Bridge(Interface):
 
         if self.interface and added_if.interface.index not in self.interface.ports:
             self.interface.add_port(added_if.interface).commit()
+
+            # FIXME: get rid of this workaround of pyroute2 issue #280
+            # once it is fixed.
+            #
+            # https://github.com/svinota/pyroute2/issues/280
+            if self.interface.mtu > added_if.interface.mtu:
+                waited = 0.0
+                while self.interface.mtu != added_if.interface.mtu and waited < 10.0:
+                    waited += 0.001
+                    time.sleep(0.001)
+                assert self.interface.mtu == added_if.interface.mtu
 
 
 def get(dry_run, logger, name, netns=None, root_ipdb=None):
