@@ -646,7 +646,7 @@ def pid_kill(pid=None, pid_file=None, signal=signal.SIGTERM, timeout=10):
 
     p = pid_get(pid, pid_file)
 
-    if pid:
+    if p:
         t = 0.0
         os.kill(p, signal)
         while t < timeout and pid_exists(pid=p):
