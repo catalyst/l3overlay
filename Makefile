@@ -56,7 +56,8 @@
 ## Name of the project.
 #
 
-NAME = l3overlay
+NAME    = l3overlay
+PKGNAME = l3overlay
 
 
 ##############################
@@ -93,8 +94,12 @@ CONFIG   = .config
 SETUP_PY = setup.py
 
 SRC_DIR   = src
+MODULE_DIR = $(SRC_DIR)/$(PKGNAME)
+
 TESTS_BIN_DIR = tests/tests
 TESTS_SRC_DIR = tests
+
+PYLINT = pylint
 
 # Detect usable Python command, if not defined by the user.
 ifndef PYTHON
@@ -148,6 +153,7 @@ endif
 
 all:
 	@echo "Targets:"
+	@echo "  lint - run pylint code quality check"
 	@echo "  test - run unit tests"
 	@echo "  sdist - build Python source distribution"
 	@echo "  bdist_wheel - build Python binary wheel distribution"
@@ -164,6 +170,10 @@ config:
 	@echo CONFIG_DIR=$(CONFIG_DIR) >> $(CONFIG)
 	@echo WITH_INIT_D=$(WITH_INIT_D) >> $(CONFIG)
 	@echo WITH_UPSTART=$(WITH_UPSTART) >> $(CONFIG)
+
+
+lint:
+	$(PYLINT) $(MODULE_DIR)
 
 
 test:
