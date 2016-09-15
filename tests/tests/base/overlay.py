@@ -22,6 +22,8 @@ import copy
 
 import l3overlay.overlay
 
+import l3overlay.overlay.interface
+
 from l3overlay import util
 
 from tests.base import BaseTest
@@ -105,7 +107,7 @@ class OverlayBaseTest(object):
             return oc
 
 
-        def assert_success(self, section, key, value):
+        def assert_success(self, section, key, value, expected_key=None, expected_value=None):
             '''
             Try and read an l3overlay daemon using the given arguments.
             Assumes it will succeed, and will run an assertion test to make
@@ -119,7 +121,17 @@ class OverlayBaseTest(object):
                 self.global_conf["log_level"],
                 config = oc,
             )
+
             self.assertIsInstance(overlay, l3overlay.overlay.Overlay)
+            if expected_value is not None:
+                k = expected_key if expected_key else key
+                if l3overlay.overlay.interface.section_type_is_static_interface(section):
+                    for interface in overlay.interfaces:
+                        if interface.name == util.section_name_get(section):
+                            self.assertEqual(expected_value, vars(interface)[k.replace("-", "_")])
+                            break
+                else:
+                    self.assertEqual(expected_value, vars(overlay)[k.replace("-", "_")])
 
             return overlay
 

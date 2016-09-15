@@ -59,21 +59,30 @@ class BaseTest(object):
             self.log_dir = os.path.join(LOG_DIR, os.path.basename(self.tmp_dir))
 
             self.global_conf = {
-                "dry_run": "true",
+                "dry_run": True,
+                "no_dry_run": True,
 
                 "log_level": "DEBUG",
 
-                "use_ipsec": "true",
-                "ipsec_manage": "true",
+                "use_ipsec": True,
+                "no_use_ipsec": True,
+
+                "ipsec_manage": True,
+                "no_ipsec_manage": True,
 
                 "lib_dir": os.path.join(self.tmp_dir, "lib"),
 
                 "overlay_conf_dir": os.path.join(self.conf_dir, "overlays"),
+                "fwbuilder_script_dir": None,
                 "template_dir": os.path.join(ROOT_DIR, "l3overlay", "templates"),
 
+                "ipsec_conf": None,
+                "ipsec_secrets": None,
 
                 "log": os.path.join(self.log_dir, "l3overlay.log"),
                 "pid": os.path.join(self.tmp_dir, "l3overlayd.pid"),
+
+                "overlay_conf": [],
             }
 
 
@@ -98,7 +107,7 @@ class BaseTest(object):
             raise NotImplementedError()
 
 
-        def assert_success(self, section, key, value):
+        def assert_success(self, section, key, value, expected_key=None, expected_value=None):
             '''
             Assertion abstract method for success.
             Process:
@@ -136,7 +145,7 @@ class BaseTest(object):
 
             obj = self.assert_success(section, key, None)
             value = self.value_get(obj, section, key)
-            self.assert_success(section, key, value)
+            self.assert_success(section, key, value, expected_value=value)
 
 
         def assert_value(self, section, key, value, test_default=False):
@@ -162,15 +171,15 @@ class BaseTest(object):
                 self.assert_default(section, key)
 
             # Test valid values.
-            self.assert_success(section, key, True)
-            self.assert_success(section, key, "true")
-            self.assert_success(section, key, 1)
-            self.assert_success(section, key, 2)
+            self.assert_success(section, key, True, expected_value=True)
+            self.assert_success(section, key, "true", expected_value=True)
+            self.assert_success(section, key, 1, expected_value=True)
+            self.assert_success(section, key, 2, expected_value=True)
 
-            self.assert_success(section, key, False)
-            self.assert_success(section, key, "false")
-            self.assert_success(section, key, 0)
-            self.assert_success(section, key, -1)
+            self.assert_success(section, key, False, expected_value=False)
+            self.assert_success(section, key, "false", expected_value=False)
+            self.assert_success(section, key, 0, expected_value=False)
+            self.assert_success(section, key, -1, expected_value=False)
 
             # Test invalid values.
             self.assert_fail(section, key, "", util.GetError)
@@ -192,10 +201,10 @@ class BaseTest(object):
                 self.assert_default(section, key)
 
             # Test valid values.
-            self.assert_success(section, key, _minval)
-            self.assert_success(section, key, _maxval)
+            self.assert_success(section, key, _minval, expected_value=_minval)
+            self.assert_success(section, key, _maxval, expected_value=_maxval)
 
-            self.assert_success(section, key, str(_minval))
+            self.assert_success(section, key, str(_minval), expected_value=_minval)
 
             # Test invalid values.
             self.assert_fail(section, key, "", util.GetError)
@@ -208,7 +217,7 @@ class BaseTest(object):
                 self.assert_fail(section, key, _maxval + 1, util.GetError)
 
 
-        def assert_name(self, section, key, valid_value=None, invalid_exception=None, test_default=False):
+        def assert_name(self, section, key, test_default=False):
             '''
             Test that key, of type name, is properly handled by the object.
             '''
@@ -218,30 +227,17 @@ class BaseTest(object):
                 self.assert_default(section, key)
 
             # Test valid values.
-            if valid_value:
-                self.assert_success(section, key, valid_value)
-                self.assert_success(section, key, " %s" % valid_value)
-                self.assert_success(section, key, "%s " % valid_value)
-            else:
-                self.assert_success(section, key, "name")
-                self.assert_success(section, key, "name_1")
-                self.assert_success(section, key, "name-2")
-                self.assert_success(section, key, "name.3")
-                self.assert_success(section, key, " name-4")
-                self.assert_success(section, key, "name-5 ")
+            self.assert_success(section, key, "name", expected_value="name")
+            self.assert_success(section, key, "name_1", expected_value="name_1")
+            self.assert_success(section, key, "name-2", expected_value="name-2")
+            self.assert_success(section, key, "name.3", expected_value="name.3")
+            self.assert_success(section, key, " name-4", expected_value="name-4")
+            self.assert_success(section, key, "name-5 ", expected_value="name-5")
 
             # Test invalid values.
             self.assert_fail(section, key, "", util.GetError)
             self.assert_fail(section, key, 1, util.GetError)
             self.assert_fail(section, key, "name 6", util.GetError)
-
-            if invalid_exception:
-                self.assert_fail(
-                    section,
-                    key,
-                    util.random_string(4),
-                    invalid_exception,
-                )
 
 
         def assert_hex_string(self, section, key, min=None, max=None, test_default=False):
@@ -262,13 +258,14 @@ class BaseTest(object):
 
             # Test valid values.
             for v in vvs:
-                self.assert_success(section, key, str.join("", [v for __ in range(0, _min)]))
+                hex_string = str.join("", [v for __ in range(0, _min)])
+                self.assert_success(section, key, hex_string, expected_value="0x%s" % hex_string)
 
-            self.assert_success(
-                section,
-                key,
-                str.join("", [vvs[i % len(vvs)] for i in range(0, _max)]),
-            )
+            hex_string = str.join("", [vvs[i % len(vvs)] for i in range(0, _max)])
+            self.assert_success(section, key, hex_string, expected_value="0x%s" % hex_string)
+
+            hex_string = "0x%s" % hex_string
+            self.assert_success(section, key, hex_string, expected_value=hex_string)
 
             # Test invalid values.
             self.assert_fail(section, key, "", util.GetError)
@@ -307,13 +304,22 @@ class BaseTest(object):
                 self.assert_default(section, key)
 
             # Test valid values.
-            self.assert_success(section, key, 3325256704)
-            self.assert_success(section, key, "198.51.100.0/24")
-            self.assert_success(section, key, ipaddress.ip_network("198.51.100.0/24"))
+            self.assert_success(section, key,
+                3325256704, expected_value=ipaddress.ip_network(3325256704))
+            self.assert_success(section, key,
+                "198.51.100.0/24", expected_value=ipaddress.ip_network("198.51.100.0/24"))
+            self.assert_success(section, key,
+                ipaddress.ip_network("198.51.100.0/24"),
+                expected_value=ipaddress.ip_network("198.51.100.0/24"))
 
-            self.assert_success(section, key, 42540766411282592856903984951653826560)
-            self.assert_success(section, key, "2001:db8::/32")
-            self.assert_success(section, key, ipaddress.ip_network("2001:db8::/32"))
+            self.assert_success(section, key,
+                42540766411282592856903984951653826560,
+                expected_value=ipaddress.ip_network(42540766411282592856903984951653826560))
+            self.assert_success(section, key,
+                "2001:db8::/32", expected_value=ipaddress.ip_network("2001:db8::/32"))
+            self.assert_success(section, key,
+                ipaddress.ip_network("2001:db8::/32"),
+                expected_value=ipaddress.ip_network("2001:db8::/32"))
 
             # Test invalid values.
             self.assert_fail(section, key, "", util.GetError)
@@ -333,13 +339,20 @@ class BaseTest(object):
                 self.assert_default(section, key)
 
             # Test valid values.
-            self.assert_success(section, key, 3221225985)
-            self.assert_success(section, key, "192.0.2.1")
-            self.assert_success(section, key, ipaddress.ip_address("192.0.2.1"))
+            self.assert_success(section, key,
+                3221225985, expected_value=ipaddress.ip_address(3221225985))
+            self.assert_success(section, key,
+                "192.0.2.1", expected_value=ipaddress.ip_address("192.0.2.1"))
+            self.assert_success(section, key,
+                ipaddress.ip_address("192.0.2.1"), ipaddress.ip_address("192.0.2.1"))
 
-            self.assert_success(section, key, 42540766411282592856903984951653826561)
-            self.assert_success(section, key, "2001:db8::1")
-            self.assert_success(section, key, ipaddress.ip_address("2001:db8::1"))
+            self.assert_success(section, key,
+                42540766411282592856903984951653826561,
+                expected_value=ipaddress.ip_address(42540766411282592856903984951653826561))
+            self.assert_success(section, key,
+                "2001:db8::1", ipaddress.ip_address("2001:db8::1"))
+            self.assert_success(section, key,
+                ipaddress.ip_address("2001:db8::1"), ipaddress.ip_address("2001:db8::1"))
 
             # Test invalid values.
             self.assert_fail(section, key, "", util.GetError)
@@ -359,25 +372,25 @@ class BaseTest(object):
                 self.assert_default(section, key)
 
             # Test valid values.
-            self.assert_success(section, key, "8")
-            self.assert_success(section, key, 8)
-            self.assert_success(section, key, "16")
-            self.assert_success(section, key, 16)
-            self.assert_success(section, key, "24")
-            self.assert_success(section, key, 24)
-            self.assert_success(section, key, "32")
-            self.assert_success(section, key, 32)
+            self.assert_success(section, key, "8", expected_value=8)
+            self.assert_success(section, key, 8, expected_value=8)
+            self.assert_success(section, key, "16", expected_value=16)
+            self.assert_success(section, key, 16, expected_value=16)
+            self.assert_success(section, key, "24", expected_value=24)
+            self.assert_success(section, key, 24, expected_value=24)
+            self.assert_success(section, key, "32", expected_value=32)
+            self.assert_success(section, key, 32, expected_value=32)
 
             if is_ipv6:
-                self.assert_success(section, key, "64")
-                self.assert_success(section, key, 64)
-                self.assert_success(section, key, "128")
-                self.assert_success(section, key, 128)
+                self.assert_success(section, key, "64", expected_value=64)
+                self.assert_success(section, key, 64, expected_value=64)
+                self.assert_success(section, key, "128", expected_value=128)
+                self.assert_success(section, key, 128, expected_value=128)
             else:
-                self.assert_success(section, key, "255.0.0.0")
-                self.assert_success(section, key, "255.255.0.0")
-                self.assert_success(section, key, "255.255.255.0")
-                self.assert_success(section, key, "255.255.255.255")
+                self.assert_success(section, key, "255.0.0.0", expected_value=8)
+                self.assert_success(section, key, "255.255.0.0", expected_value=16)
+                self.assert_success(section, key, "255.255.255.0", expected_value=24)
+                self.assert_success(section, key, "255.255.255.255", expected_value=32)
 
             # Test invalid values.
             self.assert_fail(section, key, -1, util.GetError)
@@ -406,8 +419,8 @@ class BaseTest(object):
 
             # Test valid values.
             for e in enum:
-                self.assert_success(section, key, e.upper())
-                self.assert_success(section, key, e.lower())
+                self.assert_success(section, key, e.upper(), expected_value=e)
+                self.assert_success(section, key, e.lower(), expected_value=e)
 
             # Test invalid values.
             self.assert_fail(section, key, "", util.GetError)
@@ -426,7 +439,8 @@ class BaseTest(object):
 
             # Test valid values.
             if absolute:
-                self.assert_success(section, key, os.path.join(self.tmp_dir, "assert_path.txt"))
+                path = os.path.join(self.tmp_dir, "assert_path.txt")
+                self.assert_success(section, key, path, expected_value=path)
 
             if relative:
                 self.assert_success(section, key, "../assert_path.txt")

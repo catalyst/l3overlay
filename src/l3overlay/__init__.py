@@ -121,20 +121,25 @@ class Main(object):
         self.daemon.logger.info("finished handling SIGHUP")
 
 
-    def main(self):
+    @staticmethod
+    def argparser():
         '''
-        Main method.
+        Return a l3overlayd ArgumentParser object.
         '''
 
-        # Parse optional arguments, and return the final values which will be used
-        # in l3overlayd configuration.
         argparser = argparse.ArgumentParser(description="Construct one or more MPLS-like VRF networks using IPsec tunnels and network namespaces.")
 
         # Configuration options.
-        argparser.add_argument(
+        dry_run = argparser.add_mutually_exclusive_group(required=False)
+        dry_run.add_argument(
             "-dr", "--dry-run",
             action = "store_true",
             help = "test configuration and daemon without modifying the system",
+        )
+        dry_run.add_argument(
+            "-ndr", "--no-dry-run",
+            action = "store_false",
+            help = "do NOT test configuration and daemon without modifying the system",
         )
 
         argparser.add_argument(
@@ -145,16 +150,30 @@ class Main(object):
             help = "use LEVEL as the logging level parameter",
         )
 
-        argparser.add_argument(
+        use_ipsec = argparser.add_mutually_exclusive_group(required=False)
+        use_ipsec.add_argument(
             "-ui", "--use-ipsec",
             action = "store_true",
             help = "use IPsec encapsulation on the overlay mesh",
         )
-        argparser.add_argument(
+        use_ipsec.add_argument(
+            "-nui", "--no-use-ipsec",
+            action = "store_false",
+            help = "do NOT use IPsec encapsulation on the overlay mesh",
+        )
+
+        ipsec_manage = argparser.add_mutually_exclusive_group(required=False)
+        ipsec_manage.add_argument(
             "-im", "--ipsec-manage",
             action = "store_true",
             help = "operate in IPsec daemon management mode",
         )
+        ipsec_manage.add_argument(
+            "-nim", "--no-ipsec-manage",
+            action = "store_false",
+            help = "do NOT operate in IPsec daemon management mode",
+        )
+
         # No way we're having ipsec-psk as an argument, for obvious reasons.
 
         # Directory paths.
@@ -239,7 +258,17 @@ class Main(object):
             help = "write IPsec secrets to FILE",
         )
 
-        self.args = vars(argparser.parse_args())
+        return argparser
+
+
+    def main(self):
+        '''
+        Main method.
+        '''
+
+        # Parse optional arguments, and return the final values which will be used
+        # in l3overlayd configuration.
+        self.args = vars(Main.argparser().parse_args())
 
         # Configure the umask of this process so, by default, it will securely
         # create files.
@@ -258,7 +287,8 @@ class Main(object):
         # On exceptions: log output, and quit.
         try:
             # Create the PID file for this daemon.
-            util.pid_create(self.daemon.pid)
+            if not self.args["dry_run"]:
+                util.pid_create(self.daemon.pid)
 
             # Set up process signal handlers.
             self.daemon.logger.debug("setting up signal handlers")

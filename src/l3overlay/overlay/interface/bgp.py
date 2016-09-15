@@ -39,8 +39,8 @@ class BGP(Interface):
         self.neighbor = neighbor
         self.local = local
 
-        self._local_asn = local_asn
-        self._neighbor_asn = neighbor_asn
+        self.local_asn = local_asn
+        self.neighbor_asn = neighbor_asn
 
         self.bfd = bfd
         self.ttl_security = ttl_security
@@ -55,8 +55,8 @@ class BGP(Interface):
 
         super().setup(daemon, overlay)
 
-        self.local_asn = self._local_asn if self._local_asn else overlay.asn
-        self.neighbor_asn = self._neighbor_asn if self._neighbor_asn else overlay.asn
+        self.local_asn = self.local_asn if self.local_asn else overlay.asn
+        self.neighbor_asn = self.neighbor_asn if self.neighbor_asn else overlay.asn
 
 
     def is_ipv6(self):

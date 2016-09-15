@@ -70,10 +70,20 @@ l3overlay.main()''' % SRC_DIR)
         command = [util.command_path("python3"), test_py]
 
         for key, value in self.global_conf.items():
-            arg = "--%s" % key.replace("_", "-")
-            if value == True or value.lower() == "true":
-                command.append(arg)
-            elif not isinstance(value, bool):
+            akey = key.replace("_", "-")
+            arg = "--%s" % akey
+            if value is None:
+                continue
+            elif not key.startswith("no_"):
+                if value == True or (isinstance(value, str) and value.lower() == "true"):
+                    command.append(arg)
+            elif key.startswith("no_"):
+                if value == False or (isinstance(value, str) and value.lower() == "false"):
+                    command.append("--no-%s" % akey)
+            elif isinstance(value, list) or isinstance(value, tuple):
+                for v in value:
+                    command.extend([arg, v])
+            else:
                 command.extend([arg, value])
 
         with subprocess.Popen(

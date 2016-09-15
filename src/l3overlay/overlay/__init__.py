@@ -235,7 +235,8 @@ class Overlay(Worker):
         self.netns.start()
 
         self.logger.debug("creating overlay root directory")
-        util.directory_create(self.root_dir)
+        if not self.dry_run:
+            util.directory_create(self.root_dir)
 
         for mt in self.mesh_tunnels:
             mt.start()

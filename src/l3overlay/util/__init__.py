@@ -105,10 +105,10 @@ def hex_get_string(value, min=None, max=None):
             raise GetError("empty string not a valid hex integer")
 
         if min is not None and length < min:
-            raise GetError("hex integer '%s' too short, minimum %i digits required" % (value, min))
+            raise GetError("hex string '%s' too short, minimum %i digits required" % (value, min))
 
         if max is not None and length > max:
-            raise GetError("hex integer '%s' too long, maximum %i digits required" % (value, max))
+            raise GetError("hex string '%s' too long, maximum %i digits required" % (value, max))
 
         for v in value:
             if v not in string.hexdigits:

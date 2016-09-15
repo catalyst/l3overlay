@@ -176,7 +176,8 @@ class Daemon(worker.Worker):
             self.set_starting()
 
             self.logger.debug("creating lib dir '%s'" % self.lib_dir)
-            util.directory_create(self.lib_dir)
+            if not self.dry_run:
+                util.directory_create(self.lib_dir)
         except Exception as e:
             if self.logger.is_running():
                 self.logger.exception(e)
@@ -337,8 +338,11 @@ class ValueReader(object):
         self.conf = conf
         self.config = config
 
+        if not self.args:
+            raise ReadError("args is undefined")
 
-    def get(self, key, default=None):
+
+    def get(self, key, check_args=True, default=None):
         '''
         Get a key, and check the argument list and global configuration,
         in that order, for a corresponding value.
@@ -349,7 +353,7 @@ class ValueReader(object):
         arg_key = key.lower().replace("-", "_")
         config_key = key.lower().replace("_", "-")
 
-        if self.args and arg_key in self.args and self.args[arg_key] is not None:
+        if check_args and self.args[arg_key] is not None:
             return self.args[arg_key]
         elif self.config and config_key in self.config and self.config[config_key] is not None:
             return self.config[config_key]
@@ -357,7 +361,40 @@ class ValueReader(object):
             return default
 
 
-    def path_get(self, key, default=None):
+    def boolean_get(self, key, check_args=True, default=False):
+        '''
+        Get a key, and check the argument list and global configuration,
+        in that order, for a corresponding value, which should be type boolean.
+
+        If one is not found, return default.
+        '''
+
+        arg_key = key.lower().replace("-", "_")
+        no_arg_key = "no_%s" % arg_key
+        config_key = key.lower().replace("_", "-")
+
+        if check_args:
+            if no_arg_key not in self.args and arg_key not in self.args:
+                raise ReadError("%s and %s not defined in args for boolean argument '%s'" %
+                        (arg_key, no_arg_key, key))
+            if no_arg_key in self.args and arg_key not in self.args:
+                raise ReadError("%s not defined in args for boolean argument '%s'" %
+                        (arg_key, key))
+            if arg_key in self.args and no_arg_key not in self.args:
+                raise ReadError("%s not defined in args for boolean argument '%s'" %
+                        (no_arg_key, key))
+
+        if check_args and util.boolean_get(self.args[arg_key]) == True:
+            return True
+        elif check_args and util.boolean_get(self.args[no_arg_key]) == False:
+            return False
+        elif self.config and config_key in self.config and self.config[config_key] is not None:
+            return util.boolean_get(self.config[config_key])
+        else:
+            return default
+
+
+    def path_get(self, key, check_args=True, default=None):
         '''
         Get a key, and check the argument list and global configuration,
         in that order, for a corresponding value.
@@ -371,7 +408,7 @@ class ValueReader(object):
         arg_key = key.lower().replace("-", "_")
         config_key = key.lower().replace("_", "-")
 
-        if self.args and arg_key in self.args and self.args[arg_key] is not None:
+        if check_args and self.args[arg_key] is not None:
             return util.path_get(self.args[arg_key], relative_dir=os.getcwd())
         elif self.config and config_key in self.config and self.config[config_key] is not None:
             return util.path_get(self.config[config_key], relative_dir=os.path.dirname(self.conf))
@@ -395,7 +432,7 @@ def read(args):
     log = reader.get("log")
 
     log_level = util.enum_get(
-        reader.get("log-level", "INFO"),
+        reader.get("log-level", default="INFO"),
         ["NOTSET", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
     )
 
@@ -405,68 +442,89 @@ def read(args):
 
     # Log exceptions for the rest of the initialisation process.
     try:
+        if global_config:
+            lg.debug("loaded global configuration file '%s'" % global_conf)
+
         # Get (general) global configuration.
-        dry_run = util.boolean_get(reader.get("dry-run", False))
+        dry_run = reader.boolean_get("dry-run", default=False)
 
-        use_ipsec = util.boolean_get(reader.get("use-ipsec", False))
-        ipsec_manage = util.boolean_get(reader.get("ipsec-manage", True))
+        use_ipsec = reader.boolean_get("use-ipsec", default=True)
+        ipsec_manage = reader.boolean_get("ipsec-manage", default=True)
 
-        _psk = reader.get("ipsec-psk")
+        _psk = reader.get("ipsec-psk", check_args=False)
         ipsec_psk = util.hex_get_string(_psk, min=6, max=64) if _psk is not None else None
 
         # Get required directory paths.
         lib_dir = reader.path_get(
             "lib-dir",
-            os.path.join(util.path_root(), "var", "lib", "l3overlay"),
+            default = os.path.join(util.path_root(), "var", "lib", "l3overlay"),
         )
         overlay_dir = os.path.join(lib_dir, "overlays")
 
         fwbuilder_script_dir = reader.path_get(
             "fwbuilder-script-dir",
-            util.path_search("fwbuilder_scripts"),
+            default = util.path_search("fwbuilder_scripts"),
         )
         overlay_conf_dir = reader.path_get(
             "overlay-conf-dir",
-            util.path_search("overlays"),
+            default = util.path_search("overlays"),
         )
         template_dir = reader.path_get(
             "template-dir",
-            util.path_search("templates"),
+            default = util.path_search("templates"),
         )
 
         # Get required file paths.
         pid = reader.path_get(
             "pid",
-            os.path.join(util.path_root(), "var", "run", "l3overlayd.pid"),
+            default = os.path.join(util.path_root(), "var", "run", "l3overlayd.pid"),
         )
 
         ipsec_conf = reader.path_get(
             "ipsec-conf",
-            os.path.join(util.path_root(), "etc", "ipsec.d", "l3overlay.conf"),
+            default = os.path.join(util.path_root(), "etc", "ipsec.d", "l3overlay.conf"),
         )
         ipsec_secrets = reader.path_get(
             "ipsec-secrets",
-            os.path.join(util.path_root(), "etc",
+            default = os.path.join(util.path_root(), "etc",
                     "ipsec.secrets" if ipsec_manage else "ipsec.l3overlay.secrets"),
         )
 
         # Get overlay configuration file paths.
-        overlay_confs = args["overlay_conf"] if "overlay_conf" in args else None
+        overlay_confs = args["overlay_conf"]
 
         if overlay_confs is not None:
             if isinstance(overlay_confs, str):
-                overlay_confs = dict(util.path_get(overlay_confs, relative_dir=os.getcwd()))
+                overlay_confs = tuple(util.path_get(overlay_confs, relative_dir=os.getcwd()))
             elif isinstance(overlay_confs, list) or isinstance(overlay_confs, dict):
-                overlay_confs = (util.path_get(oc, relative_dir=os.getcwd()) for oc in overlay_confs)
+                overlay_confs = tuple((util.path_get(oc, relative_dir=os.getcwd()) for oc in overlay_confs))
             else:
                 raise ReadError("expected string, list or dict for overlay_confs, got %s: %s" %
                         (type(overlay_confs), overlay_confs))
 
         elif overlay_conf_dir is not None:
-            overlay_confs = (os.path.join(overlay_conf_dir, oc) for oc in os.listdir(overlay_conf_dir))
+            overlay_confs = tuple((os.path.join(overlay_conf_dir, oc) for oc in os.listdir(overlay_conf_dir)))
 
         else:
             raise NoOverlayConfError()
+
+        lg.debug("Global configuration:")
+        lg.debug("  dry-run = %s" % dry_run)
+        lg.debug("  use-ipsec = %s" % use_ipsec)
+        lg.debug("  ipsec-manage = %s" % ipsec_manage)
+        lg.debug("  ipsec-psk = %s" %
+                ("<redacted, length %i>" % len(ipsec_psk) if ipsec_psk else None))
+        lg.debug("  lib-dir = %s" % lib_dir)
+        lg.debug("  fwbuilder-script-dir = %s" % fwbuilder_script_dir)
+        lg.debug("  overlay-conf-dir = %s" % overlay_conf_dir)
+        lg.debug("  template-dir = %s" % template_dir)
+        lg.debug("")
+
+
+        lg.debug("Overlay configuration files:")
+        for overlay_conf in overlay_confs:
+            lg.debug("  %s" % overlay_conf)
+        lg.debug("")
 
         # Create the application state for each overlay.
         overlays = {}

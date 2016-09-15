@@ -18,6 +18,7 @@
 #
 
 
+import ipaddress
 import os
 import unittest
 
@@ -89,12 +90,24 @@ class OverlayTest(OverlayBaseTest.Class):
         Test that 'this-node' is properly handled by the overlay.
         '''
 
-        self.assert_name(
+        this_node = self.overlay_conf["overlay"]["this-node"]
+        self.assert_success(
             "overlay",
             "this-node",
-            valid_value = self.overlay_conf["overlay"]["this-node"],
-            invalid_exception = overlay.MissingThisNodeError,
+            self.overlay_conf["overlay"]["this-node"],
+            (
+                this_node,
+                ipaddress.ip_address(next(
+                    (
+                        v for k, v in self.overlay_conf["overlay"].items() if
+                                k.startswith("node-") and v.startswith(this_node)
+                    ),
+                ).split(" ")[1]),
+            )
         )
+
+        self.assert_fail("overlay", "this-node",
+            util.random_string(6), overlay.MissingThisNodeError)
 
 
     def test_fwbuilder_script(self):

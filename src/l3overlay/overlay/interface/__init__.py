@@ -32,6 +32,23 @@ from l3overlay.overlay.interface.base import ReadError
 from l3overlay.overlay.interface.base import WriteError
 
 
+def section_type_is_static_interface(section):
+    '''
+    Return True if the type of the given section is a static
+    interface of some kind.
+    '''
+
+    interface_type, name = util.section_split(section)
+
+    return (interface_type == "static-bgp" or
+            interface_type == "static-dummy" or
+            interface_type == "static-overlay-link" or
+            interface_type == "static-tunnel" or
+            interface_type == "static-tuntap" or
+            interface_type == "static-veth" or
+            interface_type == "static-vlan")
+
+
 def read(logger, section, config):
     '''
     Read an interface from the given configuration object.

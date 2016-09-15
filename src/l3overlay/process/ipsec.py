@@ -94,6 +94,7 @@ class Process(Worker):
             with open(self.ipsec_conf, "w") as f:
                 f.write(self.ipsec_conf_template.render(
                     file=self.ipsec_conf,
+                    ipsec_manage=self.ipsec_manage,
                     mesh_conns=self.mesh_conns,
                 ))
 
