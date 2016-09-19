@@ -174,8 +174,7 @@ Arguments: %s''' % (str.join(", ", (e.__name__ for e in exceptions)), gc))
         Test that 'ipsec_psk' is properly handled by the daemon.
         '''
 
-        pass
-        # self.assert_hex_string(None, "ipsec_psk", min=6, max=64)
+        self.assert_hex_string(None, "ipsec_psk", min=6, max=64)
 
 
     def test_lib_dir(self):

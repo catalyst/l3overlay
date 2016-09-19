@@ -342,7 +342,7 @@ class ValueReader(object):
             raise ReadError("args is undefined")
 
 
-    def get(self, key, check_args=True, default=None):
+    def get(self, key, check_args=True, args_optional=False, default=None):
         '''
         Get a key, and check the argument list and global configuration,
         in that order, for a corresponding value.
@@ -353,7 +353,9 @@ class ValueReader(object):
         arg_key = key.lower().replace("-", "_")
         config_key = key.lower().replace("_", "-")
 
-        if check_args and self.args[arg_key] is not None:
+        in_args = arg_key in self.args if args_optional else check_args
+
+        if in_args and self.args[arg_key] is not None:
             return self.args[arg_key]
         elif self.config and config_key in self.config and self.config[config_key] is not None:
             return self.config[config_key]
@@ -361,7 +363,7 @@ class ValueReader(object):
             return default
 
 
-    def boolean_get(self, key, check_args=True, default=False):
+    def boolean_get(self, key, check_args=True, args_optional=False, default=False):
         '''
         Get a key, and check the argument list and global configuration,
         in that order, for a corresponding value, which should be type boolean.
@@ -373,7 +375,9 @@ class ValueReader(object):
         no_arg_key = "no_%s" % arg_key
         config_key = key.lower().replace("_", "-")
 
-        if check_args:
+        in_args = arg_key in self.args if args_optional else check_args
+
+        if in_args:
             if no_arg_key not in self.args and arg_key not in self.args:
                 raise ReadError("%s and %s not defined in args for boolean argument '%s'" %
                         (arg_key, no_arg_key, key))
@@ -384,9 +388,9 @@ class ValueReader(object):
                 raise ReadError("%s not defined in args for boolean argument '%s'" %
                         (no_arg_key, key))
 
-        if check_args and util.boolean_get(self.args[arg_key]) == True:
+        if in_args and util.boolean_get(self.args[arg_key]) == True:
             return True
-        elif check_args and util.boolean_get(self.args[no_arg_key]) == False:
+        elif in_args and util.boolean_get(self.args[no_arg_key]) == False:
             return False
         elif self.config and config_key in self.config and self.config[config_key] is not None:
             return util.boolean_get(self.config[config_key])
@@ -394,7 +398,7 @@ class ValueReader(object):
             return default
 
 
-    def path_get(self, key, check_args=True, default=None):
+    def path_get(self, key, check_args=True, args_optional=False, default=None):
         '''
         Get a key, and check the argument list and global configuration,
         in that order, for a corresponding value.
@@ -408,7 +412,9 @@ class ValueReader(object):
         arg_key = key.lower().replace("-", "_")
         config_key = key.lower().replace("_", "-")
 
-        if check_args and self.args[arg_key] is not None:
+        in_args = arg_key in self.args if args_optional else check_args
+
+        if in_args and self.args[arg_key] is not None:
             return util.path_get(self.args[arg_key], relative_dir=os.getcwd())
         elif self.config and config_key in self.config and self.config[config_key] is not None:
             return util.path_get(self.config[config_key], relative_dir=os.path.dirname(self.conf))
@@ -451,7 +457,7 @@ def read(args):
         use_ipsec = reader.boolean_get("use-ipsec", default=True)
         ipsec_manage = reader.boolean_get("ipsec-manage", default=True)
 
-        _psk = reader.get("ipsec-psk", check_args=False)
+        _psk = reader.get("ipsec-psk", args_optional=True)
         ipsec_psk = util.hex_get_string(_psk, min=6, max=64) if _psk is not None else None
 
         # Get required directory paths.
