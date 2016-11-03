@@ -74,17 +74,17 @@ l3overlay.main()''' % SRC_DIR)
             arg = "--%s" % akey
             if value is None:
                 continue
-            elif not key.startswith("no_"):
-                if value == True or (isinstance(value, str) and value.lower() == "true"):
-                    command.append(arg)
-            elif key.startswith("no_"):
-                if value == False or (isinstance(value, str) and value.lower() == "false"):
-                    command.append("--no-%s" % akey)
             elif isinstance(value, list) or isinstance(value, tuple):
                 for v in value:
                     command.extend([arg, v])
+            elif key.startswith("no_"):
+                if value == False or (isinstance(value, str) and value.lower() == "false"):
+                    command.append("--no-%s" % akey)
             else:
-                command.extend([arg, value])
+                if value == True or (isinstance(value, str) and value.lower() == "true"):
+                    command.append(arg)
+                else:
+                    command.extend([arg, value])
 
         with subprocess.Popen(
             command,

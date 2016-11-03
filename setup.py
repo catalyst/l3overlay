@@ -21,7 +21,6 @@
 # https://github.com/pypa/sampleproject
 
 
-import codecs
 import os
 import setuptools
 import stat
@@ -38,50 +37,50 @@ def config_read(config_file):
 
     config = {}
 
-    with codecs.open(config_file, encoding="UTF-8") as f:
-        for line in f:
-            match = re.match("^([_A-Za-z][_A-Za-z0-9]*)\s*=\s*(.*)$", line)
+    if os.path.isfile(config_file):
+        with open(config_file, "r", encoding="UTF-8") as f:
+            for line in f:
+                match = re.match("^([_A-Za-z][_A-Za-z0-9]*)\s*=\s*(.*)$", line)
 
-            if match:
-                key = match.group(1)
-                value = match.group(2)
+                if match:
+                    key = match.group(1)
+                    value = match.group(2)
 
-                config[key] = value
+                    config[key] = value
 
     return config
 
 
-def var_replace(template, output, config, keys):
+def template_process(config, input_file, output_file):
     '''
-    Replace values in a template file according to the dictionary
-    of variables, and write the result to the output file.
+    Process the given input file with respect to the given config,
+    and write the result to the output file.
     '''
 
-    with codecs.open(template, mode="r", encoding="UTF-8") as f:
-        with codecs.open(output, mode="w", encoding="UTF-8") as g:
-            text = f.read()
+    with open(input_file, "r", encoding="UTF-8") as i:
+        with open(output_file, "w", encoding="UTF-8") as o:
+            text = i.read()
 
-            for k in keys:
-                key = k.upper()
-                text = re.sub("__%s__" % key, config[key], text)
+            for key, value in config.items():
+                text = re.sub("__%s__" % key, value, text)
 
-            g.write(text)
+            o.write(text)
 
 
 # Get the long description from the README file.
-with codecs.open(os.path.join(here, "README.md"), encoding="UTF-8") as f:
+with open(os.path.join(here, "README.md"), "r", encoding="UTF-8") as f:
     long_description = f.read()
 
 
 # Read the build system configuration.
 config = config_read(os.path.join(here, ".config"))
 
-prefix = config["PREFIX"]
-sbin_dir = config["SBIN_DIR"]
-config_dir = config["CONFIG_DIR"]
+prefix = config["PREFIX"] if "PREFIX" in config else "/usr/local"
+sbin_dir = config["SBIN_DIR"] if "SBIN_DIR" in config else "%s/sbin" % prefix
+config_dir = config["CONFIG_DIR"] if "CONFIG_DIR" in config else "%s/etc/l3overlay" % prefix
 
-with_init_d  = config["WITH_INIT_D"] if "WITH_INIT_D" in config else None
-with_upstart = config["WITH_UPSTART"] if "WITH_UPSTART" in config else None
+with_init_d  = config["WITH_INIT_D"] if "WITH_INIT_D" in config else False
+with_upstart = config["WITH_UPSTART"] if "WITH_UPSTART" in config else False
 
 l3overlayd = os.path.join(sbin_dir, "l3overlayd")
 
@@ -93,24 +92,24 @@ if with_upstart and with_init_d:
 
 # Build data files from templates.
 if with_upstart:
-    var_replace(
+    template_process(
+        config,
         os.path.join(here, "upstart", "l3overlay.conf.in"),
         os.path.join(here, "upstart", "l3overlay.conf"),
-        {"L3OVERLAYD": l3overlayd}, ["L3OVERLAYD"],
     )
 
 if with_init_d:
-    var_replace(
+    template_process(
+        config,
         os.path.join(here, "init.d", "l3overlay.in"),
         os.path.join(here, "init.d", "l3overlay"),
-        {"L3OVERLAYD": l3overlayd}, ["L3OVERLAYD"],
     )
 
 if with_upstart or with_init_d:
-    var_replace(
+    template_process(
+        config,
         os.path.join(here, "default", "l3overlay.in"),
         os.path.join(here, "default", "l3overlay"),
-        config, ["CONFIG_DIR"],
     )
 
 
