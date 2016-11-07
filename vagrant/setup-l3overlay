@@ -49,7 +49,8 @@ pip3 install jinja2 || exit $?
 service l3overlay stop || true
 
 make -C /vagrant test || exit $?
-make -C /vagrant install PREFIX="/usr" CONFIG_DIR="/etc/l3overlay" WITH_UPSTART=1 || exit $?
+make -C /vagrant install SBIN_DIR="/usr/sbin" CONFIG_DIR="/etc/l3overlay" || exit $?
+make -C /vagrant upstart-install PREFIX= SBIN_DIR="/usr/sbin" CONFIG_DIR="/etc/l3overlay" || exit $?
 
 dos2unix /etc/default/l3overlay || exit $?
 dos2unix /etc/init/l3overlay.conf || exit $?

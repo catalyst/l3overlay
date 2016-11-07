@@ -30,115 +30,29 @@ import re
 here = os.path.abspath(os.path.dirname(__file__))
 
 
-def config_read(config_file):
-    '''
-    Read variables from the given file into a dictionary, and return it.
-    '''
-
-    config = {}
-
-    if os.path.isfile(config_file):
-        with open(config_file, "r", encoding="UTF-8") as f:
-            for line in f:
-                match = re.match("^([_A-Za-z][_A-Za-z0-9]*)\s*=\s*(.*)$", line)
-
-                if match:
-                    key = match.group(1)
-                    value = match.group(2)
-
-                    config[key] = value
-
-    return config
-
-
-def template_process(config, input_file, output_file):
-    '''
-    Process the given input file with respect to the given config,
-    and write the result to the output file.
-    '''
-
-    with open(input_file, "r", encoding="UTF-8") as i:
-        with open(output_file, "w", encoding="UTF-8") as o:
-            text = i.read()
-
-            for key, value in config.items():
-                text = re.sub("__%s__" % key, value, text)
-
-            o.write(text)
-
-
 # Get the long description from the README file.
 with open(os.path.join(here, "README.md"), "r", encoding="UTF-8") as f:
     long_description = f.read()
 
 
-# Read the build system configuration.
-config = config_read(os.path.join(here, ".config"))
-
-prefix = config["PREFIX"] if "PREFIX" in config else "/usr/local"
-sbin_dir = config["SBIN_DIR"] if "SBIN_DIR" in config else "%s/sbin" % prefix
-config_dir = config["CONFIG_DIR"] if "CONFIG_DIR" in config else "%s/etc/l3overlay" % prefix
-
-with_init_d  = config["WITH_INIT_D"] if "WITH_INIT_D" in config else False
-with_upstart = config["WITH_UPSTART"] if "WITH_UPSTART" in config else False
-
-l3overlayd = os.path.join(sbin_dir, "l3overlayd")
-
-
-# Sanity check for Upstart config vs init.d script. These are mutually exclusive!
-if with_upstart and with_init_d:
-    raise RuntimeError("can only define one of 'WITH_UPSTART' or 'WITH_INIT_D'")
-
-
-# Build data files from templates.
-if with_upstart:
-    template_process(
-        config,
-        os.path.join(here, "upstart", "l3overlay.conf.in"),
-        os.path.join(here, "upstart", "l3overlay.conf"),
-    )
-
-if with_init_d:
-    template_process(
-        config,
-        os.path.join(here, "init.d", "l3overlay.in"),
-        os.path.join(here, "init.d", "l3overlay"),
-    )
-
-if with_upstart or with_init_d:
-    template_process(
-        config,
-        os.path.join(here, "default", "l3overlay.in"),
-        os.path.join(here, "default", "l3overlay"),
-    )
-
-
-# Set permissions.
-if with_init_d:
-    os.chmod(
-        os.path.join(here, "init.d", "l3overlay"),
-        stat.S_IRUSR|stat.S_IWUSR|stat.S_IXUSR|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH,
-    )
-
-
 # Map files to installation locations.
 data_files = [
     (
-        config_dir,
+        "/",
         [
             os.path.join(here, "l3overlay", "global.conf"),
         ],
     ),
 
     (
-        os.path.join(config_dir, "overlays"),
+        os.path.join("/", "overlays"),
         [
             os.path.join(here, "l3overlay", "overlays", "example.conf"),
         ],
     ),
 
     (
-        os.path.join(config_dir, "templates"),
+        os.path.join("/", "templates"),
         [
             os.path.join(here, "l3overlay", "templates", "bird.conf"),
             os.path.join(here, "l3overlay", "templates", "ipsec.conf"),
@@ -146,15 +60,6 @@ data_files = [
         ],
     ),
 ]
-
-if with_upstart:
-    data_files.append((os.path.join("/", "etc", "init"), [os.path.join(here, "upstart", "l3overlay.conf")]))
-
-if with_init_d:
-    data_files.append((os.path.join("/", "etc", "init.d"), [os.path.join(here, "init.d", "l3overlay")]))
-
-if with_upstart or with_init_d:
-    data_files.append((os.path.join("/", "etc", "default"), [os.path.join(here, "default", "l3overlay")]))
 
 
 # Setup the package.

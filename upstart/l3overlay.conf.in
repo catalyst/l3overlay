@@ -25,4 +25,4 @@ pre-start script
     initctl set-env DAEMON_ARGS="$DAEMON_ARGS"
 end script
 
-exec "__L3OVERLAYD__" $DAEMON_ARGS --pid "$PIDFILE"
+exec "__SBIN_DIR__/l3overlayd" $DAEMON_ARGS --pid "$PIDFILE"

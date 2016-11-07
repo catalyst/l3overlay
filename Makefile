@@ -31,7 +31,7 @@
 # parameters.
 #
 # Use them like so:
-#   $ make install <ARGUMENT>=<VALUE>
+#   $ make install <KEY>=<VALUE>
 #
 # Optional arguments:
 #
@@ -41,12 +41,6 @@
 # * INSTALL_PREFIX - configure l3overlayd to use a non-system Python
 #                    installation such as a virtualenv, specified by the root
 #                    directory of the installation
-#
-# * WITH_INIT_D - define this to build and install a /etc/init.d script for
-#                 l3overlay
-#
-# * WITH_UPSTART - define this to build and install a Upstart configuration for
-#                  l3overlay
 #
 
 ##############################
@@ -67,20 +61,11 @@ PKGNAME = l3overlay
 ## Build system installation locations.
 #
 
-ifndef NO_PREFIX
-PREFIX = /usr/local
-endif
-
-SBIN_DIR = $(PREFIX)/sbin
+PREFIX     = /usr/local
+SBIN_DIR   = $(PREFIX)/sbin
 CONFIG_DIR = $(PREFIX)/etc/l3overlay
 
-
-##############################
-
-
-#
-## staff-vpn default configuration values.
-#
+PARAMS = SBIN_DIR CONFIG_DIR
 
 
 ##############################
@@ -90,10 +75,11 @@ CONFIG_DIR = $(PREFIX)/etc/l3overlay
 ##  Build system runtime files and commands.
 #
 
-CONFIG   = .config
-SETUP_PY = setup.py
+CONFIG              = .config
+SETUP_PY            = setup.py
+TEMPLATE_PROCESS_PY = template_process.py
 
-SRC_DIR   = src
+SRC_DIR    = src
 MODULE_DIR = $(SRC_DIR)/$(PKGNAME)
 
 TESTS_BIN_DIR = tests/tests
@@ -126,10 +112,10 @@ endif
 # PIP = $(PYTHON) -m pip
 PIP = pip3
 
-FIND = find
-
-RM    = rm -f
-RMDIR = rm -rf
+FIND    = find
+INSTALL = install
+RM      = rm -f
+RMDIR   = rm -rf
 
 
 ##############################
@@ -139,12 +125,26 @@ RMDIR = rm -rf
 ## Build system parameters.
 #
 
-ifdef INSTALL_PREFIX
-override INSTALL_PREFIX := --prefix=$(INSTALL_PREFIX)
+ifdef VIRTUALENV
+SETUP_PY_PREFIX = --prefix=$(VIRTUALENV)
+else ifdef PREFIX
+SETUP_PY_PREFIX = --prefix=$(PREFIX)
 endif
 
 ifdef INSTALL_LIB
-override INSTALL_LIB := --install-lib=$(INSTALL_LIB)
+SETUP_PY_INSTALL_LIB = --install-lib=$(INSTALL_LIB)
+endif
+
+ifdef SBIN_DIR
+SETUP_PY_INSTALL_SCRIPTS = --install-scripts=$(SBIN_DIR)
+else ifdef INSTALL_SCRIPTS
+SETUP_PY_INSTALL_SCRIPTS = --install-scripts=$(INSTALL_SCRIPTS)
+endif
+
+ifdef CONFIG_DIR
+SETUP_PY_INSTALL_DATA = --install-data=$(CONFIG_DIR)
+else ifdef INSTALL_DATA
+SETUP_PY_INSTALL_DATA = --install-data=$(INSTALL_DATA)
 endif
 
 
@@ -152,24 +152,20 @@ endif
 
 
 all:
-	@echo "Targets:"
+	@echo "l3overlay make targets:"
 	@echo "  lint - run pylint code quality check"
 	@echo "  test - run unit tests"
+	@echo
 	@echo "  sdist - build Python source distribution"
 	@echo "  bdist_wheel - build Python binary wheel distribution"
+	@echo
 	@echo "  install - build and install to local system"
+	@echo "  sysv-install - generate and install a SysV init script"
+	@echo "  upstart-install - generate and install an Upstart configuration"
+	@echo
 	@echo "  uninstall - uninstall from local system"
 	@echo "  clean - clean build files"
 	@echo "See 'Makefile' for more details."
-
-
-config:
-	@echo -n > $(CONFIG)
-	@echo PREFIX=$(PREFIX) >> $(CONFIG)
-	@echo SBIN_DIR=$(SBIN_DIR) >> $(CONFIG)
-	@echo CONFIG_DIR=$(CONFIG_DIR) >> $(CONFIG)
-	@echo WITH_INIT_D=$(WITH_INIT_D) >> $(CONFIG)
-	@echo WITH_UPSTART=$(WITH_UPSTART) >> $(CONFIG)
 
 
 lint:
@@ -182,16 +178,29 @@ test:
 	done
 
 
-sdist: config
+sdist:
 	$(PYTHON) $(SETUP_PY) sdist
 
 
-bdist_wheel: config
+bdist_wheel:
 	$(PYTHON) $(SETUP_PY) bdist_wheel
 
 
-install: config
-	$(PYTHON) $(SETUP_PY) install --install-scripts=$(SBIN_DIR) $(INSTALL_PREFIX)
+install:
+	$(PYTHON) $(SETUP_PY) install $(SETUP_PY_PREFIX) $(SETUP_PY_INSTALL_LIB) $(SETUP_PY_INSTALL_SCRIPTS) $(SETUP_PY_INSTALL_DATA)
+
+
+%: %.in
+	$(PYTHON) $(TEMPLATE_PROCESS_PY) $< $@ $(foreach KEY, $(PARAMS), $(KEY)=$($(KEY)))
+
+default-install: default/$(NAME)
+	$(INSTALL) -m 644 default/$(NAME) $(PREFIX)/etc/default/$(NAME)
+
+sysv-install: default-install init.d/$(NAME)
+	$(INSTALL) -m 755 init.d/$(NAME) $(PREFIX)/etc/init.d/$(NAME)
+
+upstart-install: default-install upstart/$(NAME).conf
+	$(INSTALL) -m 644 upstart/$(NAME).conf $(PREFIX)/etc/init/$(NAME).conf
 
 
 uninstall:
@@ -200,9 +209,9 @@ uninstall:
 
 clean:
 	$(RM) $(CONFIG)
-	$(RM) default/l3overlay
-	$(RM) init.d/l3overlay
-	$(RM) upstart/l3overlay.conf
+	$(RM) default/$(NAME)
+	$(RM) init.d/$(NAME)
+	$(RM) upstart/$(NAME).conf
 	$(RMDIR) .tests
 	$(RMDIR) build
 	$(RMDIR) dist
@@ -212,4 +221,4 @@ clean:
 	done
 
 
-.PHONY: all config test sdist bdist_wheel install uninstall clean
+.PHONY: all lint test sdist bdist_wheel install default-install sysv-install upstart-install uninstall clean
