@@ -38,21 +38,21 @@ with open(os.path.join(here, "README.md"), "r", encoding="UTF-8") as f:
 # Map files to installation locations.
 data_files = [
     (
-        "/",
+        ".",
         [
             os.path.join(here, "l3overlay", "global.conf"),
         ],
     ),
 
     (
-        os.path.join("/", "overlays"),
+        "overlays",
         [
             os.path.join(here, "l3overlay", "overlays", "example.conf"),
         ],
     ),
 
     (
-        os.path.join("/", "templates"),
+        "templates",
         [
             os.path.join(here, "l3overlay", "templates", "bird.conf"),
             os.path.join(here, "l3overlay", "templates", "ipsec.conf"),

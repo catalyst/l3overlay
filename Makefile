@@ -135,16 +135,16 @@ ifdef INSTALL_LIB
 SETUP_PY_INSTALL_LIB = --install-lib=$(INSTALL_LIB)
 endif
 
-ifdef SBIN_DIR
-SETUP_PY_INSTALL_SCRIPTS = --install-scripts=$(SBIN_DIR)
-else ifdef INSTALL_SCRIPTS
+ifdef INSTALL_SCRIPTS
 SETUP_PY_INSTALL_SCRIPTS = --install-scripts=$(INSTALL_SCRIPTS)
+else ifdef SBIN_DIR
+SETUP_PY_INSTALL_SCRIPTS = --install-scripts=$(SBIN_DIR)
 endif
 
-ifdef CONFIG_DIR
-SETUP_PY_INSTALL_DATA = --install-data=$(CONFIG_DIR)
-else ifdef INSTALL_DATA
+ifdef INSTALL_DATA
 SETUP_PY_INSTALL_DATA = --install-data=$(INSTALL_DATA)
+else ifdef CONFIG_DIR
+SETUP_PY_INSTALL_DATA = --install-data=$(CONFIG_DIR)
 endif
 
 
@@ -191,7 +191,7 @@ install:
 
 
 %: %.in
-	$(PYTHON) $(TEMPLATE_PROCESS_PY) $< $@ $(foreach KEY, $(PARAMS), $(KEY)=$($(KEY)))
+	$(PYTHON) $(TEMPLATE_PROCESS_PY) $< $@ $(foreach KEY,$(PARAMS),$(KEY)=$($(KEY)))
 
 default-install: default/$(NAME)
 	$(INSTALL) -m 644 default/$(NAME) $(PREFIX)/etc/default/$(NAME)
