@@ -53,8 +53,8 @@ PKGNAME = l3overlay
 #
 
 # Parameters that can be changed.
-ifdef VENV
-PREFIX = $(VENV)
+ifdef VIRTUALENV
+PREFIX = $(VIRTUALENV)
 else
 PREFIX = /usr/local
 endif
@@ -63,7 +63,7 @@ INSTALL_SCRIPTS = $(PREFIX)/sbin
 
 # Constants that should not be changed, except for when using
 # template installation targets.
-CONFIG_DIR = $(VENV)/etc/l3overlay
+CONFIG_DIR = $(VIRTUALENV)/etc/l3overlay
 
 # Template file variable list.
 PARAMS = INSTALL_SCRIPTS CONFIG_DIR

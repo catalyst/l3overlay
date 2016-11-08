@@ -36,11 +36,10 @@ here = os.path.abspath(os.path.dirname(__file__))
 # If setup.py is being run in a virtualenv, install the
 # data files with respect to the virtualenv, otherwise,
 # use the top level configuration directory.
-print("%s, %s" % (sys.prefix, sys.base_prefix))
-if sys.prefix == sys.base_prefix:
-    prefix = "/"
-else:
+if sys.prefix != sys.base_prefix or hasattr(sys, "real_prefix"):
     prefix = sys.prefix
+else:
+    prefix = "/"
 
 
 # Get the long description from the README file.
