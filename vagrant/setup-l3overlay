@@ -20,6 +20,9 @@
 
 box=$1
 
+install_scripts="/usr/local/sbin"
+config_dir="/etc/l3overlay"
+
 if [ -z "${box}" ]
 then
     echo "usage: $(basename ${0}) <BOX>"
@@ -49,19 +52,19 @@ pip3 install jinja2 || exit $?
 service l3overlay stop || true
 
 make -C /vagrant test || exit $?
-make -C /vagrant install SBIN_DIR="/usr/sbin" CONFIG_DIR="/etc/l3overlay" || exit $?
-make -C /vagrant upstart-install PREFIX= SBIN_DIR="/usr/sbin" CONFIG_DIR="/etc/l3overlay" || exit $?
+make -C /vagrant install INSTALL_SCRIPTS="${install_scripts}" || exit $?
+make -C /vagrant upstart-install PREFIX= INSTALL_SCRIPTS="${install_scripts}" || exit $?
 
 dos2unix /etc/default/l3overlay || exit $?
 dos2unix /etc/init/l3overlay.conf || exit $?
 
-echo "Removing /etc/l3overlay/overlays... "
-rm -rf /etc/l3overlay/overlays || exit $?
+echo "Removing ${config_dir}/overlays... "
+rm -rf "${config_dir}/overlays" || exit $?
 
-echo "Installing /vagrant/vagrant/global.conf to /etc/l3overlay/global.conf... "
-cp /vagrant/vagrant/global.conf /etc/l3overlay/global.conf || exit $?
+echo "Installing /vagrant/vagrant/global.conf to ${config_dir}/global.conf... "
+cp /vagrant/vagrant/global.conf "${config_dir}/global.conf" || exit $?
 
-echo "Installing /vagrant/vagrant/${box}/overlays to /etc/l3overlay/overlays... "
-cp -R "/vagrant/vagrant/${box}/overlays" /etc/l3overlay/overlays || exit $?
+echo "Installing /vagrant/vagrant/${box}/overlays to ${config_dir}/overlays... "
+cp -R "/vagrant/vagrant/${box}/overlays" "${config_dir}/overlays" || exit $?
 
 service l3overlay start

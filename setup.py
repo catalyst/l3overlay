@@ -24,10 +24,23 @@
 import os
 import setuptools
 import stat
+import sys
 import re
 
 
+# Top-level source directory.
 here = os.path.abspath(os.path.dirname(__file__))
+
+
+# Determine the prefix for installing the data files.
+# If setup.py is being run in a virtualenv, install the
+# data files with respect to the virtualenv, otherwise,
+# use the top level configuration directory.
+print("%s, %s" % (sys.prefix, sys.base_prefix))
+if sys.prefix == sys.base_prefix:
+    prefix = "/"
+else:
+    prefix = sys.prefix
 
 
 # Get the long description from the README file.
@@ -38,21 +51,21 @@ with open(os.path.join(here, "README.md"), "r", encoding="UTF-8") as f:
 # Map files to installation locations.
 data_files = [
     (
-        ".",
+        os.path.join(prefix, "etc", "l3overlay"),
         [
             os.path.join(here, "l3overlay", "global.conf"),
         ],
     ),
 
     (
-        "overlays",
+        os.path.join(prefix, "etc", "l3overlay", "overlays"),
         [
             os.path.join(here, "l3overlay", "overlays", "example.conf"),
         ],
     ),
 
     (
-        "templates",
+        os.path.join(prefix, "etc", "l3overlay", "templates"),
         [
             os.path.join(here, "l3overlay", "templates", "bird.conf"),
             os.path.join(here, "l3overlay", "templates", "ipsec.conf"),

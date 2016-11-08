@@ -33,15 +33,6 @@
 # Use them like so:
 #   $ make install <KEY>=<VALUE>
 #
-# Optional arguments:
-#
-# * NO_PREFIX - define this to disable prepending the PREFIX to the
-#               configuration installation directory
-#
-# * INSTALL_PREFIX - configure l3overlayd to use a non-system Python
-#                    installation such as a virtualenv, specified by the root
-#                    directory of the installation
-#
 
 ##############################
 
@@ -58,24 +49,57 @@ PKGNAME = l3overlay
 
 
 #
-## Build system installation locations.
+## Build system parameters.
 #
 
-PREFIX     = /usr/local
-SBIN_DIR   = $(PREFIX)/sbin
-CONFIG_DIR = $(PREFIX)/etc/l3overlay
+# Parameters that can be changed.
+ifdef VENV
+PREFIX = $(VENV)
+else
+PREFIX = /usr/local
+endif
 
-PARAMS = SBIN_DIR CONFIG_DIR
+INSTALL_SCRIPTS = $(PREFIX)/sbin
+
+# Constants that should not be changed, except for when using
+# template installation targets.
+CONFIG_DIR = $(VENV)/etc/l3overlay
+
+# Template file variable list.
+PARAMS = INSTALL_SCRIPTS CONFIG_DIR
 
 
 ##############################
 
 
 #
-##  Build system runtime files and commands.
+## setup.py parameters.
 #
 
-CONFIG              = .config
+ifdef PREFIX
+SETUP_PY_PREFIX = --prefix=$(PREFIX)
+endif
+
+ifdef INSTALL_SCRIPTS
+SETUP_PY_INSTALL_SCRIPTS = --install-scripts=$(INSTALL_SCRIPTS)
+endif
+
+ifdef INSTALL_DATA
+SETUP_PY_INSTALL_DATA = --install-data=$(INSTALL_DATA)
+endif
+
+ifdef INSTALL_LIB
+SETUP_PY_INSTALL_LIB = --install-lib=$(INSTALL_LIB)
+endif
+
+
+##############################
+
+
+#
+## Build system files and directories.
+#
+
 SETUP_PY            = setup.py
 TEMPLATE_PROCESS_PY = template_process.py
 
@@ -85,7 +109,13 @@ MODULE_DIR = $(SRC_DIR)/$(PKGNAME)
 TESTS_BIN_DIR = tests/tests
 TESTS_SRC_DIR = tests
 
-PYLINT = pylint
+
+##############################
+
+
+#
+## Commands.
+#
 
 # Detect usable Python command, if not defined by the user.
 ifndef PYTHON
@@ -108,10 +138,13 @@ ifndef PYTHON
 $(error $(NAME) only supports Python >= 3.4.0)
 endif
 
+# Python tools.
+PYLINT = pylint
+PIP = pip3
 # An alternative to this if the default doesn't work:
 # PIP = $(PYTHON) -m pip
-PIP = pip3
 
+# System commands.
 FIND    = find
 INSTALL = install
 RM      = rm -f
@@ -122,34 +155,8 @@ RMDIR   = rm -rf
 
 
 #
-## Build system parameters.
+## Targets.
 #
-
-ifdef VIRTUALENV
-SETUP_PY_PREFIX = --prefix=$(VIRTUALENV)
-else ifdef PREFIX
-SETUP_PY_PREFIX = --prefix=$(PREFIX)
-endif
-
-ifdef INSTALL_LIB
-SETUP_PY_INSTALL_LIB = --install-lib=$(INSTALL_LIB)
-endif
-
-ifdef INSTALL_SCRIPTS
-SETUP_PY_INSTALL_SCRIPTS = --install-scripts=$(INSTALL_SCRIPTS)
-else ifdef SBIN_DIR
-SETUP_PY_INSTALL_SCRIPTS = --install-scripts=$(SBIN_DIR)
-endif
-
-ifdef INSTALL_DATA
-SETUP_PY_INSTALL_DATA = --install-data=$(INSTALL_DATA)
-else ifdef CONFIG_DIR
-SETUP_PY_INSTALL_DATA = --install-data=$(CONFIG_DIR)
-endif
-
-
-##############################
-
 
 all:
 	@echo "l3overlay make targets:"
@@ -190,7 +197,7 @@ install:
 	$(PYTHON) $(SETUP_PY) install $(SETUP_PY_PREFIX) $(SETUP_PY_INSTALL_LIB) $(SETUP_PY_INSTALL_SCRIPTS) $(SETUP_PY_INSTALL_DATA)
 
 
-%: %.in
+%: %.in .FORCE
 	$(PYTHON) $(TEMPLATE_PROCESS_PY) $< $@ $(foreach KEY,$(PARAMS),$(KEY)=$($(KEY)))
 
 default-install: default/$(NAME)
@@ -221,4 +228,6 @@ clean:
 	done
 
 
-.PHONY: all lint test sdist bdist_wheel install default-install sysv-install upstart-install uninstall clean
+.FORCE:
+
+.PHONY: all lint test sdist bdist_wheel install default-install sysv-install upstart-install uninstall clean .FORCE
