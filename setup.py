@@ -32,43 +32,19 @@ import re
 here = os.path.abspath(os.path.dirname(__file__))
 
 
-# Determine the prefix for installing the data files.
-# If setup.py is being run in a virtualenv, install the
-# data files with respect to the virtualenv, otherwise,
-# use the top level configuration directory.
-if sys.prefix != sys.base_prefix or hasattr(sys, "real_prefix"):
-    prefix = sys.prefix
-else:
-    prefix = "/"
-
-
 # Get the long description from the README file.
 with open(os.path.join(here, "README.md"), "r", encoding="UTF-8") as f:
     long_description = f.read()
 
 
-# Map files to installation locations.
+# Install templates to the filesystem.
 data_files = [
     (
-        os.path.join(prefix, "etc", "l3overlay"),
+        os.path.join(sys.prefix, "etc", "l3overlay", "templates"),
         [
-            os.path.join(here, "l3overlay", "global.conf"),
-        ],
-    ),
-
-    (
-        os.path.join(prefix, "etc", "l3overlay", "overlays"),
-        [
-            os.path.join(here, "l3overlay", "overlays", "example.conf"),
-        ],
-    ),
-
-    (
-        os.path.join(prefix, "etc", "l3overlay", "templates"),
-        [
-            os.path.join(here, "l3overlay", "templates", "bird.conf"),
-            os.path.join(here, "l3overlay", "templates", "ipsec.conf"),
-            os.path.join(here, "l3overlay", "templates", "ipsec.secrets"),
+            os.path.join(here, "templates", "bird.conf"),
+            os.path.join(here, "templates", "ipsec.conf"),
+            os.path.join(here, "templates", "ipsec.secrets"),
         ],
     ),
 ]
@@ -108,12 +84,12 @@ setuptools.setup(
 
     install_requires = ["jinja2", "pyroute2>=0.4.6"],
 
-    data_files = data_files,
-
     packages = setuptools.find_packages(where=os.path.join(here, "src")),
     package_dir = {"": "src"},
 
     entry_points = {
         "console_scripts": ["l3overlayd = l3overlay:main"],
     },
+
+    data_files = data_files,
 )
