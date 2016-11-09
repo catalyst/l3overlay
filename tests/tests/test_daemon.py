@@ -198,7 +198,7 @@ Arguments: %s''' % (str.join(", ", (e.__name__ for e in exceptions)), gc))
         Test that 'overlay_conf_dir' is properly handled by the daemon.
         '''
 
-        self.assert_path(None, "template_dir", test_default = True)
+        self.assert_path(None, "overlay_conf_dir", test_default=True)
 
 
     def test_template_dir(self):
