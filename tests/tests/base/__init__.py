@@ -74,7 +74,7 @@ class BaseTest(object):
 
                 "overlay_conf_dir": os.path.join(self.conf_dir, "overlays"),
                 "fwbuilder_script_dir": None,
-                "template_dir": os.path.join(ROOT_DIR, "l3overlay", "templates"),
+                "template_dir": os.path.join(ROOT_DIR, "templates"),
 
                 "ipsec_conf": None,
                 "ipsec_secrets": None,
