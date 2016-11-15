@@ -37,19 +37,6 @@ with open(os.path.join(here, "README.md"), "r", encoding="UTF-8") as f:
     long_description = f.read()
 
 
-# Install templates to the filesystem.
-data_files = [
-    (
-        os.path.join(sys.prefix, "etc", "l3overlay", "templates"),
-        [
-            os.path.join(here, "templates", "bird.conf"),
-            os.path.join(here, "templates", "ipsec.conf"),
-            os.path.join(here, "templates", "ipsec.secrets"),
-        ],
-    ),
-]
-
-
 # Setup the package.
 setuptools.setup(
     name = "l3overlay",
