@@ -25,6 +25,7 @@ import jinja2
 import logging
 import re
 import os
+import pkg_resources
 import random
 import shutil
 import signal
@@ -41,6 +42,10 @@ from l3overlay.util.exception import L3overlayError
 
 class GetError(L3overlayError):
     pass
+
+class SearchError(L3overlayError):
+    def __init__(self, filename):
+        super().__init__("unable to find file name '%s' in search paths" % filename)
 
 
 def boolean_get(value):
@@ -478,11 +483,11 @@ def path_root():
 # 7. /etc/l3overlay
 search_paths = [
     os.getcwd(),
-    os.path.join(os.getcwd(), "etc", "l3overlay"),
     os.path.join(os.getcwd(), "..", "etc", "l3overlay"),
+    os.path.join(os.getcwd(), "etc", "l3overlay"),
     path_my_dir(),
-    os.path.join(path_my_dir(), "etc", "l3overlay"),
     os.path.join(path_my_dir(), "..", "etc", "l3overlay"),
+    os.path.join(path_my_dir(), "etc", "l3overlay"),
     os.path.join(path_root(), "etc", "l3overlay"),
 ]
 
@@ -490,17 +495,17 @@ def path_search(filename, paths=search_paths):
     '''
     Returns the first instance of a valid filepath, made from the given 
     filename joined with each element from the list of paths. If it doesn't
-    find a match, returns the final filepath combination from the list.
+    find a match, returns None.
 
     Works with both files and directories, but does not distinguish them.
     '''
 
     for path in paths:
         filepath = os.path.join(path, filename)
-        if (os.path.exists(filepath)):
+        if os.path.exists(filepath):
             return filepath
 
-    return filepath
+    return None
 
 
 def file_remove(path):
@@ -685,4 +690,12 @@ def template_read(dir, file):
     '''
     '''
 
-    return jinja2.Environment(trim_blocks=True, loader=jinja2.FileSystemLoader(dir)).get_template(file)
+    if not os.path.isfile(os.path.join(dir, file)):
+        dir = os.path.dirname(
+            pkg_resources.resource_filename("l3overlay", os.path.join("template", file)),
+        )
+
+    return jinja2.Environment(
+        trim_blocks = True,
+        loader = jinja2.FileSystemLoader(dir),
+    ).get_template(file)

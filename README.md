@@ -34,19 +34,20 @@ l3overlay can be installed to the default location by simply using:
 
     sudo make install
 
-By default, this will install the `l3overlayd` executable into `/usr/local/sbin`, and it will make a configuration hierarchy in `/usr/local/etc/l3overlay`.
+By default, this will install the `l3overlayd` executable into `/usr/local/sbin`.
 
 See the `Makefile` for more details on how to change the installation locations.
 
 `l3overlayd` looks for files in the following directories, in the order shown:
 
 1. `(current working directory)`
-2. `(current working directory)/etc/l3overlay`
-3. `(current working directory)/../etc/l3overlay`
+2. `(current working directory)/../etc/l3overlay`
+3. `(current working directory)/etc/l3overlay`
 4. `(executable directory)`
-5. `(executable directory)/etc/l3overlay`
-6. `(executable directory)/../etc/l3overlay`
+5. `(executable directory)/../etc/l3overlay`
+6. `(executable directory)/etc/l3overlay`
 7. `/etc/l3overlay`
+8. `(package data)` (for the configuration templates directory)
 
 Any configuration files or directories mentioned in this document should be placed in any of the directories mentioned above. For instance, assuming `/etc/l3overlay` is the chosen directory, the global configuration and a test overlay configuration would be placed in the following filepaths:
 
@@ -58,13 +59,13 @@ Running
 
 Once l3overlay is installed and configured, it can be executed by simply running the `l3overlayd` command if it is located in the `PATH` environment variable, or by running the executable directly if it is not.
 
-If the `WITH_UPSTART` or `WITH_INIT_D` configuration options were specified when installing l3overlay, an Upstart configuration or `/etc/init.d` script would have been installed with l3overlay.
+If the `upstart-install` or `sysv-install` make targets are used, an Upstart configuration or System V init script would have been installed to the system.
 
 To start l3overlay as a service, simply run:
 
     sudo service l3overlay start
 
-To ensure that l3overlay starts with the system using the `/etc/init.d` script, this command should also be run:
+To ensure that l3overlay starts with the system using the `/etc/init.d` script, this command should also be run (on Ubuntu):
 
     sudo update-rc.d l3overlay defaults
 

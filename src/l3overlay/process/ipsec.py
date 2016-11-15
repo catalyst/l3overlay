@@ -18,6 +18,7 @@
 #
 
 
+import os
 import subprocess
 
 from l3overlay import util
@@ -64,7 +65,7 @@ class Process(Worker):
         self.ipsec_conf = daemon.ipsec_conf
         self.ipsec_secrets = daemon.ipsec_secrets
 
-        self.ipsec_conf_template = util.template_read(self.template_dir, "ipsec.conf")
+        self.ipsec_conf_template = util.template_read(self.template_dir,"ipsec.conf")
         self.ipsec_secrets_template = util.template_read(self.template_dir, "ipsec.secrets")
 
         # Create a dictionary which maps the name of the IPsec

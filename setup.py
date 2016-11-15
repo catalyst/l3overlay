@@ -91,5 +91,11 @@ setuptools.setup(
         "console_scripts": ["l3overlayd = l3overlay:main"],
     },
 
-    data_files = data_files,
+    package_data = {
+        'l3overlay': [
+            os.path.join("template", "bird.conf"),
+            os.path.join("template", "ipsec.conf"),
+            os.path.join("template", "ipsec.secrets"),
+        ],
+    },
 )

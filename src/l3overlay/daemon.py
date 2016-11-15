@@ -469,7 +469,7 @@ def read(args):
 
         fwbuilder_script_dir = reader.path_get(
             "fwbuilder-script-dir",
-            default = util.path_search("fwbuilder_scripts"),
+            default = util.path_search("fwbuilder-scripts"),
         )
         overlay_conf_dir = reader.path_get(
             "overlay-conf-dir",
