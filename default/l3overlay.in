@@ -31,4 +31,4 @@ LOG=/var/log/l3overlay.log
 
 # Amalgamate the configuration options into a set of arguments. This is required
 # for the above configuration options to take effect.
-DAEMON_ARGS="--overlay-conf-dir $OVERLAY_CONF_DIR --lib-dir $LIB_DIR --template-dir $TEMPLATE_DIR --global-conf $GLOBAL_CONF --log $LOG"
+DAEMON_ARGS="--global-conf $GLOBAL_CONF --overlay-conf-dir $OVERLAY_CONF_DIR --fwbuilder-script-dir $FWBUILDER_SCRIPT_DIR --template-dir $TEMPLATE_DIR --lib-dir $LIB_DIR --log $LOG"
