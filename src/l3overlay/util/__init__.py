@@ -331,7 +331,7 @@ def netmask_get(value, use_ipv6=False):
 
     maxlen = 128 if use_ipv6 else 32
 
-    if isinstance(value, str) and re.match("\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3}", value):
+    if isinstance(value, str) and re.match("\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}", value):
         if use_ipv6:
             raise GetError("dotted decimal netmask invalid when use_ipv6 is true, use CIDR instead")
 

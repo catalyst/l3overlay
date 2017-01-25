@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # IPsec overlay network manager (l3overlay)
 # vagrant/setup-l3overlay - l3overlay provisioning script for Vagrant test environment
@@ -18,7 +18,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-set -euf
+set -euf -o pipefail
 
 box=$1
 

@@ -1,33 +1,34 @@
 #!/bin/sh
 
-#
-# l3overlay file and directory locations.
-#
+# This file is managed by Puppet.
+# Any local changes will be overwritten.
+
+# l3overlay - IPsec overlay network amanger
+# __PREFIX__/etc/default/l3overlay - default l3overlay service parameters
 
 # l3overlay configuration directory.
-# Automatically specified by the build system.
-CONFIG_DIR=__CONFIG_DIR__
+CONFIG_DIR='__CONFIG_DIR__'
 
 # Global configuration location.
-GLOBAL_CONF=$CONFIG_DIR/global.conf
+GLOBAL_CONF="$CONFIG_DIR/global.conf"
 
 # Overlay configuration search directory.
-OVERLAY_CONF_DIR=$CONFIG_DIR/overlays
+OVERLAY_CONF_DIR="$CONFIG_DIR/overlays"
 
 # fwbuilder script search directory.
-FWBUILDER_SCRIPT_DIR=$CONFIG_DIR/fwbuilder_scripts
+FWBUILDER_SCRIPT_DIR="$CONFIG_DIR/fwbuilder-scripts"
 
 # System daemon configuration template search directory.
-TEMPLATE_DIR=$CONFIG_DIR/templates
+TEMPLATE_DIR="$CONFIG_DIR/templates"
 
 # Runtime data locations.
-LIB_DIR=/var/lib/l3overlay
+LIB_DIR='/var/lib/l3overlay'
 
 # File to log output to.
-LOG=/var/log/l3overlay.log
+LOG='/var/log/l3overlay.log'
 
-# PID lock file. Default specified in /etc/init.d/l3overlay.
-# PIDFILE=
+# PID lock file.
+#PID='/var/run/l3overlayd.pid'
 
 # Amalgamate the configuration options into a set of arguments. This is required
 # for the above configuration options to take effect.

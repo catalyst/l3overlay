@@ -18,6 +18,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+# l3overlay - IPsec overlay network manager
+# Makefile  - Build system
+
 
 ##############################
 
@@ -33,16 +36,6 @@
 # Use them like so:
 #   $ make install <KEY>=<VALUE>
 #
-
-##############################
-
-
-#
-## Name of the project.
-#
-
-NAME    = l3overlay
-PKGNAME = l3overlay
 
 
 ##############################
@@ -66,7 +59,7 @@ INSTALL_SCRIPTS = $(PREFIX)/sbin
 CONFIG_DIR = $(VIRTUALENV)/etc/l3overlay
 
 # Template file variable list.
-PARAMS = INSTALL_SCRIPTS CONFIG_DIR
+PARAMS = PREFIX INSTALL_SCRIPTS CONFIG_DIR
 
 
 ##############################
@@ -104,7 +97,7 @@ SETUP_PY            = setup.py
 TEMPLATE_PROCESS_PY = template_process.py
 
 SRC_DIR    = src
-MODULE_DIR = $(SRC_DIR)/$(PKGNAME)
+MODULE_DIR = $(SRC_DIR)/l3overlay
 
 TESTS_BIN_DIR = tests/tests
 TESTS_SRC_DIR = tests
@@ -135,7 +128,7 @@ PYTHON = $(shell which python3.4)
 endif
 
 ifndef PYTHON
-$(error $(NAME) only supports Python >= 3.4.0)
+$(error l3overlay only supports Python >= 3.4.0)
 endif
 
 # Python tools.
@@ -200,14 +193,14 @@ install:
 %: %.in .FORCE
 	$(PYTHON) $(TEMPLATE_PROCESS_PY) $< $@ $(foreach KEY,$(PARAMS),$(KEY)=$($(KEY)))
 
-default-install: default/$(NAME)
-	$(INSTALL) -m 644 default/$(NAME) $(PREFIX)/etc/default/$(NAME)
+default-install: default/l3overlay
+	$(INSTALL) -m 644 default/l3overlay $(PREFIX)/etc/default/l3overlay
 
-sysv-install: default-install init.d/$(NAME)
-	$(INSTALL) -m 755 init.d/$(NAME) $(PREFIX)/etc/init.d/$(NAME)
+sysv-install: default-install init.d/l3overlay
+	$(INSTALL) -m 755 init.d/l3overlay $(PREFIX)/etc/init.d/l3overlay
 
-upstart-install: default-install upstart/$(NAME).conf
-	$(INSTALL) -m 644 upstart/$(NAME).conf $(PREFIX)/etc/init/$(NAME).conf
+upstart-install: default-install upstart/l3overlay.conf
+	$(INSTALL) -m 644 upstart/l3overlay.conf $(PREFIX)/etc/init/l3overlay.conf
 
 
 uninstall:
@@ -216,13 +209,13 @@ uninstall:
 
 clean:
 	$(RM) $(CONFIG)
-	$(RM) default/$(NAME)
-	$(RM) init.d/$(NAME)
-	$(RM) upstart/$(NAME).conf
+	$(RM) default/l3overlay
+	$(RM) init.d/l3overlay
+	$(RM) upstart/l3overlay.conf
 	$(RMDIR) .tests
 	$(RMDIR) build
 	$(RMDIR) dist
-	$(RMDIR) src/$(NAME).egg-info
+	$(RMDIR) src/l3overlay.egg-info
 	for d in $(shell $(FIND) -name '__pycache__'); do \
 		$(RMDIR) $$d; \
 	done
