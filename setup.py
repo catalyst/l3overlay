@@ -69,7 +69,7 @@ setuptools.setup(
 
     keywords = "l3overlay ipsec bird routing namespace mesh network",
 
-    install_requires = ["jinja2", "pyroute2>=0.4.6"],
+    install_requires = ["jinja2", "pyroute2>=0.4.16"],
 
     packages = setuptools.find_packages(where=os.path.join(here, "src")),
     package_dir = {"": "src"},

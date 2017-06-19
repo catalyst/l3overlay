@@ -34,6 +34,12 @@
 # Use them like so:
 #   $ make install <KEY>=<VALUE>
 #
+# Examples:
+# - install l3overlay to a virtualenv and configuration in /opt,
+#   with an Upstart config installed to /etc:
+#     $ make install upstart-install \
+#       VIRTUALENV="/opt/venv/l3overlay" ETC_DIR="/etc" CONFIG_DIR="/opt/l3overlay"
+#
 
 
 ##############################
@@ -50,14 +56,16 @@ else
 PREFIX = /usr/local
 endif
 
-INSTALL_SCRIPTS = $(PREFIX)/sbin
+ETC_DIR  = $(PREFIX)/etc
+SBIN_DIR = $(PREFIX)/sbin
 
-# Constants that should not be changed, except for when using
-# template installation targets.
-CONFIG_DIR = $(VIRTUALENV)/etc/l3overlay
+CONFIG_DIR = $(ETC_DIR)/l3overlay
 
 # Template file variable list.
-PARAMS = PREFIX INSTALL_SCRIPTS CONFIG_DIR
+PARAMS = PREFIX ETC_DIR SBIN_DIR CONFIG_DIR CONFIG_DIR
+
+# Internal Makefile parameters that (normally) should not be changed.
+INSTALL_SCRIPTS = $(SBIN_DIR)
 
 
 ##############################
@@ -192,13 +200,13 @@ install:
 	$(PYTHON) $(TEMPLATE_PROCESS_PY) $< $@ $(foreach KEY,$(PARAMS),$(KEY)=$($(KEY)))
 
 default-install: default/l3overlay
-	$(INSTALL) -m 644 default/l3overlay $(PREFIX)/etc/default/l3overlay
+	$(INSTALL) -m 644 default/l3overlay $(ETC_DIR)/default/l3overlay
 
 sysv-install: default-install init.d/l3overlay
-	$(INSTALL) -m 755 init.d/l3overlay $(PREFIX)/etc/init.d/l3overlay
+	$(INSTALL) -m 755 init.d/l3overlay $(ETC_DIR)/init.d/l3overlay
 
 upstart-install: default-install upstart/l3overlay.conf
-	$(INSTALL) -m 644 upstart/l3overlay.conf $(PREFIX)/etc/init/l3overlay.conf
+	$(INSTALL) -m 644 upstart/l3overlay.conf $(ETC_DIR)/init/l3overlay.conf
 
 
 uninstall:

@@ -4,7 +4,7 @@
 # Any local changes will be overwritten.
 
 # l3overlay - IPsec overlay network amanger
-# __PREFIX__/etc/default/l3overlay - default l3overlay service parameters
+# __/default/l3overlay - default l3overlay service parameters
 
 # l3overlay configuration directory.
 CONFIG_DIR='__CONFIG_DIR__'

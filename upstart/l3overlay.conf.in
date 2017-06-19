@@ -1,5 +1,5 @@
 # l3overlay - IPsec overlay network manager
-# __PREFIX__/etc/init/l3overlay.conf - Upstart configuration file
+# __ETC_DIR__/init/l3overlay.conf - Upstart configuration file
 
 description "IPsec overlay network manager"
 author "Callum Dickinson <callum.dickinson@catalyst.net.nz>"
@@ -14,9 +14,9 @@ pre-start script
     # Set name, daemon name and daemon path.
     NAME='l3overlay'
     DAEMON_NAME='l3overlayd'
-    DAEMON='__INSTALL_SCRIPTS__/l3overlayd'
+    DAEMON='__SBIN_DIR__/l3overlayd'
 
-    DEFAULT='__PREFIX__/etc/default/l3overlay'
+    DEFAULT='__ETC_DIR__/default/l3overlay'
 
     # Set default PID lock file.
     PID="/var/run/$DAEMON_NAME.pid"

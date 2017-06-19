@@ -26,11 +26,11 @@ PATH='/sbin:/usr/sbin:/bin:/usr/bin'
 NAME='l3overlay'
 DESC='IPsec overlay network manager'
 
-FILE='__PREFIX__/etc/init.d/l3overlay'
-DEFAULT='__PREFIX__/etc/default/l3overlay'
+FILE='__ETC_DIR__/init.d/l3overlay'
+DEFAULT='__ETC_DIR__/default/l3overlay'
 
 DAEMON_NAME='l3overlayd'
-DAEMON='__INSTALL_SCRIPTS__/l3overlayd'
+DAEMON='__SBIN_DIR__/l3overlayd'
 DAEMON_ARGS=""
 PID="/var/run/$DAEMON_NAME.pid"
 

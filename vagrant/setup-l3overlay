@@ -54,8 +54,7 @@ pip3 install jinja2
 service l3overlay stop || true
 
 make -C /vagrant test
-make -C /vagrant install INSTALL_SCRIPTS="${install_scripts}"
-make -C /vagrant upstart-install PREFIX= INSTALL_SCRIPTS="${install_scripts}"
+make -C /vagrant install upstart-install ETC_DIR="/etc"
 
 dos2unix /etc/default/l3overlay
 dos2unix /etc/init/l3overlay.conf
