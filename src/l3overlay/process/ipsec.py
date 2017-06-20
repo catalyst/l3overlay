@@ -162,7 +162,7 @@ class Process(Worker):
             # When we manage IPsec, it is safe to stop it completely.
             self.logger.debug("stopping IPsec")
             if not self.dry_run:
-                subprocess.check_output([ipsec, "stop"], stderr=subprocess.STDOUT)
+                subprocess.check_output([self.ipsec, "stop"], stderr=subprocess.STDOUT)
 
         else:
             # When we don't, reload the configuration without the tunnels
