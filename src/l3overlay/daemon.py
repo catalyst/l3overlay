@@ -175,6 +175,12 @@ class Daemon(worker.Worker):
         try:
             self.set_starting()
 
+            # There should only be one instance of l3overlay per machine,
+            # so this SHOULD be okay. If it's not, well, we'll find out about it...
+            if not self.dry_run and os.path.exists(self.lib_dir):
+                self.logger.debug("removing existing lib dir '%s'" % self.lib_dir)
+                util.directory_remove(self.lib_dir)
+
             self.logger.debug("creating lib dir '%s'" % self.lib_dir)
             if not self.dry_run:
                 util.directory_create(self.lib_dir)
