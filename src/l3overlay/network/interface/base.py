@@ -119,6 +119,18 @@ class Interface(object):
             self.interface.net_ns_fd = netns.name
             self.ipdb.commit()
 
+            # Busy wait in this thread until the moved interface appears in the
+            # new namespace. Apparently needed to overcome a race condition
+            # between moving an interface to a new netns and the ipdb noticing
+            # the change in this thread.
+            # TODO: create a pyroute2 issue for this?
+            if self.name not in netns.ipdb.interfaces:
+                waited = 0.0
+                while self.name not in netns.ipdb.interfaces and waited < 10.0:
+                    waited += 0.001
+                    time.sleep(0.001)
+                assert self.name in netns.ipdb.interfaces
+
             self.root_ipdb = None
 
             self.netns = netns
