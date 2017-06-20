@@ -6,6 +6,16 @@ l3overlay is a tool used to build a MPLS-like VRF network between nodes/firewall
 Prerequisites
 -------------
 
+The following software packages are required to use the `Makefile` features:
+
+* **make**
+* **pylint**
+* **pip**
+
+The following Python modules are required to use `setup.py` to install l3overlay:
+
+* **setuptools**
+
 The following software packages are required to run l3overlay:
 
 * **Python**, version **3.4** or later
@@ -13,7 +23,7 @@ The following software packages are required to run l3overlay:
 * **BIRD** routing daemon, version **1.4.3** or later
 * **strongSwan** IPsec (if `use-ipsec` is set to `true` in `global.conf`)
 
-The following Python modules must also be installed:
+The following Python modules are also required to run l3overlay:
 
 * **pyroute2**, version **0.4.6** or later
 * **jinja2**
