@@ -31,6 +31,7 @@ import shutil
 import signal
 import string
 import sys
+import time
 
 from l3overlay.util.exception import L3overlayError
 
