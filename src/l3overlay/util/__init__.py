@@ -644,7 +644,7 @@ def pid_exists(pid=None, pid_file=None):
     return True if pid_get(pid, pid_file) else False
 
 
-def pid_kill(pid=None, pid_file=None, signal=signal.SIGTERM, increment=0.1, timeout=10):
+def pid_kill(pid=None, pid_file=None, signal=signal.SIGTERM, increment=0.001, timeout=10):
     '''
     Sends a signal to the process of the given PID or PID file, and waits
     for it to terminate.
