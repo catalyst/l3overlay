@@ -644,7 +644,7 @@ def pid_exists(pid=None, pid_file=None):
     return True if pid_get(pid, pid_file) else False
 
 
-def pid_kill(pid=None, pid_file=None, signal=signal.SIGTERM, timeout=10):
+def pid_kill(pid=None, pid_file=None, signal=signal.SIGTERM, increment=0.1, timeout=10):
     '''
     Sends a signal to the process of the given PID or PID file, and waits
     for it to terminate.
@@ -656,8 +656,8 @@ def pid_kill(pid=None, pid_file=None, signal=signal.SIGTERM, timeout=10):
         t = 0.0
         os.kill(p, signal)
         while t < timeout and pid_exists(pid=p):
-            time.sleep(1)
-            t += 0.1
+            time.sleep(increment)
+            t += increment
         if pid_exists(pid=p):
             raise RuntimeError("unable to terminate PID %s using signal '%s'" % (p, signal))
 
