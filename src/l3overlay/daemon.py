@@ -175,11 +175,7 @@ class Daemon(worker.Worker):
         try:
             self.set_starting()
 
-            # There should only be one instance of l3overlay per machine,
-            # so this SHOULD be okay. If it's not, well, we'll find out about it...
-            if not self.dry_run and os.path.exists(self.lib_dir):
-                self.logger.debug("removing existing lib dir '%s'" % self.lib_dir)
-                util.directory_remove(self.lib_dir)
+            self.cleanup()
 
             self.logger.debug("creating lib dir '%s'" % self.lib_dir)
             if not self.dry_run:
@@ -205,6 +201,45 @@ class Daemon(worker.Worker):
             if self.logger.is_running():
                 self.logger.exception(e)
             raise
+
+
+    def cleanup(self):
+        '''
+        Find and clean up any leftover unused state from previous l3overlay instances.
+        '''
+
+        if not self.dry_run:
+            if os.path.isdir(self.lib_dir):
+                self.logger.info("cleaning up existing lib dir '%s'" % self.lib_dir)
+                overlay_dir = os.path.join(self.lib_dir, "overlays")
+
+                for overlay_name in os.listdir(overlay_dir):
+                    if overlay_name not in self.overlays:
+
+                        self.logger.info("cleaning up data from unconfigured overlay '%s'" % overlay_name)
+
+                        overlay_logger = logger.create(self.log, self.log_level, "l3overlay", overlay_name)
+                        overlay_logger.start()
+                        o = overlay.Overlay(
+                            overlay_logger, overlay_name,
+                            True, 0, "0.0.0.0/0", None, [], None,
+                            [],
+                        )
+                        o.setup(self)
+
+                        # A bit of trickery to fool the Worker class into
+                        # stopping and removing the overlay application state.
+                        o.set_starting()
+                        o.set_started()
+                        o.bgp_process.set_starting()
+                        o.bgp_process.set_started()
+
+                        o.stop()
+                        o.remove()
+
+            elif os.path.exists(self.lib_dir):
+                self.logger.debug("removing file at lib dir path '%s'" % self.lib_dir)
+                os.remove(self.lib_dir)
 
 
     def stop(self):
@@ -239,7 +274,8 @@ class Daemon(worker.Worker):
 
         try:
             self.logger.debug("removing lib dir '%s'" % self.lib_dir)
-            util.directory_remove(self.lib_dir)
+            if not self.dry_run:
+                util.directory_remove(self.lib_dir)
 
             self.set_stopped()
         except Exception as e:
