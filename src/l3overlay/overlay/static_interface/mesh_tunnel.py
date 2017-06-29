@@ -1,6 +1,6 @@
 #
 # IPsec overlay network manager (l3overlay)
-# l3overlay/overlay/interface/mesh)tunnel.py - mesh tunnel
+# l3overlay/overlay/static_interface/mesh_tunnel.py - mesh tunnel
 #
 # Copyright (c) 2017 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify
@@ -26,10 +26,12 @@ from l3overlay.network.interface import bridge
 from l3overlay.network.interface import gre
 from l3overlay.network.interface import veth
 
-from l3overlay.overlay.interface.base import Interface
+from l3overlay.overlay import active_interface
+
+from l3overlay.overlay.static_interface.base import StaticInterface
 
 
-class MeshTunnel(Interface):
+class MeshTunnel(StaticInterface):
     '''
     Used to configure a mesh tunnel interface.
     '''
@@ -70,21 +72,6 @@ class MeshTunnel(Interface):
 
         self.daemon.gre_key_add(self.physical_local, self.physical_remote, self.asn)
         self.daemon.mesh_links.add((self.physical_local, self.physical_remote))
-
-
-    def is_ipv6(self):
-        '''
-        Returns True if this mesh tunnel interface uses an IPv6
-        virtual subnet.
-        '''
-
-        if self.virtual_netmask == 127:
-            return True
-        elif self.virtual_netmask == 31:
-            return False
-        else:
-            raise RuntimeError("unexpected virtual netmask value '%s', expected 127 or 31" %
-                    self.virtual_netmask)
 
 
     def start(self):
@@ -164,7 +151,35 @@ class MeshTunnel(Interface):
 
         self.daemon.gre_key_remove(self.physical_local, self.physical_remote, self.asn)
 
-Interface.register(MeshTunnel)
+
+    def is_ipv6(self):
+        '''
+        Returns True if this mesh tunnel interface uses an IPv6
+        virtual subnet.
+        '''
+
+        if self.virtual_netmask == 127:
+            return True
+        elif self.virtual_netmask == 31:
+            return False
+        else:
+            raise RuntimeError("unexpected virtual netmask value '%s', expected 127 or 31" %
+                    self.virtual_netmask)
+
+
+    def active_interfaces(self):
+        '''
+        Return an iterable of ActiveInterface objects representing the
+        physical interfaces this static interface uses.
+        '''
+
+        return (
+            active_interface.create(self.logger, self.bridge_name, None),
+            active_interface.create(self.logger, self.root_veth_name, None),
+            active_interface.create(self.logger, self.name, None),
+        )
+
+StaticInterface.register(MeshTunnel)
 
 
 def create(logger, name,

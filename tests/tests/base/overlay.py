@@ -22,7 +22,7 @@ import copy
 
 import l3overlay.overlay
 
-import l3overlay.overlay.interface
+import l3overlay.overlay.static_interface
 
 from l3overlay import util
 
@@ -79,9 +79,9 @@ class OverlayBaseTest(object):
                 return vars(overlay)[key]
             elif section.startswith("static"):
                 name = util.section_name_get(section)
-                for i in overlay.interfaces:
-                    if name == i.name:
-                        return vars(i)[key]
+                for si in overlay.static_interfaces:
+                    if name == si.name:
+                        return vars(si)[key]
             else:
                 raise RuntimeError("unknown section type '%s'" % section)
 
@@ -125,10 +125,10 @@ class OverlayBaseTest(object):
             self.assertIsInstance(overlay, l3overlay.overlay.Overlay)
             if expected_value is not None:
                 k = expected_key if expected_key else key
-                if l3overlay.overlay.interface.section_type_is_static_interface(section):
-                    for interface in overlay.interfaces:
-                        if interface.name == util.section_name_get(section):
-                            self.assertEqual(expected_value, vars(interface)[k.replace("-", "_")])
+                if l3overlay.overlay.static_interface.section_type_is_static_interface(section):
+                    for si in overlay.static_interfaces:
+                        if si.name == util.section_name_get(section):
+                            self.assertEqual(expected_value, vars(si)[k.replace("-", "_")])
                             break
                 else:
                     self.assertEqual(expected_value, vars(overlay)[k.replace("-", "_")])

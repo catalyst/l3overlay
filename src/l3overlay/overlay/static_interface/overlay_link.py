@@ -1,6 +1,6 @@
 #
 # IPsec overlay network manager (l3overlay)
-# l3overlay/interface/overlay_link.py - static overlay link
+# l3overlay/overlay/static_interface/overlay_link.py - static overlay link
 #
 # Copyright (c) 2017 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify
@@ -27,11 +27,14 @@ from l3overlay.network.interface import bridge
 from l3overlay.network.interface import dummy
 from l3overlay.network.interface import veth
 
-from l3overlay.overlay.interface.base import Interface
-from l3overlay.overlay.interface.base import ReadError
+from l3overlay.overlay import active_interface
+
+from l3overlay.overlay.interface import ReadError
+
+from l3overlay.overlay.static_interface.base import StaticInterface
 
 
-class OverlayLink(Interface):
+class OverlayLink(StaticInterface):
     '''
     Used to configure a fully addressed and linked
     point-to-point connection between two overlays.
@@ -159,7 +162,20 @@ class OverlayLink(Interface):
 
         self.logger.info("finished stopping static overlay link '%s'" % self.name)
 
-Interface.register(OverlayLink)
+
+    def active_interfaces(self):
+        '''
+        Return an iterable of ActiveInterface objects representing the
+        physical interfaces this static interface uses.
+        '''
+
+        return (
+            active_interface.create(self.logger, self.bridge_name, self.inner_netns.name),
+            active_interface.create(self.logger, self.dummy_name, self.inner_netns.name),
+            active_interface.create(self.logger, self.outer_name, self.inner_netns.name),
+        )
+
+StaticInterface.register(OverlayLink)
 
 
 def read(logger, name, config):

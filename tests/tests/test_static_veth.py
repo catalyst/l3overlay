@@ -24,7 +24,7 @@ import unittest
 from l3overlay import overlay
 from l3overlay import util
 
-from l3overlay.overlay.interface.base import ReadError
+from l3overlay.overlay.interface import ReadError
 
 from tests.base.static_interface import StaticInterfaceBaseTest
 

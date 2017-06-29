@@ -90,7 +90,7 @@ class StaticInterfaceBaseTest(object):
             # Test that the static interface is parsed successfully with a valid
             # name, and is available.
             overlay = self.assert_success(None, None, None)
-            self.assertTrue(next((i for i in overlay.interfaces if i.name == self.section_name), None))
+            self.assertTrue(next((si for si in overlay.static_interfaces if si.name == self.section_name), None))
 
             # Test the same section, with a section name containing spaces.
             # Make sure it fails.

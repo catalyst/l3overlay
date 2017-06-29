@@ -25,8 +25,8 @@ import re
 from l3overlay import overlay
 from l3overlay import util
 
-from l3overlay.overlay.interface.overlay_link import OverlayLink
-from l3overlay.overlay.interface.veth import VETH
+from l3overlay.overlay.static_interface.overlay_link import OverlayLink
+from l3overlay.overlay.static_interface.veth import VETH
 
 from l3overlay.process import ipsec as ipsec_process
 
@@ -113,20 +113,20 @@ class Daemon(worker.Worker):
         Recursive helper method to overlays_list_sorted.
         '''
 
-        for i in o.interfaces:
-            if isinstance(i, VETH) and i.inner_namespace in self.overlays:
+        for si in o.static_interfaces:
+            if isinstance(si, VETH) and si.inner_namespace in self.overlays:
                 try:
-                    os.remove(i.inner_namespace)
+                    os.remove(si.inner_namespace)
                 except ValueError:
                     continue
-                self._overlays_list_sorted(os, sos, self.overlays[i.inner_namespace])
+                self._overlays_list_sorted(os, sos, self.overlays[si.inner_namespace])
 
-            elif isinstance(i, OverlayLink):
+            elif isinstance(si, OverlayLink):
                 try:
-                    os.remove(i.inner_overlay_name)
+                    os.remove(si.inner_overlay_name)
                 except ValueError:
                     continue
-                self._overlays_list_sorted(os, sos, self.overlays[i.inner_overlay_name])
+                self._overlays_list_sorted(os, sos, self.overlays[si.inner_overlay_name])
 
         sos.append(o)
 
@@ -176,10 +176,8 @@ class Daemon(worker.Worker):
             self.set_starting()
 
             self.cleanup()
+            self.create_lib_dir()
 
-            self.logger.debug("creating lib dir '%s'" % self.lib_dir)
-            if not self.dry_run:
-                util.directory_create(self.lib_dir)
         except Exception as e:
             if self.logger.is_running():
                 self.logger.exception(e)
@@ -188,6 +186,7 @@ class Daemon(worker.Worker):
         for o in self.sorted_overlays:
             try:
                 o.start()
+
             except Exception as e:
                 if o.logger.is_running():
                     o.logger.exception(e)
@@ -195,8 +194,8 @@ class Daemon(worker.Worker):
 
         try:
             self.ipsec_process.start()
-
             self.set_started()
+
         except Exception as e:
             if self.logger.is_running():
                 self.logger.exception(e)
@@ -211,28 +210,17 @@ class Daemon(worker.Worker):
         if not self.dry_run:
             if os.path.isdir(self.lib_dir):
                 self.logger.info("cleaning up existing lib dir '%s'" % self.lib_dir)
-                overlay_dir = os.path.join(self.lib_dir, "overlays")
+                overlays_dir = os.path.join(self.lib_dir, "overlays")
 
-                for overlay_name in os.listdir(overlay_dir):
+                for overlay_name in os.listdir(overlays_dir):
                     if overlay_name not in self.overlays:
-
                         self.logger.info("cleaning up data from unconfigured overlay '%s'" % overlay_name)
 
-                        overlay_logger = logger.create(self.log, self.log_level, "l3overlay", overlay_name)
-                        overlay_logger.start()
-                        o = overlay.Overlay(
-                            overlay_logger, overlay_name,
-                            True, 0, "0.0.0.0/0", None, [], None,
-                            [],
-                        )
-                        o.setup(self)
+                        overlay_conf = os.path.join(overlays_dir, overlay_name, "overlay.conf")
+                        o = overlay.read(self.log, self.log_level, conf=overlay_conf)
 
-                        # A bit of trickery to fool the Worker class into
-                        # stopping and removing the overlay application state.
-                        o.set_starting()
-                        o.set_started()
-                        o.bgp_process.set_starting()
-                        o.bgp_process.set_started()
+                        o.setup(self)
+                        o.start()
 
                         o.stop()
                         o.remove()
@@ -240,6 +228,16 @@ class Daemon(worker.Worker):
             elif os.path.exists(self.lib_dir):
                 self.logger.debug("removing file at lib dir path '%s'" % self.lib_dir)
                 os.remove(self.lib_dir)
+
+
+    def create_lib_dir(self):
+        '''
+        Create the runtime data (lib) directory.
+        '''
+
+        self.logger.debug("creating lib dir '%s'" % self.lib_dir)
+        if not self.dry_run:
+            util.directory_create(self.lib_dir)
 
 
     def stop(self):

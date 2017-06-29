@@ -101,7 +101,7 @@ class Worker(metaclass=abc.ABCMeta):
     description = "worker"
 
 
-    def __init__(self, use_setup = False, use_remove = False):
+    def __init__(self, states={}, use_setup=False, use_remove=False):
         '''
         Set up worker internal fields.
         '''
@@ -113,6 +113,16 @@ class Worker(metaclass=abc.ABCMeta):
             STATES,
             False,
         )
+
+        # State value override.
+        if states:
+            for (key, value) in states.items():
+                if key in self._states:
+                    if not isinstance(value, bool):
+                        raise InvalidWorkerStateValueError(self, state, STATES)
+                    self._states[key] = value
+                else:
+                    raise InvalidWorkerStateError(self, state, value)
 
 
     def _assert_state(self):

@@ -1,6 +1,6 @@
 #
 # IPsec overlay network manager (l3overlay)
-# l3overlay/overlay/interface/vlan.py - static vlan
+# l3overlay/overlay/static_interface/vlan.py - static vlan
 #
 # Copyright (c) 2017 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify
@@ -26,10 +26,12 @@ from l3overlay.network.interface import bridge
 from l3overlay.network.interface import veth
 from l3overlay.network.interface import vlan
 
-from l3overlay.overlay.interface.base import Interface
+from l3overlay.overlay import active_interface
+
+from l3overlay.overlay.static_interface.base import StaticInterface
 
 
-class VLAN(Interface):
+class VLAN(StaticInterface):
     '''
     Used to configure a IEEE 802.1Q VLAN interface.
     '''
@@ -59,15 +61,6 @@ class VLAN(Interface):
         self.root_veth_name = self.daemon.interface_name(self.vlan_name, suffix="v")
         self.netns_veth_name = self.daemon.interface_name(self.vlan_name, suffix="v")
         self.bridge_name = self.daemon.interface_name(self.vlan_name, suffix="br")
-
-
-    def is_ipv6(self):
-        '''
-        Returns True if this static vlan has an IPv6 address
-        assigned to it.
-        '''
-
-        return util.ip_address_is_v6(self.address)
 
 
     def start(self):
@@ -155,7 +148,29 @@ class VLAN(Interface):
 
         self.logger.info("finished stopping static vlan '%s'" % self.name)
 
-Interface.register(VLAN)
+
+    def is_ipv6(self):
+        '''
+        Returns True if this static vlan has an IPv6 address
+        assigned to it.
+        '''
+
+        return util.ip_address_is_v6(self.address)
+
+
+    def active_interfaces(self):
+        '''
+        Return an iterable of ActiveInterface objects representing the
+        physical interfaces this static interface uses.
+        '''
+
+        return (
+            active_interface.create(self.logger, self.bridge_name, None),
+            active_interface.create(self.logger, self.root_veth_name, None),
+            active_interface.create(self.logger, self.vlan_name, None),
+        )
+
+StaticInterface.register(VLAN)
 
 
 def read(logger, name, config):

@@ -1,6 +1,6 @@
 #
 # IPsec overlay network manager (l3overlay)
-# l3overlay/overlay/interface/bgp.py - static bgp
+# l3overlay/overlay/static_interface/bgp.py - static bgp
 #
 # Copyright (c) 2017 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify
@@ -20,16 +20,16 @@
 
 from l3overlay import util
 
-from l3overlay.overlay.interface.base import Interface
+from l3overlay.overlay.static_interface.base import StaticInterface
 
 
-class BGP(Interface):
+class BGP(StaticInterface):
     '''
     Used to configure a static BGP protocol.
     '''
 
     def __init__(self, logger, name,
-            neighbor, local, local_asn, neighbor_asn, bfd, ttl_security, import_prefixes):
+            neighbor, local, local_asn, neighbor_asn, bfd, ttl_security, description, import_prefixes):
         '''
         Set up static bgp internal fields.
         '''
@@ -45,6 +45,8 @@ class BGP(Interface):
         self.bfd = bfd
         self.ttl_security = ttl_security
 
+        self.bgp_description = description
+
         self.import_prefixes = tuple(import_prefixes)
 
 
@@ -59,6 +61,22 @@ class BGP(Interface):
         self.neighbor_asn = self.neighbor_asn if self.neighbor_asn else overlay.asn
 
 
+    def start(self):
+        '''
+        Starts with the BGP process.
+        '''
+
+        pass
+
+
+    def stop(self):
+        '''
+        Stops with the BGP process.
+        '''
+
+        pass
+
+
     def is_ipv6(self):
         '''
         Returns True if this static bgp has an IPv6 address
@@ -68,22 +86,15 @@ class BGP(Interface):
         return util.ip_address_is_v6(self.neighbor)
 
 
-    def start(self):
+    def active_interfaces(self):
         '''
-        Starts with the BGP process.
-        '''
-
-        return
-
-
-    def stop(self):
-        '''
-        Stops with the BGP process.
+        Return an empty iterable, because a static BGP does not
+        use its own physical interfaces.
         '''
 
-        return
+        return dict()
 
-Interface.register(BGP)
+StaticInterface.register(BGP)
 
 
 def read(logger, name, config):
@@ -105,7 +116,7 @@ def read(logger, name, config):
     import_prefixes = [util.bird_prefix_get(v) for k, v in config.items() if k.startswith("import-prefix")]
 
     return BGP(logger, name,
-            neighbor, local, local_asn, neighbor_asn, bfd, ttl_security, import_prefixes)
+            neighbor, local, local_asn, neighbor_asn, bfd, ttl_security, description, import_prefixes)
 
 
 def write(bgp, config):
@@ -127,8 +138,8 @@ def write(bgp, config):
     if bgp.ttl_security:
         config["ttl-security"] = str(bgp.ttl_security).lower()
 
-    if bgp.description:
-        config["description"] = bgp.description
+    if bgp.bgp_description:
+        config["description"] = bgp.bgp_description
 
     if bgp.import_prefixes:
         for i, import_prefix in enumerate(bgp.import_prefixes):

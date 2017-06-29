@@ -1,6 +1,6 @@
 #
 # IPsec overlay network manager (l3overlay)
-# l3overlay/overlay/interface/dummy.py - static dummy
+# l3overlay/overlay/static_interface/dummy.py - static dummy
 #
 # Copyright (c) 2017 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify
@@ -22,10 +22,12 @@ from l3overlay import util
 
 from l3overlay.network.interface import dummy
 
-from l3overlay.overlay.interface.base import Interface
+from l3overlay.overlay import active_interface
+
+from l3overlay.overlay.static_interface.base import StaticInterface
 
 
-class Dummy(Interface):
+class Dummy(StaticInterface):
     '''
     Used to configure a dummy interface.
     '''
@@ -50,15 +52,6 @@ class Dummy(Interface):
         super().setup(daemon, overlay)
 
         self.dummy_name = self.daemon.interface_name(self.name)
-
-
-    def is_ipv6(self):
-        '''
-        Returns True if this static dummy has an IPv6 address
-        assigned to it.
-        '''
-
-        return util.ip_address_is_v6(self.address)
 
 
     def start(self):
@@ -91,7 +84,25 @@ class Dummy(Interface):
 
         self.logger.info("finished stopping static dummy '%s'" % self.name)
 
-Interface.register(Dummy)
+
+    def is_ipv6(self):
+        '''
+        Returns True if this static dummy has an IPv6 address
+        assigned to it.
+        '''
+
+        return util.ip_address_is_v6(self.address)
+
+
+    def active_interfaces(self):
+        '''
+        Return an iterable of ActiveInterface objects representing the
+        physical interfaces this static interface uses.
+        '''
+
+        return (active_interface.create(self.logger, self.dummy_name, self.netns.name),)
+
+StaticInterface.register(Dummy)
 
 
 def read(logger, name, config):

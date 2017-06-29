@@ -26,13 +26,13 @@ import socket
 
 from l3overlay import util
 
-from l3overlay.overlay.interface.bgp import BGP
-from l3overlay.overlay.interface.dummy import Dummy
-from l3overlay.overlay.interface.overlay_link import OverlayLink
-from l3overlay.overlay.interface.tunnel import Tunnel
-from l3overlay.overlay.interface.tuntap import Tuntap
-from l3overlay.overlay.interface.veth import VETH
-from l3overlay.overlay.interface.vlan import VLAN
+from l3overlay.overlay.static_interface.bgp import BGP
+from l3overlay.overlay.static_interface.dummy import Dummy
+from l3overlay.overlay.static_interface.overlay_link import OverlayLink
+from l3overlay.overlay.static_interface.tunnel import Tunnel
+from l3overlay.overlay.static_interface.tuntap import Tuntap
+from l3overlay.overlay.static_interface.veth import VETH
+from l3overlay.overlay.static_interface.vlan import VLAN
 
 from l3overlay.process import ProcessError
 
@@ -77,7 +77,7 @@ class Process(Worker):
         self.linknet_pool = overlay.linknet_pool
 
         self.mesh_tunnels = tuple(overlay.mesh_tunnels)
-        self.interfaces = tuple(overlay.interfaces)
+        self.static_interfaces = tuple(overlay.static_interfaces)
 
         self.bird_ctl_dir = os.path.join(overlay.root_dir, "run", "bird")
         self.bird_conf_dir = os.path.join(overlay.root_dir, "etc", "bird")
@@ -152,27 +152,27 @@ class Process(Worker):
         else:
             bird_config["mesh_tunnels"] = self.mesh_tunnels
 
-        for interface in self.interfaces:
+        for si in self.static_interfaces:
             bc = None
-            if interface.is_ipv6():
+            if si.is_ipv6():
                 bc = bird6_config
             else:
                 bc = bird_config
 
-            if isinstance(interface, BGP):
-                self.bird_config_add(bc, "bgps", interface)
-            elif isinstance(interface, Dummy):
-                self.bird_config_add(bc, "dummies", interface)
-            elif isinstance(interface, OverlayLink):
-                self.bird_config_add(bc, "overlay_links", interface)
-            elif isinstance(interface, Tunnel):
-                self.bird_config_add(bc, "tunnels", interface)
-            elif isinstance(interface, Tuntap):
-                self.bird_config_add(bc, "tuntaps", interface)
-            elif isinstance(interface, VETH):
-                self.bird_config_add(bc, "veths", interface)
-            elif isinstance(interface, VLAN):
-                self.bird_config_add(bc, "vlans", interface)
+            if isinstance(si, BGP):
+                self.bird_config_add(bc, "bgps", si)
+            elif isinstance(si, Dummy):
+                self.bird_config_add(bc, "dummies", si)
+            elif isinstance(si, OverlayLink):
+                self.bird_config_add(bc, "overlay_links", si)
+            elif isinstance(si, Tunnel):
+                self.bird_config_add(bc, "tunnels", si)
+            elif isinstance(si, Tuntap):
+                self.bird_config_add(bc, "tuntaps", si)
+            elif isinstance(si, VETH):
+                self.bird_config_add(bc, "veths", si)
+            elif isinstance(si, VLAN):
+                self.bird_config_add(bc, "vlans", si)
 
         if bird_config:
             bird_config["router_id"] = str(self.mesh_tunnels[0].virtual_local)

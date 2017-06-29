@@ -1,6 +1,6 @@
 #
 # IPsec overlay network manager (l3overlay)
-# l3overlay/overlay/interface/__init__.py - static interface functions
+# l3overlay/overlay/static_interface/__init__.py - static interface functions
 #
 # Copyright (c) 2017 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify
@@ -20,16 +20,16 @@
 
 from l3overlay import util
 
-from l3overlay.overlay.interface import bgp
-from l3overlay.overlay.interface import dummy
-from l3overlay.overlay.interface import overlay_link
-from l3overlay.overlay.interface import tunnel
-from l3overlay.overlay.interface import tuntap
-from l3overlay.overlay.interface import veth
-from l3overlay.overlay.interface import vlan
+from l3overlay.overlay.interface import ReadError
+from l3overlay.overlay.interface import WriteError
 
-from l3overlay.overlay.interface.base import ReadError
-from l3overlay.overlay.interface.base import WriteError
+from l3overlay.overlay.static_interface import bgp
+from l3overlay.overlay.static_interface import dummy
+from l3overlay.overlay.static_interface import overlay_link
+from l3overlay.overlay.static_interface import tunnel
+from l3overlay.overlay.static_interface import tuntap
+from l3overlay.overlay.static_interface import veth
+from l3overlay.overlay.static_interface import vlan
 
 
 def section_type_is_static_interface(section):
@@ -49,12 +49,10 @@ def section_type_is_static_interface(section):
             interface_type == "static-vlan")
 
 
-def read(logger, section, config):
+def read(logger, interface_type, name, config):
     '''
     Read an interface from the given configuration object.
     '''
-
-    interface_type, name = util.section_split(section)
 
     if interface_type == "static-bgp":
         return bgp.read(logger, name, config)

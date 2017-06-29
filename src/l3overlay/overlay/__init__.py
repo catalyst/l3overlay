@@ -27,10 +27,11 @@ from l3overlay import util
 
 from l3overlay.network import netns
 
-from l3overlay.overlay import interface
+from l3overlay.overlay import active_interface
+from l3overlay.overlay import static_interface
 
-from l3overlay.overlay.interface import bgp
-from l3overlay.overlay.interface import mesh_tunnel
+from l3overlay.overlay.static_interface import bgp
+from l3overlay.overlay.static_interface import mesh_tunnel
 
 from l3overlay.overlay.process import bgp as bgp_process
 from l3overlay.overlay.process import firewall as firewall_process
@@ -75,7 +76,7 @@ class Overlay(Worker):
 
     def __init__(self, logger, name,
                 enabled, asn, linknet_pool, fwbuilder_script_file, nodes, this_node,
-                interfaces):
+                static_interfaces, active_interfaces):
         '''
         Set up the overlay internal fields.
         '''
@@ -93,7 +94,8 @@ class Overlay(Worker):
         self.nodes = nodes
         self.this_node = this_node
 
-        self.interfaces = tuple(interfaces)
+        self.static_interfaces = tuple(static_interfaces)
+        self.active_interfaces = tuple(active_interfaces)
 
 
     def setup(self, daemon):
@@ -129,7 +131,7 @@ class Overlay(Worker):
         self.netns = netns.get(self.dry_run, self.logger, self.name)
 
         # Create the mesh tunnel interfaces.
-        self.mesh_tunnels = []
+        mesh_tunnels = []
 
         for i, node_link in enumerate(self._node_links()):
             # Check if this link requires a tunnel on this host. If not,
@@ -158,7 +160,7 @@ class Overlay(Worker):
                     virtual_remote > self.linknet_pool.broadcast_address):
                 raise LinknetPoolOverflowError(self, node_link)
 
-            self.mesh_tunnels.append(mesh_tunnel.create(
+            mesh_tunnels.append(mesh_tunnel.create(
                 self.logger,
                 name,
                 node_local,
@@ -169,12 +171,25 @@ class Overlay(Worker):
                 virtual_remote,
             ))
 
-        # Set up each interface with this overlay as the context.
-        for mt in self.mesh_tunnels:
-            mt.setup(self.daemon, self)
+        self.mesh_tunnels = tuple(mesh_tunnels)
 
-        for i in self.interfaces:
-            i.setup(self.daemon, self)
+        # Set up each mesh tunnel and static interface,
+        # with this overlay as the context... if there
+        # are no active interfaces.
+        if not self.active_interfaces:
+            for mt in self.mesh_tunnels:
+                mt.setup(self.daemon, self)
+
+            for si in self.static_interfaces:
+                si.setup(self.daemon, self)
+
+        # If there are active interfaces, this Overlay object is being
+        # used for interface clean up. Set up the active interface objects,
+        # which covers network interfaces from both the mesh tunnels and
+        # static interface objects.
+        else:
+            for ai in self.active_interfaces:
+                ai.setup(self.daemon, self)
 
         # Create the overlay's BGP and firewall process objects,
         # once the data structures are complete.
@@ -238,15 +253,33 @@ class Overlay(Worker):
         if not self.dry_run:
             util.directory_create(self.root_dir)
 
-        for mt in self.mesh_tunnels:
-            mt.start()
+        # This is done so that if l3overlayd gets killed for some reason,
+        # the appropriate cleanup can be done. Not done in active_interfaces
+        # mode, as there is already a running configuration.
+        if not self.active_interfaces:
+            self.logger.debug("saving overlay configuration to overlay root directory")
+            if not self.dry_run:
+                config = util.config()
+                write(self, config)
+                config.write(os.path.join(self.root_dir, "overlay.conf"))
 
-        for interface in self.interfaces:
-            interface.start()
+        # Start the mesh tunnels and static interfaces, if the overlay
+        # is not in active_interfaces mode. Otherwise, "start" the active interface
+        # objects.
+        if not self.active_interfaces:
+            for mt in self.mesh_tunnels:
+                mt.start()
 
-        self.bgp_process.start()
+            for si in self.static_interfaces:
+                si.start()
+        else:
+            for ai in self.active_interfaces:
+                ai.start()
 
-        self.firewall_process.start()
+        # Start the BGP and firewall process, if not already active.
+        if not self.active_interfaces:
+            self.bgp_process.start()
+            self.firewall_process.start()
 
         # Shut down the overlay's network namespace object, to
         # reduce memory consumption by the network namespace's
@@ -276,13 +309,18 @@ class Overlay(Worker):
 
         self.bgp_process.stop()
 
-        for interface in self.interfaces:
-            interface.stop()
-            interface.remove()
+        if not self.active_interfaces:
+            for i in self.interfaces:
+                i.stop()
+                i.remove()
 
-        for mt in self.mesh_tunnels:
-            mt.stop()
-            mt.remove()
+            for mt in self.mesh_tunnels:
+                mt.stop()
+                mt.remove()
+        else:
+            for ai in self.active_interfaces:
+                ai.stop()
+                ai.remove()
 
         # We're done with the overlay network namespace. Stop it,
         # and remove the namespace.
@@ -359,12 +397,16 @@ def read(log, log_level, conf=None, config=None):
     if not this_node:
         raise MissingThisNodeError(name, util.name_get(section["this-node"]))
 
-    # Static interfaces.
-    interfaces = []
+    # Static and active interfaces.
+    static_interfaces = []
+    active_interfaces = []
 
     for s, c in config.items():
-        if s.startswith("static"):
-            interfaces.append(interface.read(lg, s, c))
+        it, n = util.section_split(s)
+        if it.startswith("static"):
+            static_interfaces.append(static_interface.read(lg, it, n, c))
+        elif it == "active-interface":
+            active_interfaces.append(active_interface.read(lg, n, c))
         elif s == "DEFAULT" or s == "overlay":
             continue
         else:
@@ -372,7 +414,9 @@ def read(log, log_level, conf=None, config=None):
 
     # Return overlay object.
     return Overlay(lg, name,
-        enabled, asn, linknet_pool, fwbuilder_script_file, nodes, this_node, interfaces)
+        enabled, asn, linknet_pool, fwbuilder_script_file, nodes, this_node,
+        static_interfaces, active_interfaces,
+    )
 
 
 def write(overlay, config):
@@ -386,11 +430,18 @@ def write(overlay, config):
     section["enabled"] = str(overlay.enabled).lower()
     section["asn"] = str(overlay.asn)
     section["linknet-pool"] = str(overlay.linknet_pool)
-    section["fwbuilder-script"] = overlay.fwbuilder_script_file
+    if overlay.fwbuilder_script_file:
+        section["fwbuilder-script"] = overlay.fwbuilder_script_file
 
     section["this-node"] = "%s %s" % (overlay.this_node[0], str(overlay.this_node[1]))
     for i, n in enumerate(overlay.nodes):
         section["node-%i" % i] = "%s %s" % (n[0], str(n[1]))
 
-    for i in overlay.interfaces:
-        interface.write(i, config)
+    for si in overlay.static_interfaces:
+        static_interface.write(si, config)
+
+    if overlay.is_setup():
+        for i in overlay.mesh_tunnels + overlay.static_interfaces:
+            for interface_name, netns_name in i.active_interfaces():
+                ai = active_interface.create(None, interface_name, netns_name)
+                active_interface.write(ai, config)

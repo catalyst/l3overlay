@@ -1,6 +1,6 @@
 #
 # IPsec overlay network manager (l3overlay)
-# l3overlay/interface/veth.py - static veth
+# l3overlay/overlay/static_interface/veth.py - static veth
 #
 # Copyright (c) 2017 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify
@@ -27,11 +27,14 @@ from l3overlay.network.interface import bridge
 from l3overlay.network.interface import dummy
 from l3overlay.network.interface import veth
 
-from l3overlay.overlay.interface.base import Interface
-from l3overlay.overlay.interface.base import ReadError
+from l3overlay.overlay import active_interface
+
+from l3overlay.overlay.interface import ReadError
+
+from l3overlay.overlay.static_interface.base import StaticInterface
 
 
-class VETH(Interface):
+class VETH(StaticInterface):
     '''
     Used to configure a veth pair interface.
     '''
@@ -75,21 +78,6 @@ class VETH(Interface):
         else:
             self.logger.debug("setting inner namespace to root namespace")
             self.inner_netns = None
-
-
-    def is_ipv6(self):
-        '''
-        Returns True if this static veth uses an IPv6
-        point-to-point subnet. Returns False if no addresses
-        are assigned.
-        '''
-
-        if self.outer_address:
-            return util.ip_address_is_v6(self.outer_address)
-        elif self.inner_address:
-            return util.ip_address_is_v6(self.inner_address)
-        else:
-            return False
 
 
     def start(self):
@@ -199,7 +187,45 @@ class VETH(Interface):
 
         self.logger.info("finished stopping static veth '%s'" % self.name)
 
-Interface.register(VETH)
+
+    def is_ipv6(self):
+        '''
+        Returns True if this static veth uses an IPv6
+        point-to-point subnet. Returns False if no addresses
+        are assigned.
+        '''
+
+        if self.outer_address:
+            return util.ip_address_is_v6(self.outer_address)
+        elif self.inner_address:
+            return util.ip_address_is_v6(self.inner_address)
+        else:
+            return False
+
+
+    def active_interfaces(self):
+        '''
+        Return an iterable of ActiveInterface objects representing the
+        physical interfaces this static interface uses.
+        '''
+
+        active_interfaces = [
+            active_interface.create(
+                self.logger,
+                self.inner_name,
+                self.inner_netns.name if self.inner_namespace else None,
+            ),
+        ]
+
+        if self.outer_interface_bridged:
+            active_interfaces.extend([
+                active_interface.create(self.logger, self.bridge_name, self.outer_netns.name),
+                active_interface.create(self.logger, self.dummy_name, self.outer_netns.name),
+            ])
+
+        return tuple(active_interfaces)
+
+StaticInterface.register(VETH)
 
 
 def read(logger, name, config):

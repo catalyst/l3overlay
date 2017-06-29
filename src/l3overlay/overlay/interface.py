@@ -1,6 +1,6 @@
 #
 # IPsec overlay network manager (l3overlay)
-# l3overlay/overlay/interface/base.py - static interface abstract base class
+# l3overlay/overlay/interface.py - overlay interface abstract base class
 #
 # Copyright (c) 2017 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify
@@ -57,16 +57,6 @@ class Interface(metaclass=abc.ABCMeta):
 
         self.overlay = overlay
         self.netns = self.overlay.netns
-
-
-    @abc.abstractmethod
-    def is_ipv6(self):
-        '''
-        Returns True if this static interface has an IPv6 address
-        assigned to it.
-        '''
-
-        raise NotImplementedError()
 
 
     @abc.abstractmethod

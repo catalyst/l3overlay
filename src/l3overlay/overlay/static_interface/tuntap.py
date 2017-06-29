@@ -1,6 +1,6 @@
 #
 # IPsec overlay network manager (l3overlay)
-# l3overlay/overlay/interface/tuntap.py - static tuntap
+# l3overlay/overlay/static_interface/tuntap.py - static tuntap
 #
 # Copyright (c) 2017 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify
@@ -22,10 +22,12 @@ from l3overlay import util
 
 from l3overlay.network.interface import tuntap
 
-from l3overlay.overlay.interface.base import Interface
+from l3overlay.overlay import active_interface
+
+from l3overlay.overlay.static_interface.base import StaticInterface
 
 
-class Tuntap(Interface):
+class Tuntap(StaticInterface):
     '''
     Used to configure a TUN/TAP interface.
     '''
@@ -53,15 +55,6 @@ class Tuntap(Interface):
         super().setup(daemon, overlay)
 
         self.tuntap_name = self.daemon.interface_name(self.name)
-
-
-    def is_ipv6(self):
-        '''
-        Returns True if this static tuntap has an IPv6 address
-        assigned to it.
-        '''
-
-        return util.ip_address_is_v6(self.address)
 
 
     def start(self):
@@ -97,7 +90,25 @@ class Tuntap(Interface):
 
         self.logger.info("finished stopping static tuntap '%s'" % self.name)
 
-Interface.register(Tuntap)
+
+    def is_ipv6(self):
+        '''
+        Returns True if this static tuntap has an IPv6 address
+        assigned to it.
+        '''
+
+        return util.ip_address_is_v6(self.address)
+
+
+    def active_interfaces(self):
+        '''
+        Return an iterable of ActiveInterface objects representing the
+        physical interfaces this static interface uses.
+        '''
+
+        return (active_interface.create(self.logger, self.tuntap_name, self.netns.name),)
+
+StaticInterface.register(Tuntap)
 
 
 def read(logger, name, config):

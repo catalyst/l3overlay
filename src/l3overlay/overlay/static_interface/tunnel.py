@@ -1,6 +1,6 @@
 #
 # IPsec overlay network manager (l3overlay)
-# l3overlay/overlay/interface/tunnel.py - static tunnel
+# l3overlay/overlay/static_interface/tunnel.py - static tunnel
 #
 # Copyright (c) 2017 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify
@@ -22,8 +22,11 @@ from l3overlay import util
 
 from l3overlay.network.interface import gre
 
-from l3overlay.overlay.interface.base import Interface
-from l3overlay.overlay.interface.base import ReadError
+from l3overlay.overlay import active_interface
+
+from l3overlay.overlay.interface import ReadError
+
+from l3overlay.overlay.static_interface.base import StaticInterface
 
 from l3overlay.util.exception import L3overlayError
 
@@ -39,7 +42,7 @@ class KeyNumUnavailableError(L3overlayError):
                 (key, tunnel.local, tunnel.remote))
 
 
-class Tunnel(Interface):
+class Tunnel(StaticInterface):
     '''
     Used to configure a GRE/GRETAP tunnel interface.
     '''
@@ -77,15 +80,6 @@ class Tunnel(Interface):
             self.daemon.gre_key_add(self.local, self.remote, key)
 
         self.tunnel_name = self.daemon.interface_name(self.name)
-
-
-    def is_ipv6(self):
-        '''
-        Returns True if this static tunnel has an IPv6 address
-        assigned to it.
-        '''
-
-        return util.ip_address_is_v6(self.address)
 
 
     def start(self):
@@ -132,7 +126,25 @@ class Tunnel(Interface):
 
         self.daemon.gre_key_remove(self.local, self.remote, self.key if self.key else self.ikey)
 
-Interface.register(Tunnel)
+
+    def is_ipv6(self):
+        '''
+        Returns True if this static tunnel has an IPv6 address
+        assigned to it.
+        '''
+
+        return util.ip_address_is_v6(self.address)
+
+
+    def active_interfaces(self):
+        '''
+        Return an iterable of ActiveInterface objects representing the
+        physical interfaces this static interface uses.
+        '''
+
+        return (active_interface.create(self.logger, self.tunnel_name, self.netns.name),)
+
+StaticInterface.register(Tunnel)
 
 
 def read(logger, name, config):
