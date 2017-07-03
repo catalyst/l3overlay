@@ -48,7 +48,7 @@ apt-get install -y make
 apt-get install -y git
 apt-get install -y python3-pip
 pip3 install --upgrade setuptools
-pip3 install pyroute2
+pip3 install pyroute2==0.4.6
 pip3 install jinja2
 
 service l3overlay stop || true
