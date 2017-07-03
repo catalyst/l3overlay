@@ -249,9 +249,10 @@ class Overlay(Worker):
         # network namespace can be manipulated.
         self.netns.start()
 
-        self.logger.debug("creating overlay root directory")
-        if not self.dry_run:
-            util.directory_create(self.root_dir)
+        if not self.active_interfaces: # Already created in active_interfaces mode.
+            self.logger.debug("creating overlay root directory")
+            if not self.dry_run:
+                util.directory_create(self.root_dir)
 
         # This is done so that if l3overlayd gets killed for some reason,
         # the appropriate cleanup can be done. Not done in active_interfaces
@@ -261,7 +262,8 @@ class Overlay(Worker):
             if not self.dry_run:
                 config = util.config()
                 write(self, config)
-                config.write(os.path.join(self.root_dir, "overlay.conf"))
+                with open(os.path.join(self.root_dir, "overlay.conf"), "w") as f:
+                    config.write(f)
 
         # Start the mesh tunnels and static interfaces, if the overlay
         # is not in active_interfaces mode. Otherwise, "start" the active interface
@@ -277,7 +279,15 @@ class Overlay(Worker):
                 ai.start()
 
         # Start the BGP and firewall process, if not already active.
-        if not self.active_interfaces:
+        # Fake starting them if in active_interfaces mode, because there
+        # will be already active BGP/firewall processes.
+        if self.active_interfaces:
+            self.bgp_process.set_starting()
+            self.bgp_process.set_started()
+
+            self.firewall_process.set_starting()
+            self.firewall_process.set_started()
+        else:
             self.bgp_process.start()
             self.firewall_process.start()
 
@@ -310,9 +320,9 @@ class Overlay(Worker):
         self.bgp_process.stop()
 
         if not self.active_interfaces:
-            for i in self.interfaces:
-                i.stop()
-                i.remove()
+            for si in self.static_interfaces:
+                si.stop()
+                si.remove()
 
             for mt in self.mesh_tunnels:
                 mt.stop()
@@ -427,13 +437,14 @@ def write(overlay, config):
     config["overlay"] = {}
     section = config["overlay"]
 
+    section["name"] = overlay.name
     section["enabled"] = str(overlay.enabled).lower()
     section["asn"] = str(overlay.asn)
     section["linknet-pool"] = str(overlay.linknet_pool)
     if overlay.fwbuilder_script_file:
         section["fwbuilder-script"] = overlay.fwbuilder_script_file
 
-    section["this-node"] = "%s %s" % (overlay.this_node[0], str(overlay.this_node[1]))
+    section["this-node"] = overlay.this_node[0]
     for i, n in enumerate(overlay.nodes):
         section["node-%i" % i] = "%s %s" % (n[0], str(n[1]))
 
@@ -442,6 +453,5 @@ def write(overlay, config):
 
     if overlay.is_setup():
         for i in overlay.mesh_tunnels + overlay.static_interfaces:
-            for interface_name, netns_name in i.active_interfaces():
-                ai = active_interface.create(None, interface_name, netns_name)
+            for ai in i.active_interfaces():
                 active_interface.write(ai, config)

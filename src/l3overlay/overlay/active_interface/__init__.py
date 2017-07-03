@@ -38,7 +38,7 @@ def read(logger, name, config):
     '''
 
     interface_name = util.name_get(config["interface-name"])
-    netns_name = util.name_get(config["netns-name"])
+    netns_name = util.name_get(config["netns-name"]) if "netns-name" in config else None
 
     return ActiveInterface(logger, name,
             interface_name, netns_name)
@@ -49,5 +49,9 @@ def write(active_interface, config):
     Write the active interfce to the given configuration object.
     '''
 
-    config["interface-name"] = str(active_interface.interface_name)
-    config["netns-name"] = bool(active_interface.netns_name)
+    section = util.section_header("active-interface", active_interface.name)
+
+    config[section] = {}
+    config[section]["interface-name"] = active_interface.interface_name
+    if active_interface.netns_name:
+        config[section]["netns-name"] = active_interface.netns_name

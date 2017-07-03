@@ -134,5 +134,7 @@ def write(tuntap, config):
     config["mode"] = tuntap.mode.lower()
     config["address"] = str(tuntap.address)
     config["netmask"] = str(tuntap.netmask)
-    config["uid"] = str(tuntap.uid)
-    config["gid"] = str(tuntap.gid)
+    if tuntap.uid:
+        config["uid"] = str(tuntap.uid)
+    if tuntap.gid:
+        config["gid"] = str(tuntap.gid)

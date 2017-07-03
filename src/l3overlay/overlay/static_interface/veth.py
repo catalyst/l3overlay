@@ -262,8 +262,12 @@ def write(veth, config):
     Write the static veth to the given configuration object.
     '''
 
-    config["inner-address"] = str(veth.inner_address)
-    config["outer-address"] = str(veth.outer_address)
-    config["inner-namespace"] = veth.inner_namespace
+    if veth.inner_address:
+        config["inner-address"] = str(veth.inner_address)
+    if veth.outer_address:
+        config["outer-address"] = str(veth.outer_address)
+    if veth.inner_namespace:
+        config["inner-namespace"] = veth.inner_namespace
     config["outer-interface-bridged"] = str(veth.outer_interface_bridged).lower()
-    config["netmask"] = str(tveth.netmask)
+    if veth.netmask:
+        config["netmask"] = str(veth.netmask)

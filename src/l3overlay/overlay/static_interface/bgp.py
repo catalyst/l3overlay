@@ -92,7 +92,7 @@ class BGP(StaticInterface):
         use its own physical interfaces.
         '''
 
-        return dict()
+        return tuple()
 
 StaticInterface.register(BGP)
 

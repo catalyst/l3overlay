@@ -18,6 +18,9 @@
 #
 
 
+from l3overlay.network import interface
+from l3overlay.network import netns
+
 from l3overlay.overlay.interface import Interface
 
 
@@ -28,7 +31,7 @@ class ActiveInterface(Interface):
     '''
 
     def __init__(self, logger, name,
-            interface_name, use_rootns):
+            interface_name, netns_name):
         '''
         Set up active interface internal fields.
         '''
@@ -36,7 +39,7 @@ class ActiveInterface(Interface):
         super().__init__(logger, name)
 
         self.interface_name = interface_name
-        self.use_rootns = use_rootns
+        self.netns_name = netns_name
 
 
     def setup(self, daemon, overlay):
@@ -44,9 +47,7 @@ class ActiveInterface(Interface):
         Set up static bgp runtime state.
         '''
 
-        self.set_settingup()
         super().setup(daemon, overlay)
-        self.set_setup()
 
 
     def start(self):
@@ -54,8 +55,7 @@ class ActiveInterface(Interface):
         Starts with the BGP process.
         '''
 
-        self.set_starting()
-        self.set_started()
+        pass
 
 
     def stop(self):
@@ -63,14 +63,26 @@ class ActiveInterface(Interface):
         Stops with the BGP process.
         '''
 
-        self.set_stopping()
+        self.logger.info("stopping active interface '%s'" % self.name)
+
+        if self.netns_name == self.netns.name:
+            ns = self.netns
+            root_ipdb = None
+        elif self.netns_name:
+            ns = netns.get(self.dry_run, self.logger, self.netns_name)
+            root_ipdb = None
+        else:
+            ns = None
+            root_ipdb = self.root_ipdb
+
         interface.get(
             self.dry_run,
             self.logger,
             self.interface_name,
-            self.netns_name if self.netns_name else None,
-            self.root_netns if not self.netns_name else None,
+            ns,
+            root_ipdb,
         ).remove()
-        self.set_stopped()
+
+        self.logger.info("finished stopping active interface '%s'" % self.name)
 
 Interface.register(ActiveInterface)
