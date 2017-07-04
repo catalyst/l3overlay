@@ -83,7 +83,7 @@ def create(dry_run, logger, name, mode,
     existing_if = interface._interface_get(name, ipdb)
 
     if existing_if:
-        if (existing_if.kind not in IF_TYPES or
+        if (existing_if.kind != mode or
                 existing_if.uid != uid or
                 existing_if.gid != gid or
                 existing_if.ifr != ifr):

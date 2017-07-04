@@ -88,7 +88,7 @@ def create(dry_run, logger, name, kind,
         okey = key
 
     if existing_if:
-        if (existing_if.kind not in IF_TYPES or
+        if (existing_if.kind != kind or
                 existing_if.gre_local != str(local) or
                 existing_if.gre_remote != str(remote) or
                 existing_if.gre_link != link or
