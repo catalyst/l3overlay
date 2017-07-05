@@ -75,7 +75,7 @@ class Overlay(Worker):
     '''
 
     def __init__(self, logger, name,
-                enabled, asn, linknet_pool, fwbuilder_script_file, nodes, this_node,
+                enabled, active, asn, linknet_pool, fwbuilder_script_file, nodes, this_node,
                 static_interfaces, active_interfaces):
         '''
         Set up the overlay internal fields.
@@ -88,6 +88,7 @@ class Overlay(Worker):
         self.description = "overlay '%s'" % self.name
 
         self.enabled = enabled
+        self.active = active
         self.asn = asn
         self.linknet_pool = linknet_pool
         self.fwbuilder_script_file = fwbuilder_script_file
@@ -174,17 +175,16 @@ class Overlay(Worker):
         self.mesh_tunnels = tuple(mesh_tunnels)
 
         # Set up each mesh tunnel and static interface,
-        # with this overlay as the context... if there
-        # are no active interfaces.
-        if not self.active_interfaces:
+        # with this overlay as the context... if not in
+        # active mode.
+        if not self.active:
             for mt in self.mesh_tunnels:
                 mt.setup(self.daemon, self)
 
             for si in self.static_interfaces:
                 si.setup(self.daemon, self)
 
-        # If there are active interfaces, this Overlay object is being
-        # used for interface clean up. Set up the active interface objects,
+        # If in active mode, set up the active interface objects,
         # which covers network interfaces from both the mesh tunnels and
         # static interface objects.
         else:
@@ -249,26 +249,26 @@ class Overlay(Worker):
         # network namespace can be manipulated.
         self.netns.start()
 
-        if not self.active_interfaces: # Already created in active_interfaces mode.
+        if not self.active: # Already created in active mode.
             self.logger.debug("creating overlay root directory")
             if not self.dry_run:
                 util.directory_create(self.root_dir)
 
         # This is done so that if l3overlayd gets killed for some reason,
-        # the appropriate cleanup can be done. Not done in active_interfaces
+        # the appropriate cleanup can be done. Not done in active
         # mode, as there is already a running configuration.
-        if not self.active_interfaces:
+        if not self.active:
             self.logger.debug("saving overlay configuration to overlay root directory")
             if not self.dry_run:
                 config = util.config()
-                write(self, config)
+                write(self, config, active=True)
                 with open(os.path.join(self.root_dir, "overlay.conf"), "w") as f:
                     config.write(f)
 
         # Start the mesh tunnels and static interfaces, if the overlay
-        # is not in active_interfaces mode. Otherwise, "start" the active interface
+        # is not in active mode. Otherwise, "start" the active interface
         # objects.
-        if not self.active_interfaces:
+        if not self.active:
             for mt in self.mesh_tunnels:
                 mt.start()
 
@@ -279,9 +279,9 @@ class Overlay(Worker):
                 ai.start()
 
         # Start the BGP and firewall process, if not already active.
-        # Fake starting them if in active_interfaces mode, because there
+        # Fake starting them if in active mode, because there
         # will be already active BGP/firewall processes.
-        if self.active_interfaces:
+        if self.active:
             self.bgp_process.set_starting()
             self.bgp_process.set_started()
 
@@ -319,7 +319,7 @@ class Overlay(Worker):
 
         self.bgp_process.stop()
 
-        if not self.active_interfaces:
+        if not self.active:
             for si in self.static_interfaces:
                 si.stop()
                 si.remove()
@@ -378,18 +378,20 @@ def read(log, log_level, conf=None, config=None):
     # Get the overlay configuration.
     section = config["overlay"]
 
-    # Fetch just enough configuration to start an overlay logger.
-    name = util.name_get(section["name"])
-
-    lg = logger.create(log, log_level, "l3overlay", name)
-    lg.start()
-
     # Global overlay configuration.
+    name = util.name_get(section["name"])
     enabled = util.boolean_get(section["enabled"]) if "enabled" in section else True
+    active = util.boolean_get(section["active"]) if "active" in section else False
     asn = util.integer_get(section["asn"], minval=0, maxval=65535)
     linknet_pool = util.ip_network_get(section["linknet-pool"])
 
     fwbuilder_script_file = section["fwbuilder-script"] if "fwbuilder-script" in section else None
+
+    # Start the overlay logger. Append (CLEANUP) to the logger name
+    # if the overlay is in active mode (otherwise known as cleanup mode).
+    lg_name = name if not active else "%s(CLEANUP)" % name
+    lg = logger.create(log, log_level, "l3overlay", lg_name)
+    lg.start()
 
     # Generate the list of nodes, sorted numerically.
     nodes = []
@@ -424,12 +426,12 @@ def read(log, log_level, conf=None, config=None):
 
     # Return overlay object.
     return Overlay(lg, name,
-        enabled, asn, linknet_pool, fwbuilder_script_file, nodes, this_node,
+        enabled, active, asn, linknet_pool, fwbuilder_script_file, nodes, this_node,
         static_interfaces, active_interfaces,
     )
 
 
-def write(overlay, config):
+def write(overlay, config, active=False):
     '''
     Write an overlay to the given configuration object.
     '''
@@ -439,6 +441,7 @@ def write(overlay, config):
 
     section["name"] = overlay.name
     section["enabled"] = str(overlay.enabled).lower()
+    section["active"] = str(active).lower()
     section["asn"] = str(overlay.asn)
     section["linknet-pool"] = str(overlay.linknet_pool)
     if overlay.fwbuilder_script_file:

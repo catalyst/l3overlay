@@ -20,6 +20,7 @@
 
 import os
 import pyroute2
+import shutil
 import re
 
 from l3overlay import overlay
@@ -213,17 +214,23 @@ class Daemon(worker.Worker):
                 overlays_dir = os.path.join(self.lib_dir, "overlays")
 
                 for overlay_name in os.listdir(overlays_dir):
-                    if overlay_name not in self.overlays:
-                        self.logger.info("cleaning up data from unconfigured overlay '%s'" % overlay_name)
+                    self.logger.info("cleaning up overlay '%s'" % overlay_name)
 
-                        overlay_conf = os.path.join(overlays_dir, overlay_name, "overlay.conf")
-                        o = overlay.read(self.log, self.log_level, conf=overlay_conf)
+                    overlay_conf = os.path.join(overlays_dir, overlay_name, "overlay.conf")
+                    o = overlay.read(self.log, self.log_level, conf=overlay_conf)
 
-                        o.setup(self)
-                        o.start()
+                    o.setup(self)
+                    o.start()
 
-                        o.stop()
-                        o.remove()
+                    o.stop()
+                    o.remove()
+
+                    self.logger.info("finished cleaning up overlay '%s'" % overlay_name)
+
+                self.logger.debug("removing lib dir '%s'" % self.lib_dir)
+                shutil.rmtree(self.lib_dir)
+
+                self.logger.info("finished cleaning up existing lib dir '%s'" % self.lib_dir)
 
             elif os.path.exists(self.lib_dir):
                 self.logger.debug("removing file at lib dir path '%s'" % self.lib_dir)
@@ -247,7 +254,6 @@ class Daemon(worker.Worker):
 
         try:
             self.set_stopping()
-
             self.ipsec_process.stop()
             self.ipsec_process.remove()
         except Exception as e:
@@ -274,7 +280,6 @@ class Daemon(worker.Worker):
             self.logger.debug("removing lib dir '%s'" % self.lib_dir)
             if not self.dry_run:
                 util.directory_remove(self.lib_dir)
-
             self.set_stopped()
         except Exception as e:
             if self.logger.is_running():

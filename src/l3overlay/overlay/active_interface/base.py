@@ -65,23 +65,34 @@ class ActiveInterface(Interface):
 
         self.logger.info("stopping active interface '%s'" % self.name)
 
+        # If the given namespace of the active interface is the overlay namespace,
+        # use the overlay namespace directly.
         if self.netns_name == self.netns.name:
             ns = self.netns
-            root_ipdb = None
-        elif self.netns_name:
+        # Start a NetNS object for the specific network namespace specified,
+        # if it is not the overlay namespace.
+        elif self.netns_name != self.netns.name:
             ns = netns.get(self.dry_run, self.logger, self.netns_name)
-            root_ipdb = None
-        else:
+            self.netns.start()
+        # Keep ns undefined in the case of using the root namespace.
+        elif not self.netns_name:
             ns = None
-            root_ipdb = self.root_ipdb
 
-        interface.get(
-            self.dry_run,
-            self.logger,
-            self.interface_name,
-            ns,
-            root_ipdb,
-        ).remove()
+        # Remove the interface, IF it can be found in the appropriate namespace.
+        if ((ns and self.interface_name in ns.ipdb.by_name.keys()) or
+                (root_ipdb and self.interface_name in root_ipdb.by_name.keys())):
+            interface.get(
+                self.dry_run,
+                self.logger,
+                self.interface_name,
+                ns,
+                self.root_ipdb if not self.netns_name else None,
+            ).remove()
+
+        # Shutdown the runtime data for the specific network namespace, if it is
+        # not the overlay namespace.
+        if self.netns_name != self.netns.name:
+            self.netns.stop()
 
         self.logger.info("finished stopping active interface '%s'" % self.name)
 
