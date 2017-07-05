@@ -1,0 +1,17 @@
+# l3overlay - IPsec overlay network manager
+# __SERVICE_SYSTEMD_DIR__/system/l3overlay.service - systemd unit file
+
+[Unit]
+Description=IPsec overlay network manager
+Documentation=https://github.com/catalyst/l3overlay
+Requires=networking.service
+
+[Service]
+Type=simple
+Environment="DAEMON=__SBIN_DIR__/l3overlayd" "PID=__SERVICE_VAR_RUN_DIR__/l3overlayd.pid"
+ExecStart=/bin/sh -ec '. "__SERVICE_ETC_DIR__/default/l3overlay"; exec "$DAEMON" $DAEMON_ARGS --pid "$PID"'
+ExecReload=/bin/kill -HUP $MAINPID
+
+[Install]
+Alias=l3overlayd
+WantedBy=multi-user.target

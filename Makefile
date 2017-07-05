@@ -36,9 +36,9 @@
 #
 # Examples:
 # - install l3overlay to a virtualenv and configuration in /opt,
-#   with an Upstart config installed to /etc:
-#     $ make install upstart-install \
-#       VIRTUALENV="/opt/venv/l3overlay" ETC_DIR="/etc" CONFIG_DIR="/opt/l3overlay"
+#   with a systemd unit installed to standard directories:
+#     $ make install systemd-install \
+#       VIRTUALENV="/opt/venv/l3overlay" CONFIG_DIR="/opt/l3overlay"
 #
 
 
@@ -56,13 +56,20 @@ else
 PREFIX = /usr/local
 endif
 
-ETC_DIR  = $(PREFIX)/etc
+ETC_DIR = $(PREFIX)/etc
 SBIN_DIR = $(PREFIX)/sbin
 
 CONFIG_DIR = $(ETC_DIR)/l3overlay
 
+# Makefile internal variable for service variables.
+SERVICE_PREFIX      = 
+# Actual parameters passed to configuration files.
+SERVICE_ETC_DIR     = $(SERVICE_PREFIX)/etc
+SERVICE_VAR_RUN_DIR = $(SERVICE_PREFIX)/var/run
+SERVICE_SYSTEMD_DIR = $(SERVICE_PREFIX)/lib/systemd
+
 # Template file variable list.
-PARAMS = PREFIX ETC_DIR SBIN_DIR CONFIG_DIR CONFIG_DIR
+PARAMS = PREFIX ETC_DIR SBIN_DIR CONFIG_DIR SERVICE_ETC_DIR SERVICE_VAR_RUN_DIR SERVICE_SYSTEMD_DIR
 
 # Internal Makefile parameters that (normally) should not be changed.
 INSTALL_SCRIPTS = $(SBIN_DIR)
@@ -166,8 +173,9 @@ all:
 	@echo "  bdist_wheel - build Python binary wheel distribution"
 	@echo
 	@echo "  install - build and install to local system"
+	@echo "  systemd-install - generate and install a systemd unit file"
 	@echo "  sysv-install - generate and install a SysV init script"
-	@echo "  upstart-install - generate and install an Upstart configuration"
+	@echo "  upstart-install - generate and install an Upstart configuration file"
 	@echo
 	@echo "  uninstall - uninstall from local system"
 	@echo "  clean - clean build files"
@@ -200,13 +208,16 @@ install:
 	$(PYTHON) $(TEMPLATE_PROCESS_PY) $< $@ $(foreach KEY,$(PARAMS),$(KEY)=$($(KEY)))
 
 default-install: default/l3overlay
-	$(INSTALL) -m 644 default/l3overlay $(ETC_DIR)/default/l3overlay
+	$(INSTALL) -m 644 default/l3overlay $(SERVICE_ETC_DIR)/default/l3overlay
+
+systemd-install: default-install systemd/l3overlay.service
+	$(INSTALL) -m 644 systemd/l3overlay.service $(SERVICE_SYSTEMD_DIR)/system/l3overlay.service
 
 sysv-install: default-install init.d/l3overlay
-	$(INSTALL) -m 755 init.d/l3overlay $(ETC_DIR)/init.d/l3overlay
+	$(INSTALL) -m 755 init.d/l3overlay $(SERVICE_ETC_DIR)/init.d/l3overlay
 
 upstart-install: default-install upstart/l3overlay.conf
-	$(INSTALL) -m 644 upstart/l3overlay.conf $(ETC_DIR)/init/l3overlay.conf
+	$(INSTALL) -m 644 upstart/l3overlay.conf $(SERVICE_ETC_DIR)/init/l3overlay.conf
 
 
 uninstall:
@@ -216,6 +227,7 @@ uninstall:
 clean:
 	$(RM) $(CONFIG)
 	$(RM) default/l3overlay
+	$(RM) systemd/l3overlay.service
 	$(RM) init.d/l3overlay
 	$(RM) upstart/l3overlay.conf
 	$(RMDIR) .tests
@@ -229,4 +241,4 @@ clean:
 
 .FORCE:
 
-.PHONY: all lint test sdist bdist_wheel install default-install sysv-install upstart-install uninstall clean .FORCE
+.PHONY: all lint test sdist bdist_wheel install default-install systemd-install sysv-install upstart-install uninstall clean .FORCE

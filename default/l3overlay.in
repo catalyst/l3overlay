@@ -1,8 +1,5 @@
 #!/bin/sh
 
-# This file is managed by Puppet.
-# Any local changes will be overwritten.
-
 # l3overlay - IPsec overlay network amanger
 # __/default/l3overlay - default l3overlay service parameters
 
@@ -28,7 +25,7 @@ LIB_DIR='/var/lib/l3overlay'
 LOG='/var/log/l3overlay.log'
 
 # PID lock file.
-#PID='/var/run/l3overlayd.pid'
+#PID='__SERVICE_VAR_RUN_DIR__/l3overlayd.pid'
 
 # Amalgamate the configuration options into a set of arguments. This is required
 # for the above configuration options to take effect.

@@ -4,6 +4,7 @@
 /.tests/
 
 /default/l3overlay
+/systemd/l3overlay.service
 /init.d/l3overlay
 /upstart/l3overlay.conf
 
@@ -69,3 +70,4 @@ target/
 
 # Vagrant temporary files
 /.vagrant
+*-console.log

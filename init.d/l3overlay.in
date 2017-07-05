@@ -16,7 +16,7 @@
 # Author: Callum Dickinson <callum.dickinson@catalyst.net.nz>
 
 # l3overlay - IPsec overlay network manager
-# __PREFIX__/etc/init.d/l3overlay - System V-style init script
+# __SERVICE_ETC_DIR__/init.d/l3overlay - System V-style init script
 
 # Do NOT "set -e"
 
@@ -26,13 +26,13 @@ PATH='/sbin:/usr/sbin:/bin:/usr/bin'
 NAME='l3overlay'
 DESC='IPsec overlay network manager'
 
-FILE='__ETC_DIR__/init.d/l3overlay'
-DEFAULT='__ETC_DIR__/default/l3overlay'
+FILE='__SERVICE_ETC_DIR__/init.d/l3overlay'
+DEFAULT='__SERVICE_ETC_DIR__/default/l3overlay'
 
 DAEMON_NAME='l3overlayd'
 DAEMON='__SBIN_DIR__/l3overlayd'
 DAEMON_ARGS=""
-PID="/var/run/$DAEMON_NAME.pid"
+PID="__SERVICE_VAR_RUN_DIR__/$DAEMON_NAME.pid"
 
 # Exit if the package is not installed
 [ -x "$DAEMON" ] || exit 0

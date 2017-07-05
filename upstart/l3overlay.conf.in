@@ -1,5 +1,5 @@
 # l3overlay - IPsec overlay network manager
-# __ETC_DIR__/init/l3overlay.conf - Upstart configuration file
+# __SERVICE_ETC_DIR__/init/l3overlay.conf - Upstart configuration file
 
 description "IPsec overlay network manager"
 author "Callum Dickinson <callum.dickinson@catalyst.net.nz>"
@@ -11,17 +11,14 @@ respawn
 kill timeout 30
 
 pre-start script
-    # Set name, daemon name and daemon path.
-    NAME='l3overlay'
-    DAEMON_NAME='l3overlayd'
+    # Set daemon path and configuration defaults file path.
     DAEMON='__SBIN_DIR__/l3overlayd'
-
-    DEFAULT='__ETC_DIR__/default/l3overlay'
+    DEFAULT='__SERVICE_ETC_DIR__/default/l3overlay'
 
     # Set default PID lock file.
-    PID="/var/run/$DAEMON_NAME.pid"
+    PID="__SERVICE_VAR_RUN_DIR__/l3overlayd.pid"
 
-    # Read configuration variable file if it is present
+    # Read configuration variable file if it is present.
     [ -r "$DEFAULT" ] && . "$DEFAULT"
 
     # Set required environment variables for the daemon call.
