@@ -194,6 +194,12 @@ class Overlay(Worker):
         # Create the overlay's BGP and firewall process objects,
         # once the data structures are complete.
         self.bgp_process = bgp_process.create(self.daemon, self)
+        if not self.active:
+            self.bgp_process.setup()
+        else:
+            self.bgp_process.set_settingup()
+            self.bgp_process.set_setup()
+
         self.firewall_process = firewall_process.create(self)
 
         self.set_setup()
@@ -284,7 +290,6 @@ class Overlay(Worker):
         if self.active:
             self.bgp_process.set_starting()
             self.bgp_process.set_started()
-
             self.firewall_process.set_starting()
             self.firewall_process.set_started()
         else:

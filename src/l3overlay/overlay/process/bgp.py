@@ -59,7 +59,9 @@ class Process(Worker):
         Set internal fields for the BGP process.
         '''
 
-        super().__init__()
+        super().__init__(use_setup=True)
+
+        self.daemon = daemon
 
         self.dry_run = daemon.dry_run
 
@@ -99,11 +101,14 @@ class Process(Worker):
         self.bird = util.command_path("bird") if not self.dry_run else "/usr/sbin/bird"
         self.bird6 = util.command_path("bird6") if not self.dry_run else "/usr/sbin/bird6"
 
+        self.bird_config = {}
+        self.bird6_config = {}
 
-    def bird_config_add(self, bird_config, key, value):
+
+    @staticmethod
+    def _bird_config_add(bird_config, key, value):
         '''
-        Add a value to a list stored at the given key in
-        the given BIRD configuration dictionary.
+        Add a value to the given BIRD config dict.
         '''
 
         if key in bird_config:
@@ -115,6 +120,72 @@ class Process(Worker):
                 bird_config[key].append(value)
         else:
             bird_config[key] = [value]
+
+
+    def bird_config_add(self, key, value):
+        '''
+        Add a value to this BGP process's BIRD config.
+        '''
+
+        Process._bird_config_add(self.bird_config, key, value)
+
+
+    def bird6_config_add(self, key, value):
+        '''
+        Add a value to this BGP process's BIRD6 config.
+        '''
+
+        Process._bird_config_add(self.bird_config, key, value)
+
+
+    def setup(self):
+        '''
+        Setup the BGP process.
+        '''
+
+        self.set_settingup()
+
+        self.logger.info("setting BGP process")
+
+        self.logger.debug("configuring BIRD")
+
+        if util.ip_network_is_v6(self.linknet_pool):
+            self.bird6_config["mesh_tunnels"] = self.mesh_tunnels
+        else:
+            self.bird_config["mesh_tunnels"] = self.mesh_tunnels
+
+        for si in self.static_interfaces:
+            bc_add = None
+            if si.is_ipv6():
+                bc_add = self.bird_config_add
+            else:
+                bc_add = self.bird6_config_add
+
+            if isinstance(si, BGP):
+                bc_add("bgps", si)
+            elif isinstance(si, Dummy):
+                bc_add("dummies", si)
+            elif isinstance(si, Tunnel):
+                bc_add("tunnels", si)
+            elif isinstance(si, Tuntap):
+                bc_add("tuntaps", si)
+            elif isinstance(si, VETH):
+                bc_add("veths", si)
+            elif isinstance(si, VLAN):
+                bc_add("vlans", si)
+            elif isinstance(si, OverlayLink):
+                bc_add("overlay_links", si)
+                # Add the corresponding BGP configuration for
+                # the overlay link to the inner overlay's BGP process.
+                inner_overlay = self.daemon.overlays[si.inner_overlay_name]
+                if si.is_ipv6():
+                    inner_overlay.bgp_process.bird_config_add("overlay_links", si)
+                else:
+                    inner_overlay.bgp_process.bird6_config_add("overlay_links", si)
+
+        self.logger.info("finished setting up BGP process")
+
+        self.set_setup()
 
 
     def start(self):
@@ -142,57 +213,23 @@ class Process(Worker):
         if not self.dry_run:
             util.directory_create(self.bird_pid_dir)
 
-        self.logger.debug("configuring BIRD")
-
-        bird_config = {}
-        bird6_config = {}
-
-        if util.ip_network_is_v6(self.linknet_pool):
-            bird6_config["mesh_tunnels"] = self.mesh_tunnels
-        else:
-            bird_config["mesh_tunnels"] = self.mesh_tunnels
-
-        for si in self.static_interfaces:
-            bc = None
-            if si.is_ipv6():
-                bc = bird6_config
-            else:
-                bc = bird_config
-
-            if isinstance(si, BGP):
-                self.bird_config_add(bc, "bgps", si)
-            elif isinstance(si, Dummy):
-                self.bird_config_add(bc, "dummies", si)
-            elif isinstance(si, OverlayLink):
-                self.bird_config_add(bc, "overlay_links", si)
-            elif isinstance(si, Tunnel):
-                self.bird_config_add(bc, "tunnels", si)
-            elif isinstance(si, Tuntap):
-                self.bird_config_add(bc, "tuntaps", si)
-            elif isinstance(si, VETH):
-                self.bird_config_add(bc, "veths", si)
-            elif isinstance(si, VLAN):
-                self.bird_config_add(bc, "vlans", si)
-
-        if bird_config:
-            bird_config["router_id"] = str(self.mesh_tunnels[0].virtual_local)
-
+        if self.bird_config:
+            self.bird_config["router_id"] = str(self.mesh_tunnels[0].virtual_local)
             self._start_bird_daemon(
                 self.bird,
                 self.bird_conf,
-                bird_config,
+                self.bird_config,
                 self.bird_log,
                 self.bird_ctl,
                 self.bird_pid,
             )
 
-        if bird6_config:
-            bird6_config["router_id"] = "192.0.2.1"
-
+        if self.bird6_config:
+            self.bird6_config["router_id"] = "192.0.2.1"
             self._start_bird_daemon(
                 self.bird6,
                 self.bird6_conf,
-                bird6_config,
+                self.bird6_config,
                 self.bird6_log,
                 self.bird6_ctl,
                 self.bird6_pid,

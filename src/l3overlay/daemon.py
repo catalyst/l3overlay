@@ -226,28 +226,29 @@ class Daemon(worker.Worker):
         '''
 
         if not self.dry_run:
-            if os.path.isdir(self.lib_dir):
-                self.logger.info("cleaning up existing lib dir '%s'" % self.lib_dir)
-                overlays_dir = os.path.join(self.lib_dir, "overlays")
+            overlays_dir = os.path.join(self.lib_dir, "overlays")
+            if os.path.isdir(overlays_dir):
+                overlay_names = os.listdir(overlays_dir)
+                if overlay_names:
+                    self.logger.info("cleaning up existing lib dir '%s'" % self.lib_dir)
+                    for overlay_name in overlay_names:
+                        self.logger.info("cleaning up overlay '%s'" % overlay_name)
 
-                for overlay_name in os.listdir(overlays_dir):
-                    self.logger.info("cleaning up overlay '%s'" % overlay_name)
+                        overlay_conf = os.path.join(overlays_dir, overlay_name, "overlay.conf")
+                        o = overlay.read(self.log, self.log_level, conf=overlay_conf)
 
-                    overlay_conf = os.path.join(overlays_dir, overlay_name, "overlay.conf")
-                    o = overlay.read(self.log, self.log_level, conf=overlay_conf)
+                        o.setup(self)
+                        o.start()
 
-                    o.setup(self)
-                    o.start()
+                        o.stop()
+                        o.remove()
 
-                    o.stop()
-                    o.remove()
+                        self.logger.info("finished cleaning up overlay '%s'" % overlay_name)
 
-                    self.logger.info("finished cleaning up overlay '%s'" % overlay_name)
+                    self.logger.debug("removing lib dir '%s'" % self.lib_dir)
+                    shutil.rmtree(self.lib_dir)
 
-                self.logger.debug("removing lib dir '%s'" % self.lib_dir)
-                shutil.rmtree(self.lib_dir)
-
-                self.logger.info("finished cleaning up existing lib dir '%s'" % self.lib_dir)
+                    self.logger.info("finished cleaning up existing lib dir '%s'" % self.lib_dir)
 
             elif os.path.exists(self.lib_dir):
                 self.logger.debug("removing file at lib dir path '%s'" % self.lib_dir)
