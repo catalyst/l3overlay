@@ -90,46 +90,63 @@ class Daemon(worker.Worker):
         self.ipsec_secrets = ipsec_secrets
 
         self.overlays = overlays.copy()
-        self.sorted_overlays = self.overlays_list_sorted()
+        self.sorted_overlays = Daemon.overlays_sorted(self.overlays)
 
 
-    def overlays_list_sorted(self):
+    @staticmethod
+    def overlays_sorted(overlays):
         '''
-        Resolve inter-overlay dependencies, and place a sorted list
+        Resolve inter-overlay dependencies, and place a sorted iterable
         of overlays, where there would be no dependency issues upon
         starting them, in place of the existing list.
         '''
 
-        os = sorted(self.overlays.keys())
-        sos = []
+        overlay_names = sorted(overlays.keys())
+        sorted_overlays = []
 
-        while os:
-            self._overlays_list_sorted(os, sos, self.overlays[os.pop(0)])
+        while overlay_names:
+            Daemon._overlays_sorted(
+                overlays,
+                overlay_names,
+                sorted_overlays,
+                overlays[overlay_names.pop(0)],
+            )
 
-        return sos
+        return tuple(sorted_overlays)
 
 
-    def _overlays_list_sorted(self, os, sos, o):
+    @staticmethod
+    def _overlays_sorted(overlays, overlay_names, sorted_overlays, ol):
         '''
         Recursive helper method to overlays_list_sorted.
         '''
 
-        for si in o.static_interfaces:
-            if isinstance(si, VETH) and si.inner_namespace in self.overlays:
+        for si in ol.static_interfaces:
+            if isinstance(si, VETH) and si.inner_namespace in overlays:
                 try:
-                    os.remove(si.inner_namespace)
+                    overlay_names.remove(si.inner_namespace)
                 except ValueError:
                     continue
-                self._overlays_list_sorted(os, sos, self.overlays[si.inner_namespace])
+                Daemon._overlays_sorted(
+                    overlays,
+                    overlay_names,
+                    sorted_overlays,
+                    overlays[si.inner_namespace],
+                )
 
             elif isinstance(si, OverlayLink):
                 try:
-                    os.remove(si.inner_overlay_name)
+                    overlay_names.remove(si.inner_overlay_name)
                 except ValueError:
                     continue
-                self._overlays_list_sorted(os, sos, self.overlays[si.inner_overlay_name])
+                Daemon._overlays_sorted(
+                    overlays,
+                    overlay_names,
+                    sorted_overlays,
+                    overlays[si.inner_overlay_name],
+                )
 
-        sos.append(o)
+        sorted_overlays.append(ol)
 
 
     def setup(self):
