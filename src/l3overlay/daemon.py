@@ -312,10 +312,12 @@ class Daemon(worker.Worker):
 
         try:
             self.set_removing()
-
+            if not self.dry_run:
+                self.logger.debug("releasing root IPDB")
+                self.root_ipdb.release()
             self.logger.stop()
-
             self.set_removed()
+
         except Exception as e:
             if self.logger.is_running():
                 self.logger.exception(e)

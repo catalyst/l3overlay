@@ -38,7 +38,7 @@ def _log_get(logger, name, description, netns, root_ipdb):
         logger.debug("getting runtime state for %s '%s' in %s" %
                 (description, name, netns.description))
     elif root_ipdb:
-        logger.debug("getting runtime state %s '%s' in root namespace" %
+        logger.debug("getting runtime state for %s '%s' in root namespace" %
                 (description, name))
 
 
@@ -82,7 +82,7 @@ def _interface_get(name, ipdb, *types):
 
     existing_if = ipdb.interfaces[name]
 
-    if types and existing_if.kind not in types:
+    if existing_if and types and existing_if.kind not in types:
         raise UnexpectedTypeError(name, existing_if.kind, types)
 
     return existing_if
