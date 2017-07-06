@@ -83,8 +83,15 @@ class NetNS(Worker):
                 except e:
                     raise UnableToCreateNetnsError(self, e.message)
 
+            self.logger.debug("creating NetNS and IPDB objects for '%s'" % self.name)
             self.netns = pyroute2.NetNS(self.name)
             self.ipdb = pyroute2.IPDB(nl=self.netns)
+
+            # Bring up the loopback interface inside the namespace.
+            lo = interface.get(self.dry_run, self.logger, "lo", netns=self)
+            lo.up()
+
+        self.logger.debug("finished starting network namespace '%s'" % self.name)
 
         self.set_started()
 
