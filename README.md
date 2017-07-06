@@ -69,13 +69,13 @@ Running
 
 Once l3overlay is installed and configured, it can be executed by simply running the `l3overlayd` command if it is located in the `PATH` environment variable, or by running the executable directly if it is not.
 
-If the `upstart-install` or `sysv-install` make targets are used, an Upstart configuration or System V init script would have been installed to the system.
+If the `systemd-install`, `sysv-install` or `upstart-install` make targets are used, a systemd unit file, an Upstart configuration file or System V init script would have been installed to the system.
 
 To start l3overlay as a service, simply run:
 
     sudo service l3overlay start
 
-To ensure that l3overlay starts with the system using the `/etc/init.d` script, this command should also be run (on Ubuntu):
+To ensure that l3overlay starts with the system using the System V init script, this command should also be run (on Ubuntu):
 
     sudo update-rc.d l3overlay defaults
 
@@ -477,7 +477,7 @@ With this option set, `inner-address` goes to the inner interface as normal, but
 
 ### [static-overlay-link:*{name}*]
 
-This section is used to create a link between two overlays, by creating a veth pair between them. The outer veth interface stays in the creating overlay, and gets bridged to a dummy interface, and the inner veth interface gets moved to the overlay to be linked to. A BGP peering is also set up between them, allowing route distribution to take place between the overlays.
+This section is used to create a link between two overlays, by creating a veth pair between them. The outer veth interface stays in the creating overlay, and gets bridged to a dummy interface, and the inner veth interface gets moved to the overlay to be linked to. A BGP peering is also set up between them, allowing route distribution to take place between the overlays. **NOTE:** you only need to define ONE static overlay link interface, in one overlay, for the two overlays to be connected. There is no need to define two corresponding static overlay link interfaces, as `l3overlayd` will automatically do this.
 
 #### outer-address
 * Type: **ip address**
