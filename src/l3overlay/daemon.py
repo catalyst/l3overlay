@@ -45,6 +45,22 @@ class NoOverlayConfError(L3overlayError):
     def __init__(self):
         super().__init__("no overlay configuration files found")
 
+class MeshLinkNonexistentError(L3overlayError):
+    def __init__(self, local, remote):
+        super().__init__("unable to delete non-existent mesh link (%s, %s)" % (local, remote))
+
+class IPsecTunnelMismatchedPSKError(L3overlayError):
+    def __init__(self, local, remote, expected_psk, actual_psk):
+        super().__init__(
+            "increasing usage count on already added IPsec tunnel (%s, %s) failed:" +
+            "expected PSK '%s', got '%s'" %
+                    (local, remote, expected_psk, actual_psk)
+        )
+
+class IPsecTunnelNonexistentError(L3overlayError):
+    def __init__(self, local, remote):
+        super().__init__("unable to delete non-existent IPsec tunnel (%s, %s)" % (local, remote))
+
 class ReadError(L3overlayError):
     pass
 
@@ -157,10 +173,13 @@ class Daemon(worker.Worker):
         try:
             self.set_settingup()
 
-            self._gre_keys = {}
             self._interface_names = set()
 
+            self._gre_keys = {}
+
             self.mesh_links = set()
+            self.ipsec_tunnels = {}
+
             self.root_ipdb = pyroute2.IPDB() if not self.dry_run else None
         except Exception as e:
             if self.logger.is_running():
@@ -324,38 +343,6 @@ class Daemon(worker.Worker):
             raise
 
 
-    def gre_key_add(self, local, remote, key):
-        '''
-        Add a unique (to this daemon) key value for the given
-        (local, remote) link.
-        '''
-
-        link = (local, remote)
-
-        if link not in self._gre_keys:
-            self._gre_keys[link] = set()
-
-        if key in self._gre_keys[link]:
-            raise KeyUsedTwiceError(local, remote, key)
-        else:
-            self._gre_keys[link].add(key)
-
-
-    def gre_key_remove(self, local, remote, key):
-        '''
-        Remove a unique (to this daemon) key value for the given
-        (local, remote) link.
-        '''
-
-        link = (local, remote)
-
-        if link not in self._gre_keys:
-            return
-
-        if key in self._gre_keys[link]:
-            self._gre_keys[link].remove(key)
-
-
     def interface_name(self, name, suffix=None, limit=15):
         '''
         Returns a valid, unique (to this daemon daemon) interface name
@@ -384,6 +371,107 @@ class Daemon(worker.Worker):
 
         self._interface_names.add(ifname)
         return ifname
+
+
+    def gre_key_add(self, local, remote, key):
+        '''
+        Add a unique (to this daemon) key value for the given
+        (local, remote) link.
+        '''
+
+        link = (local, remote)
+
+        if link not in self._gre_keys:
+            self._gre_keys[link] = set()
+
+        if key in self._gre_keys[link]:
+            raise KeyAddedTwiceError(local, remote, key)
+        else:
+            self._gre_keys[link].add(key)
+
+
+    def gre_key_remove(self, local, remote, key):
+        '''
+        Remove a unique (to this daemon) key value for the given
+        (local, remote) link.
+        '''
+
+        link = (local, remote)
+
+        if link not in self._gre_keys:
+            return
+
+        if key in self._gre_keys[link]:
+            self._gre_keys[link].remove(key)
+
+
+    def mesh_link_add(self, local, remote):
+        '''
+        '''
+
+        link = (local, remote)
+
+        if not link in self.mesh_links:
+            self.mesh_links[link] = 0
+
+        self.mesh_links[link] += 1
+
+
+    def mesh_link_remove(self, local, remote):
+        '''
+        '''
+
+        link = (local, remote)
+
+        if link in self.mesh_links:
+            if self.mesh_links[link] <= 1:
+                del self.mesh_links[link]
+            else:
+                self.mesh_links[link] -= 1
+        else:
+            raise MeshLinkNonexistentError(local, remote)
+
+
+    def ipsec_tunnel_add(self, local, remote, ipsec_psk=None):
+        '''
+        Add a unique (to this daemon) key value for the given
+        (local, remote) link.
+        '''
+
+        link = (local, remote)
+
+        if link not in self.ipsec_tunnels:
+            self.ipsec_tunnels[link] = {
+                "ipsec-psk": ipsec_psk,
+                "num": 0,
+            }
+
+        if self.ipsec_tunnels[link]["ipsec-psk"] == ipsec_psk:
+            self.ipsec_tunnels[link]["num"] += 1
+        else:
+            raise IPsecTunnelMismatchedPSKError(
+                local,
+                remote,
+                self.ipsec_tunnels[link]["ipsec-psk"],
+                ipsec_psk,
+            )
+
+
+    def ipsec_tunnel_remove(self, local, remote):
+        '''
+        Remove a unique (to this daemon) key value for the given
+        (local, remote) link.
+        '''
+
+        link = (local, remote)
+
+        if link in self.ipsec_tunnels:
+            if self.ipsec_tunnels[link]["num"] <= 1:
+                del self.ipsec_tunnels[link]
+            else:
+                self.ipsec_tunnels[link]["num"] -= 1
+        else:
+            raise IPsecTunnelNonexistentError(local, remote)
 
 worker.Worker.register(Daemon)
 
@@ -551,15 +639,14 @@ def read(args):
             default = os.path.join(util.path_root(), "var", "run", "l3overlayd.pid"),
         )
 
-        ipsec_conf = reader.path_get(
-            "ipsec-conf",
-            default = os.path.join(util.path_root(), "etc", "ipsec.d", "l3overlay.conf"),
-        )
-        ipsec_secrets = reader.path_get(
-            "ipsec-secrets",
-            default = os.path.join(util.path_root(), "etc",
-                    "ipsec.secrets" if ipsec_manage else "ipsec.l3overlay.secrets"),
-        )
+        if ipsec_manage:
+            ipsec_conf_default = os.path.join(util.path_root(), "etc", "ipsec.conf")
+            ipsec_secrets_default = os.path.join(util.path_root(), "etc", "ipsec.secrets")
+        else:
+            ipsec_conf_default = os.path.join(util.path_root(), "etc", "ipsec.d", "l3overlay.conf")
+            ipsec_secrets_default = os.path.join(util.path_root(), "etc", "ipsec.l3overlay.secrets")
+        ipsec_conf = reader.path_get("ipsec-conf", default=ipsec_conf_default)
+        ipsec_secrets = reader.path_get("ipsec-secrets", default=ipsec_secrets_default)
 
         # Get overlay configuration file paths.
         overlay_confs = args["overlay_conf"]

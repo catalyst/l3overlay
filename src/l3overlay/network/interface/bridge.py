@@ -51,19 +51,26 @@ class Bridge(Interface):
             self.logger.debug("adding port for %s '%s' to %s '%s'" %
                     (added_if.description, added_if.name, self.description, self.name))
 
-        if self.interface and added_if.interface.index not in self.interface.ports:
-            self.interface.add_port(added_if.interface).commit()
+        if self.interface:
 
-            # FIXME: get rid of this workaround of pyroute2 issue #280
-            # once it is fixed.
-            #
-            # https://github.com/svinota/pyroute2/issues/280
-            if self.interface.mtu > added_if.interface.mtu:
-                waited = 0.0
-                while self.interface.mtu != added_if.interface.mtu and waited < 10.0:
-                    waited += 0.001
-                    time.sleep(0.001)
-                assert self.interface.mtu == added_if.interface.mtu
+            # GRE interfaces are a layer 3 interface. GRETAP interfaces are fine, though.
+            if "kind" in added_if.interface and added_if.interface["kind"] == "gre":
+                raise RuntimeError("unable to add gre interface '%s' to bridge interface '%s'" %
+                        (added_if.name, self.name))
+
+            if added_if.interface.index not in self.interface.ports:
+                self.interface.add_port(added_if.interface).commit()
+
+                # FIXME: get rid of this workaround of pyroute2 issue #280
+                # once it is fixed.
+                #
+                # https://github.com/svinota/pyroute2/issues/280
+                if self.interface.mtu > added_if.interface.mtu:
+                    waited = 0.0
+                    while self.interface.mtu != added_if.interface.mtu and waited < 10.0:
+                        waited += 0.001
+                        time.sleep(0.001)
+                    assert self.interface.mtu == added_if.interface.mtu
 
 
 def get(dry_run, logger, name, netns=None, root_ipdb=None):

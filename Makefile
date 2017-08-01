@@ -187,7 +187,7 @@ lint:
 
 
 test:
-	@for t in $(shell $(FIND) $(TESTS_BIN_DIR) -maxdepth 1 -name 'test_*.py'); do \
+	@for t in $(shell $(FIND) $(TESTS_BIN_DIR) -name 'test_*.py'); do \
 		PYTHONPATH=$(TESTS_SRC_DIR):$(SRC_DIR) $(PYTHON) $$t || exit $$?; \
 	done
 
@@ -225,7 +225,6 @@ uninstall:
 
 
 clean:
-	$(RM) $(CONFIG)
 	$(RM) default/l3overlay
 	$(RM) systemd/l3overlay.service
 	$(RM) init.d/l3overlay

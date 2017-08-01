@@ -1,6 +1,6 @@
 #
 # IPsec overlay network manager (l3overlay)
-# tests/test_static_tuntap.py - unit test for reading static tuntap interfaces
+# tests/test_static_vlan.py - unit test for reading static vlan interfaces
 #
 # Copyright (c) 2017 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify
@@ -24,15 +24,15 @@ import unittest
 from l3overlay import overlay
 from l3overlay import util
 
-from tests.base.static_interface import StaticInterfaceBaseTest
+from tests.overlay.static_interface.base import StaticInterfaceBaseTest
 
 
-class StaticTuntapTest(StaticInterfaceBaseTest.Class):
+class StaticVLANTest(StaticInterfaceBaseTest.Class):
     '''
-    Unit test for reading static tuntap interfaces.
+    Unit test for reading static vlan interfaces.
     '''
 
-    name = "test_static_tuntap"
+    name = "test_static_vlan"
 
     #
     ##
@@ -47,7 +47,8 @@ class StaticTuntapTest(StaticInterfaceBaseTest.Class):
         super().setUp()
 
         self.overlay_conf[self.section] = {
-            "mode": "tun",
+            "id": "100",
+            "physical-interface": "eth0",
             "address": "201.0.113.1",
             "netmask": "32",
         }
@@ -58,36 +59,28 @@ class StaticTuntapTest(StaticInterfaceBaseTest.Class):
     #
 
 
-    def test_mode(self):
+    def test_id(self):
         '''
-        Test that 'mode' is properly handled by the static tuntap interface.
+        Test that 'id' is properly handled by the static vlan interface.
         '''
 
-        self.assert_enum(self.section, "mode", ["tun", "tap"])
+        self.assert_integer(self.section, "id", minval=0, maxval=4096)
+
+
+    def test_physical_interface(self):
+        '''
+        Test that 'physical-interface' is properly handled by the static vlan interface.
+        '''
+
+        self.assert_name(self.section, "physical-interface")
 
 
     def test_address_netmask(self):
         '''
-        Test that 'address' and 'netmask' are properly handled by the static tuntap interface.
+        Test that 'address' and 'netmask' are properly handled by the static vlan interface.
         '''
 
         self.assert_address_netmask(self.section, "address", "netmask")
-
-
-    def test_uid(self):
-        '''
-        Test that 'uid' is properly handled by the static tuntap interface.
-        '''
-
-        self.assert_integer(self.section, "uid", minval=0)
-
-
-    def test_gid(self):
-        '''
-        Test that 'gid' is properly handled by the static tuntap interface.
-        '''
-
-        self.assert_integer(self.section, "gid", minval=0)
 
 
 if __name__ == "__main__":

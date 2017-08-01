@@ -24,9 +24,7 @@ import unittest
 from l3overlay import overlay
 from l3overlay import util
 
-from l3overlay.overlay.interface import ReadError
-
-from tests.base.static_interface import StaticInterfaceBaseTest
+from tests.overlay.static_interface.base import StaticInterfaceBaseTest
 
 
 class StaticVETHTest(StaticInterfaceBaseTest.Class):
@@ -64,16 +62,34 @@ class StaticVETHTest(StaticInterfaceBaseTest.Class):
         handled by the static veth interface.
         '''
 
+        oc = self.config_get(self.section, "inner-address", value="201.0.113.1")
+
         # Test that both inner-address and outer-address cannot be defined
         # at the same time, without outer-interface-bridged being set to true.
-        self.overlay_conf[self.section]["inner-address"] = "201.0.113.1"
-        self.assert_fail(self.section, "outer-address", "201.0.113.2", ReadError)
+        self.assert_fail(
+            self.section,
+            "outer-address",
+            value="201.0.113.2",
+            exception=overlay.interface.ReadError,
+            conf=oc,
+        )
 
-        self.overlay_conf[self.section]["outer-interface-bridged"] = "true"
-        self.assert_success(self.section, "outer-address", "201.0.113.2")
+        oc[self.section]["outer-interface-bridged"] = "true"
+        self.assert_success(
+            self.section,
+            "outer-address",
+            value="201.0.113.2",
+            conf=oc,
+        )
 
         # Test that IPv4 and IPv6 inner and outer addresses cannot be mixed.
-        self.assert_fail(self.section, "outer-address", "2001:db8::2", ReadError)
+        self.assert_fail(
+            self.section,
+            "outer-address",
+            value="2001:db8::2",
+            exception=overlay.interface.ReadError,
+            conf=oc,
+        )
 
 
     def test_inner_address_netmask(self):

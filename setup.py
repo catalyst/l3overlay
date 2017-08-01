@@ -75,7 +75,10 @@ setuptools.setup(
     package_dir = {"": "src"},
 
     entry_points = {
-        "console_scripts": ["l3overlayd = l3overlay:main"],
+        "console_scripts": [
+            "l3overlayd = l3overlay.l3overlayd:main",
+            "l3overlay-birdc = l3overlay.l3overlay_birdc:main",
+        ],
     },
 
     package_data = {

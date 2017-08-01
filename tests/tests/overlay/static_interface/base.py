@@ -23,7 +23,7 @@ import os
 from l3overlay import overlay
 from l3overlay import util
 
-from tests.base.overlay import OverlayBaseTest
+from tests.overlay.base import OverlayBaseTest
 
 
 class StaticInterfaceBaseTest(object):
@@ -33,6 +33,7 @@ class StaticInterfaceBaseTest(object):
         '''
 
         name = "test_static_interface"
+
 
         #
         ##
@@ -48,10 +49,11 @@ class StaticInterfaceBaseTest(object):
 
             self.section_name = self.name.replace("_", "-")
             self.section_type = self.section_name.replace("test-", "")
-            self.section = "%s:%s" % (self.section_type, self.section_name)
+            self.section = util.section_header(self.section_type, self.section_name)
 
             self.overlay_conf["overlay"]["name"] = self.section_name
             self.overlay_conf[self.section] = {}
+
 
         #
         ##
@@ -65,15 +67,15 @@ class StaticInterfaceBaseTest(object):
             '''
 
             # Test the IP address key.
-            self.overlay_conf[section][netmask_key] = "32"
-            self.assert_ip_address(section, address_key)
+            oc = self.config_get(section, netmask_key, value="32")
+            self.assert_ip_address(section, address_key, conf=oc)
 
             # Test the netmask key.
-            self.overlay_conf[section][address_key] = "201.0.113.1"
-            self.assert_netmask(section, netmask_key, is_ipv6=False)
+            oc = self.config_get(section, address_key, value="201.0.113.1")
+            self.assert_netmask(section, netmask_key, is_ipv6=False, conf=oc)
 
-            self.overlay_conf[section][address_key] = "2001:db8::1" 
-            self.assert_netmask(section, netmask_key, is_ipv6=True)
+            oc = self.config_get(section, address_key, value="2001:db8::1")
+            self.assert_netmask(section, netmask_key, is_ipv6=True, conf=oc)
 
 
         #
@@ -89,17 +91,23 @@ class StaticInterfaceBaseTest(object):
 
             # Test that the static interface is parsed successfully with a valid
             # name, and is available.
-            overlay = self.assert_success(None, None, None)
-            self.assertTrue(next((si for si in overlay.static_interfaces if si.name == self.section_name), None))
+            o = self.object_get()
+            self.assertTrue(next((si for si in o.static_interfaces if si.name == self.section_name), None))
 
-            # Test the same section, with a section name containing spaces.
-            # Make sure it fails.
-            value = self.overlay_conf[self.section].copy()
-            del self.overlay_conf[self.section]
+            # Test invalid values.
+            oc = self.config_get()
+            value = oc[self.section].copy()
+            del oc[self.section]
 
             self.assert_fail(
-                None,
                 "%s:%s" % (self.section_type, self.section_name.replace("-", " ")),
-                value,
-                util.GetError,
+                value=value,
+                exception=util.GetError,
+                conf=oc,
+            )
+            self.assert_fail(
+                "%s:%s" % (util.random_string(16), self.section_name),
+                value=value,
+                exception=overlay.UnsupportedSectionTypeError,
+                conf=oc,
             )

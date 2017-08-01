@@ -44,6 +44,7 @@ apt-get install -y iproute2
 apt-get install -y vlan
 apt-get install -y bird
 apt-get install -y strongswan
+apt-get install -y strongswan-plugin-openssl
 apt-get install -y make
 apt-get install -y git
 apt-get install -y python3-pip

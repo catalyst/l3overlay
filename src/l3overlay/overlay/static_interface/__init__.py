@@ -25,6 +25,7 @@ from l3overlay.overlay.interface import WriteError
 
 from l3overlay.overlay.static_interface import bgp
 from l3overlay.overlay.static_interface import dummy
+from l3overlay.overlay.static_interface import external_tunnel
 from l3overlay.overlay.static_interface import overlay_link
 from l3overlay.overlay.static_interface import tunnel
 from l3overlay.overlay.static_interface import tuntap
@@ -58,6 +59,8 @@ def read(logger, interface_type, name, config):
         return bgp.read(logger, name, config)
     elif interface_type == "static-dummy":
         return dummy.read(logger, name, config)
+    elif interface_type == "static-external-tunnel":
+        return external_tunnel.read(logger, name, config)
     elif interface_type == "static-overlay-link":
         return overlay_link.read(logger, name, config)
     elif interface_type == "static-tunnel":
@@ -88,6 +91,9 @@ def write(interface, config):
     elif isinstance(interface, dummy.Dummy):
         section = util.section_header("static-dummy", interface.name)
         interface_class = dummy
+    elif isinstance(interface, external_tunnel.ExternalTunnel):
+        section = util.section_header("static-external-tunnel", interface.name)
+        interface_class = external_tunnel
     elif isinstance(interface, overlay_link.OverlayLink):
         section = util.section_header("static-overlay-link", interface.name)
         interface_class = overlay_link

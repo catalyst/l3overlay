@@ -63,9 +63,28 @@ class L3overlaydTest(BaseTest.Class):
 
         with open(test_py, "w") as f:
             f.write('''
+import sys
+
+import importlib.util
 import importlib.machinery
-l3overlay = importlib.machinery.SourceFileLoader("l3overlay", "%s/l3overlay/__init__.py").load_module()
-l3overlay.main()''' % SRC_DIR)
+
+
+def dynamic_import(module_name, module_path):
+    if sys.version_info[0] < 3 or (sys.version_info[0] == 3 and sys.version_info[1] < 4):
+        raise RuntimeError("l3overlay only supports Python >= 3.4")
+    elif sys.version_info[1] == 4:
+        return importlib.machinery.SourceFileLoader(module_name, module_path).load_module()
+    else:
+        module_spec = importlib.util.spec_from_file_location(module_name, module_path)
+        module = importlib.util.module_from_spec(module_spec)
+        module_spec.loader.exec_module(module)
+        return module
+
+
+l3overlay = dynamic_import("l3overlay", "%(src_dir)s/l3overlay/__init__.py")
+l3overlayd = dynamic_import("l3overlay.l3overlayd", "%(src_dir)s/l3overlay/l3overlayd.py")
+
+l3overlayd.main()''' % {"src_dir": SRC_DIR})
 
         command = [util.command_path("python3"), test_py]
 

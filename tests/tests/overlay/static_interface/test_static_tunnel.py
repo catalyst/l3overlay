@@ -24,9 +24,7 @@ import unittest
 from l3overlay import overlay
 from l3overlay import util
 
-from l3overlay.overlay.interface import ReadError
-
-from tests.base.static_interface import StaticInterfaceBaseTest
+from tests.overlay.static_interface.base import StaticInterfaceBaseTest
 
 
 class StaticTunnelTest(StaticInterfaceBaseTest.Class):
@@ -67,7 +65,7 @@ class StaticTunnelTest(StaticInterfaceBaseTest.Class):
         Test that 'mode' is properly handled by the static tunnel interface.
         '''
 
-        self.assert_enum(self.section, "mode", ["gre", "gretap"])
+        self.assert_enum(self.section, "mode", enum=["gre", "gretap"])
 
 
     def test_local(self):
@@ -108,12 +106,12 @@ class StaticTunnelTest(StaticInterfaceBaseTest.Class):
         '''
 
         # Fail when okey is undefined.
-        self.assert_fail(self.section, "ikey", "0", ReadError)
+        self.assert_fail(self.section, "ikey", value="0", exception=overlay.interface.ReadError)
 
         # Success when okey is defined at the same time.
         # Also test argument handling at the same time.
-        self.overlay_conf[self.section]["okey"] = "0"
-        self.assert_integer(self.section, "ikey", minval=0)
+        oc = self.config_get(self.section, "okey", value="0")
+        self.assert_integer(self.section, "ikey", minval=0, conf=oc)
 
 
     def test_okey(self):
@@ -122,12 +120,12 @@ class StaticTunnelTest(StaticInterfaceBaseTest.Class):
         '''
 
         # Fail when ikey is undefined.
-        self.assert_fail(self.section, "okey", "0", ReadError)
+        self.assert_fail(self.section, "okey", value="0", exception=overlay.interface.ReadError)
 
         # Success when ikey is defined at the same time.
         # Also test argument handling at the same time.
-        self.overlay_conf[self.section]["ikey"] = "0"
-        self.assert_integer(self.section, "okey", minval=0)
+        oc = self.config_get(self.section, "ikey", value="0")
+        self.assert_integer(self.section, "okey", minval=0, conf=oc)
 
 
 if __name__ == "__main__":

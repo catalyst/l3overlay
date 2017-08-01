@@ -24,7 +24,7 @@ import unittest
 from l3overlay import overlay
 from l3overlay import util
 
-from tests.base.static_interface import StaticInterfaceBaseTest
+from tests.overlay.static_interface.base import StaticInterfaceBaseTest
 
 
 class StaticDummyTest(StaticInterfaceBaseTest.Class):

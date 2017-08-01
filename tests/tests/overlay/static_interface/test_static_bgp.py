@@ -24,7 +24,7 @@ import unittest
 from l3overlay import overlay
 from l3overlay import util
 
-from tests.base.static_interface import StaticInterfaceBaseTest
+from tests.overlay.static_interface.base import StaticInterfaceBaseTest
 
 
 class StaticBGPTest(StaticInterfaceBaseTest.Class):
@@ -109,7 +109,7 @@ class StaticBGPTest(StaticInterfaceBaseTest.Class):
         Test that 'description' is properly handled by the static bgp protocol.
         '''
 
-        self.assert_success(self.section, "description", "description")
+        self.assert_success(self.section, "description", value="test description for static BGP")
 
 
     def test_import_prefix(self):
@@ -118,25 +118,25 @@ class StaticBGPTest(StaticInterfaceBaseTest.Class):
         '''
 
         # Test invalid values.
-        self.assert_fail(self.section, "import-prefix", "172.16.0.0/-1", util.GetError)
-        self.assert_fail(self.section, "import-prefix", "172.16.0.0/33", util.GetError)
-        self.assert_fail(self.section, "import-prefix", "2001:db8::/129", util.GetError)
-        self.assert_fail(self.section, "import-prefix", "172.16.0.0/16{-1,33}", util.GetError)
-        self.assert_fail(self.section, "import-prefix", "2001:db8::/32{-1,129}", util.GetError)
+        self.assert_fail(self.section, "import-prefix", value="172.16.0.0/-1", exception=util.GetError)
+        self.assert_fail(self.section, "import-prefix", value="172.16.0.0/33", exception=util.GetError)
+        self.assert_fail(self.section, "import-prefix", value="2001:db8::/129", exception=util.GetError)
+        self.assert_fail(self.section, "import-prefix", value="172.16.0.0/16{-1,33}", exception=util.GetError)
+        self.assert_fail(self.section, "import-prefix", value="2001:db8::/32{-1,129}", exception=util.GetError)
 
         # Test valid values.
-        self.assert_success(self.section, "import-prefix", "172.16.0.0/16")
-        self.assert_success(self.section, "import-prefix", "172.16.0.0/16+")
-        self.assert_success(self.section, "import-prefix", "172.16.0.0/16-")
-        self.assert_success(self.section, "import-prefix", "172.16.0.0/16{20,24}")
+        self.assert_success(self.section, "import-prefix", value="172.16.0.0/16")
+        self.assert_success(self.section, "import-prefix", value="172.16.0.0/16+")
+        self.assert_success(self.section, "import-prefix", value="172.16.0.0/16-")
+        self.assert_success(self.section, "import-prefix", value="172.16.0.0/16{20,24}")
 
-        self.assert_success(self.section, "import-prefix", "2001:db8::/32")
-        self.assert_success(self.section, "import-prefix", "2001:db8::/32+")
-        self.assert_success(self.section, "import-prefix", "2001:db8::/32-")
-        self.assert_success(self.section, "import-prefix", "2001:db8::/32{48,64}")
+        self.assert_success(self.section, "import-prefix", value="2001:db8::/32")
+        self.assert_success(self.section, "import-prefix", value="2001:db8::/32+")
+        self.assert_success(self.section, "import-prefix", value="2001:db8::/32-")
+        self.assert_success(self.section, "import-prefix", value="2001:db8::/32{48,64}")
 
-        self.overlay_conf[self.section]["import-prefix-0"] = "172.16.0.0/24"
-        self.assert_success(self.section, "import-prefix-1", "172.16.1.0/24")
+        oc = self.config_get(self.section, "import-prefix-0", value="172.16.0.0/24")
+        self.assert_success(self.section, "import-prefix-1", value="172.16.1.0/24", conf=oc)
 
 
 if __name__ == "__main__":

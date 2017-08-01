@@ -21,7 +21,7 @@ The following software packages are required to run l3overlay:
 * **Python**, version **3.4** or later
 * **iproute2**
 * **BIRD** routing daemon, version **1.4.3** or later
-* **strongSwan** IPsec (if `use-ipsec` is set to `true` in `global.conf`)
+* **strongSwan** IPsec and its optional OpenSSL plugin (if `use-ipsec` is set to `true` in `global.conf`)
 
 The following Python modules are also required to run l3overlay:
 
@@ -44,7 +44,7 @@ l3overlay can be installed to the default location by simply using:
 
     sudo make install
 
-By default, this will install the `l3overlayd` executable into `/usr/local/sbin`.
+By default, this will install the executables into `/usr/local/sbin`.
 
 See the `Makefile` for more details on how to change the installation locations.
 
@@ -116,6 +116,25 @@ optional arguments:
                         write IPsec configuration to FILE
   -is FILE, --ipsec-secrets FILE
                         write IPsec secrets to FILE
+```
+
+Also installed alongside `l3overlayd` is `l3overlay-birdc`, a wrapper script to `birdc` that uses the l3overlay configuration to allow it to easily connect to an overlay's internal BIRD server, without the user having to find its control socket file.
+
+```
+usage: l3overlay-birdc [-h] [-gc FILE] [-Ld DIR] [-6] OVERLAY [BIRDC-ARG [BIRDC-ARG...]]
+
+l3overlay overlay-specific birdc wrapper.
+
+positional arguments:
+  OVERLAY               launch birdc under overlay OVERLAY
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -gc FILE, --global-conf FILE
+                        use FILE as the global configuration file
+  -Ld DIR, --lib-dir DIR
+                        use DIR as the runtime data directory (overrides -gc)
+  -6, --use-bird6       launch birdc for bird6 (default is bird4)
 ```
 
 Example configuration
@@ -297,6 +316,60 @@ Specifies whether or not this overlay should be configured. The default value is
 
 The location to the fwbuilder script used to build the firewall settings inside the overlay. This can be either an absolute filepath to the script, or simply a filename relative to the `fwbuilder_scripts` directory.
 
+### [static-bgp:*{name}*]
+
+This section is used to define a static BGP protocol in the BIRD routing daemon, used for distributing routes in the overlay. This is made to be used in conjunction with static GRE tunnels, to distribute routes across it.
+
+#### neighbor
+* Type: **ip address**
+* Required: **yes**
+
+The neighbour BGP node's IP address.
+
+#### local
+* Type: **ip address**
+* Required: no
+
+The local IP address used to make the BGP connection with the neighbour. Optional.
+
+#### local-asn
+* Type: **integer**, range 0 <= **local-asn** <= 65535
+* Required: no
+
+The BGP autonomous system (AS) number used to identify the AS the local node is part of. The default value is the ASN number set for the overlay (the `asn` value in the `[overlay]` section).
+
+#### neighbor-asn
+* Type: **integer**, range 0 <= **neighbor-asn** <= 65535
+* Required: no
+
+The BGP autonomous system (AS) number used to identify the AS the neighbour node is part of.  The default value is the ASN number set for the overlay (the `asn` value in the `[overlay]` section).
+
+#### bfd
+* Type: **boolean**
+* Required: no
+
+Enable BFD for the BGP protocol, to monitor for neighbour availability and failure detection. Note that BFD also needs to be supported by the neighbour. Defaults to `false`.
+
+#### ttl-security
+* Type: **boolean**
+* Required: no
+
+Enable the RFC 5082 TTL security mechanism on this BGP protocol. Also needs to be enabled by the neighbour. Defaults to `false`.
+
+#### description
+* Type: **string**
+* Required: no
+
+An optional description of the BGP protocol, displayed with the use of `show protocol all` in the BIRD client.
+
+#### import-prefix[-*{int}*]
+* Type: **bird prefix**
+* Required: no
+
+One or more BIRD filters used to filter the routes which get imported into the BGP protocol. The default is to import all routes.
+
+See the [BIRD filter documentation on data types](http://bird.network.cz/?get_doc&f=bird-5.html#ss5.2) for more information.
+
 ### [static-dummy:*{name}*]
 
 This section is used to define a dummy interface in the overlay.
@@ -312,6 +385,98 @@ The IP address assigned to the dummy interface.
 * Required: **yes**
 
 The subnet mask for the dummy interface address.
+
+### [static-external-tunnel:*{name}*]
+
+This section is used to define a layer 2 (GRETAP) tunnel in the root namespace, which is then linked into the overlay by a bridged veth interface. It can be connected to any IP address available in the root namespace.
+
+#### local
+* Type: **ip address**
+* Required: **yes**
+
+The local endpoint IP address assigned to the GRETAP tunnel (in the root namespace).
+
+#### remote
+* Type: **ip address**
+* Required: **yes**
+
+The remote endpoint IP address assigned to the GRETAP tunnel (in the root namespace).
+
+#### address
+* Type: **ip address**
+* Required: **yes**
+
+The IP address assigned to the overlay namespace veth interface (in the overlay namespace).
+
+#### netmask
+* Type: **subnet mask**
+* Required: **yes**
+
+The subnet mask for the static overlay namespace veth interface address.
+
+#### key
+* Type: **integer**
+* Required: **yes**, **IF** there is more than one tunnel using the address pair and `ikey`/`okey` are not used
+
+The unique (to the system) key number for this GRETAP tunnel address pair (`local`, `remote`). The peer's tunnel interface should use the same key nunber.
+
+#### ikey
+* Type: **integer**
+* Required: **yes**, **IF** there is more than one tunnel using the address pair and `key` is not used
+
+The unique (to the system) input key number for this GRETAP tunnel address pair (`local`, `remote`). The peer's output key number should be the same value.
+
+If this option is used, `okey` is also required to be used.
+
+#### okey
+* Type: **integer**
+* Required: **yes**, **IF** there is more than one tunnel using the address pair and `key` is not used
+
+The unique output key number for this GRETAP tunnel address pair (`local`, `remote`). The peer's input key number should be the same value.
+
+If this option is used, `ikey` is also required to be used.
+
+#### use-ipsec
+* Type: **boolean**
+* Required: no
+
+If true, create a tunnel mode IPsec VPN to encapsulate the GRETAP tunnel.
+
+#### ipsec-psk
+* Type: **hex**, 6-64 digits
+* Required: no
+
+The hex string used as the pre-shared key (PSK) for authentication of the encapsulating IPsec VPN. The PSK must be at least 6 digits long, and has a maximum length of 64 digits.
+
+If unspecified, the default behaviour is to use the PSK defined in `global.conf`.
+
+### [static-overlay-link:*{name}*]
+
+This section is used to create a link between two overlays, by creating a veth pair between them. The outer veth interface stays in the creating overlay, and gets bridged to a dummy interface, and the inner veth interface gets moved to the overlay to be linked to. A BGP peering is also set up between them, allowing route distribution to take place between the overlays. **NOTE:** you only need to define ONE static overlay link interface, in one overlay, for the two overlays to be connected. There is no need to define two corresponding static overlay link interfaces, as `l3overlayd` will automatically do this.
+
+#### outer-address
+* Type: **ip address**
+* Required: **yes**
+
+The IP address assigned to the bridge interface in this overlay, to address the link between the two overlays. This must be the same type of IP address as the value set in `inner-address`.
+
+#### inner-address
+* Type: **ip address**
+* Required: **yes**
+
+The IP address assigned to the veth interface in the opposing connected overlay, to address the link between the two overlays. This must be the same type of IP address as the value set in `outer-address`.
+
+#### inner-overlay-name
+* Type: **name**
+* Required: **yes**
+
+The name of the overlay to link with.
+
+#### netmask
+* Type: **subnet mask**
+* Required: **yes**
+
+The subnet mask for the assigned addresses. Usually this would be set to `31`/`255.255.255.254` (IPv4) or `127` (IPv6) to configure the link as a two-node subnet.
 
 ### [static-tunnel:*{name}*]
 
@@ -405,34 +570,6 @@ The user ID which owns and is allowed to attach to the 'network/wire' side of th
 
 The group ID which is allowed to attach to the 'network/wire' side of the interface.
 
-### [static-vlan:*{name}*]
-
-This section is used to statically define a IEEE 802.1Q VLAN interface, assigned to a physical interface, which will be accessible in the overlay via a veth pair.
-
-#### id
-* Type: **integer**
-* Required: **yes**
-
-The IEEE 802.1Q VLAN ID tag for the static VLAN interface.
-
-#### physical-interface
-* Type: **name**
-* Required: **yes**
-
-The physical interface assigned to the static VLAN interface.
-
-#### address
-* Type: **ip address**
-* Required: **yes**
-
-The IP address assigned to the static VLAN interface.
-
-#### netmask
-* Type: **subnet mask**
-* Required: **yes**
-
-The subnet mask for the VLAN interface address.
-
 ### [static-veth:*{name}*]
 
 This section is used to configure a static veth pair, with an inner interface inside the overlay, and an outer interface, either in the root namespace, or an externally created network namespace.
@@ -475,84 +612,30 @@ Attaches the outer interface of the static veth to a bridge interface, along wit
 
 With this option set, `inner-address` goes to the inner interface as normal, but `outer-address` will be assigned to the bridge interface rather than being directly assigned to the inner interface.
 
-### [static-overlay-link:*{name}*]
+### [static-vlan:*{name}*]
 
-This section is used to create a link between two overlays, by creating a veth pair between them. The outer veth interface stays in the creating overlay, and gets bridged to a dummy interface, and the inner veth interface gets moved to the overlay to be linked to. A BGP peering is also set up between them, allowing route distribution to take place between the overlays. **NOTE:** you only need to define ONE static overlay link interface, in one overlay, for the two overlays to be connected. There is no need to define two corresponding static overlay link interfaces, as `l3overlayd` will automatically do this.
+This section is used to statically define a IEEE 802.1Q VLAN interface, assigned to a physical interface, which will be accessible in the overlay via a veth pair.
 
-#### outer-address
-* Type: **ip address**
+#### id
+* Type: **integer**
 * Required: **yes**
 
-The IP address assigned to the bridge interface in this overlay, to address the link between the two overlays. This must be the same type of IP address as the value set in `inner-address`.
+The IEEE 802.1Q VLAN ID tag for the static VLAN interface.
 
-#### inner-address
-* Type: **ip address**
-* Required: **yes**
-
-The IP address assigned to the veth interface in the opposing connected overlay, to address the link between the two overlays. This must be the same type of IP address as the value set in `outer-address`.
-
-#### inner-overlay-name
+#### physical-interface
 * Type: **name**
 * Required: **yes**
 
-The name of the overlay to link with.
+The physical interface assigned to the static VLAN interface.
+
+#### address
+* Type: **ip address**
+* Required: **yes**
+
+The IP address assigned to the static VLAN interface.
 
 #### netmask
 * Type: **subnet mask**
 * Required: **yes**
 
-The subnet mask for the assigned addresses. Usually this would be set to `31`/`255.255.255.254` (IPv4) or `127` (IPv6) to configure the link as a two-node subnet.
-
-### [static-bgp:*{name}*]
-
-This section is used to define a static BGP protocol in the BIRD routing daemon, used for distributing routes in the overlay. This is made to be used in conjunction with static GRE tunnels, to distribute routes across it.
-
-#### neighbor
-* Type: **ip address**
-* Required: **yes**
-
-The neighbour BGP node's IP address.
-
-#### local
-* Type: **ip address**
-* Required: no
-
-The local IP address used to make the BGP connection with the neighbour. Optional.
-
-#### local-asn
-* Type: **integer**, range 0 <= **local-asn** <= 65535
-* Required: no
-
-The BGP autonomous system (AS) number used to identify the AS the local node is part of. The default value is the ASN number set for the overlay (the `asn` value in the `[overlay]` section).
-
-#### neighbor-asn
-* Type: **integer**, range 0 <= **neighbor-asn** <= 65535
-* Required: no
-
-The BGP autonomous system (AS) number used to identify the AS the neighbour node is part of.  The default value is the ASN number set for the overlay (the `asn` value in the `[overlay]` section).
-
-#### bfd
-* Type: **boolean**
-* Required: no
-
-Enable BFD for the BGP protocol, to monitor for neighbour availability and failure detection. Note that BFD also needs to be supported by the neighbour. Defaults to `false`.
-
-#### ttl-security
-* Type: **boolean**
-* Required: no
-
-Enable the RFC 5082 TTL security mechanism on this BGP protocol. Also needs to be enabled by the neighbour. Defaults to `false`.
-
-#### description
-* Type: **string**
-* Required: no
-
-An optional description of the BGP protocol, displayed with the use of `show protocol all` in the BIRD client.
-
-#### import-prefix[-*{int}*]
-* Type: **bird prefix**
-* Required: no
-
-One or more BIRD filters used to filter the routes which get imported into the BGP protocol. The default is to import all routes.
-
-See the [BIRD filter documentation on data types](http://bird.network.cz/?get_doc&f=bird-5.html#ss5.2) for more information.
+The subnet mask for the VLAN interface address.
