@@ -1,6 +1,6 @@
 #
 # IPsec overlay network manager (l3overlay)
-# tests/test_l3overlayd.py - unit tests for executing l3overlayd
+# tests/l3overlayd/test_l3overlayd.py - unit tests for executing l3overlayd
 #
 # Copyright (c) 2017 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify
@@ -25,8 +25,8 @@ import unittest
 
 from l3overlay import util
 
-from tests.base import SRC_DIR
-from tests.base import BaseTest
+from tests.l3overlayd.base import SRC_DIR
+from tests.l3overlayd.base import BaseTest
 
 
 DAEMON_WAIT_TIMEOUT = 5
@@ -82,7 +82,7 @@ def dynamic_import(module_name, module_path):
 
 
 l3overlay = dynamic_import("l3overlay", "%(src_dir)s/l3overlay/__init__.py")
-l3overlayd = dynamic_import("l3overlay.l3overlayd", "%(src_dir)s/l3overlay/l3overlayd.py")
+l3overlayd = dynamic_import("l3overlay.l3overlayd", "%(src_dir)s/l3overlay/l3overlayd/__init__.py")
 
 l3overlayd.main()''' % {"src_dir": SRC_DIR})
 
