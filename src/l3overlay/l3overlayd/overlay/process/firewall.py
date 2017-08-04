@@ -1,6 +1,6 @@
 #
 # IPsec overlay network manager (l3overlay)
-# l3overlay/l3overlayd/overlay/process/firewall.py - firewall process
+# l3overlay/l3overlayd/overlay/process/firewall.py - firewall process manager
 #
 # Copyright (c) 2017 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify
@@ -17,14 +17,21 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-import subprocess
 
-from l3overlay import util
+'''
+Firewall process manager.
+'''
+
+
+import subprocess
 
 from l3overlay.util.worker import Worker
 
 
 class Process(Worker):
+    '''
+    Firewall process manager.
+    '''
 
     def __init__(self, overlay):
         '''
@@ -37,6 +44,7 @@ class Process(Worker):
         self.description = "firewall process for overlay '%s'" % self.name
 
         self.logger = overlay.logger
+        self.netns = overlay.netns
         self.fwbuilder_script = overlay.fwbuilder_script
 
 
@@ -69,6 +77,7 @@ class Process(Worker):
         self.set_stopping()
         self.set_stopped()
 
+# pylint: disable=no-member
 Worker.register(Process)
 
 

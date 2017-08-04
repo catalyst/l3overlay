@@ -18,6 +18,11 @@
 #
 
 
+'''
+External tunnel overlay static interface.
+'''
+
+
 from l3overlay import util
 
 from l3overlay.l3overlayd.network.interface import bridge
@@ -30,29 +35,18 @@ from l3overlay.l3overlayd.overlay.interface import ReadError
 
 from l3overlay.l3overlayd.overlay.static_interface.base import StaticInterface
 
-from l3overlay.util.exception import L3overlayError
 
-
-class NonUniqueTunnelError(L3overlayError):
-    def __init__(self, tunnel):
-        super().__init__("more than one tunnel without key value for address pair (%s, %s)" %
-                (tunnel.local, tunnel.remote))
-
-class KeyNumUnavailableError(L3overlayError):
-    def __init__(self, tunnel, key):
-        super().__init__("more than one tunnel using key value %s for address pair (%s, %s)" %
-                (key, tunnel.local, tunnel.remote))
-
-
+# pylint: disable=too-many-instance-attributes
 class ExternalTunnel(StaticInterface):
     '''
     Used to configure a GRE/GRETAP external (root namespace) tunnel interface.
     '''
 
+    # pylint: disable=too-many-arguments
     def __init__(self, logger, name,
-                local, remote, address, netmask,
-                key, ikey, okey,
-                use_ipsec, ipsec_psk):
+                 local, remote, address, netmask,
+                 key, ikey, okey,
+                 use_ipsec, ipsec_psk):
         '''
         Set up static external tunnel internal fields.
         '''
@@ -70,6 +64,12 @@ class ExternalTunnel(StaticInterface):
 
         self.use_ipsec = use_ipsec
         self.ipsec_psk = ipsec_psk
+
+        # Initialised in setup().
+        self.tunnel_name = None
+        self.bridge_name = None
+        self.root_veth_name = None
+        self.netns_veth_name = None
 
 
     def setup(self, daemon, overlay):
@@ -157,7 +157,13 @@ class ExternalTunnel(StaticInterface):
             self.netns_veth_name,
             root_ipdb=self.root_ipdb,
         ).remove()
-        gre.get(self.dry_run, self.logger, self.tunnel_name, "gretap", root_ipdb=self.root_ipdb).remove()
+        gre.get(
+            self.dry_run,
+            self.logger,
+            self.tunnel_name,
+            "gretap",
+            root_ipdb=self.root_ipdb,
+        ).remove()
 
         self.logger.info("finished stopping static external tunnel '%s'" % self.name)
 
@@ -211,7 +217,10 @@ def read(logger, name, config):
     okey = util.integer_get(config["okey"], minval=0) if "okey" in config else None
 
     use_ipsec = util.boolean_get(config["use-ipsec"]) if "use-ipsec" in config else False
-    ipsec_psk = util.hex_get_string(config["ipsec-psk"], min=6, max=64) if "ipsec-psk" in config else None
+    if "ipsec-psk" in config:
+        ipsec_psk = util.hex_get_string(config["ipsec-psk"], mindigits=6, maxdigits=64)
+    else:
+        ipsec_psk = None
 
     if key is None and ikey is not None and okey is None:
         raise ReadError("ikey defined but okey undefined in overlay '%s'" % name)

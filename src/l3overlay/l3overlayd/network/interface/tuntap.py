@@ -18,6 +18,11 @@
 #
 
 
+'''
+tun/tap interface class and functions.
+'''
+
+
 from l3overlay.l3overlayd.network import interface
 
 from l3overlay.l3overlayd.network.interface.base import Interface
@@ -34,15 +39,17 @@ class Tuntap(Interface):
     TUN/TAP interface-specific functions.
     '''
 
-    def __init__(self, logger, name, interface, netns, root_ipdb, mode):
+    # pylint: disable=too-many-arguments
+    def __init__(self, logger, name, inter, netns, root_ipdb, mode):
         '''
         '''
 
-        super().__init__(logger, name, interface, netns, root_ipdb)
+        super().__init__(logger, name, inter, netns, root_ipdb)
 
         self.description = "%s interface" % mode
 
 
+# pylint: disable=too-many-arguments
 def get(dry_run, logger, name, mode, netns=None, root_ipdb=None):
     '''
     Tries to find a tun/tap interface with the given name in the
@@ -51,13 +58,13 @@ def get(dry_run, logger, name, mode, netns=None, root_ipdb=None):
 
     description = "%s interface" % mode
 
-    interface._log_get(logger, name, description, netns, root_ipdb)
+    interface.log_get(logger, name, description, netns, root_ipdb)
 
     if dry_run:
         return Tuntap(logger, name, None, netns, root_ipdb, mode)
 
-    ipdb = interface._ipdb_get(name, description, netns, root_ipdb)
-    existing_if = interface._interface_get(name, ipdb, mode)
+    ipdb = interface.ipdb_get(name, description, netns, root_ipdb)
+    existing_if = interface.interface_get(name, ipdb, mode)
 
     if existing_if:
         return Tuntap(logger, name, existing_if, netns, root_ipdb, mode)
@@ -65,22 +72,23 @@ def get(dry_run, logger, name, mode, netns=None, root_ipdb=None):
         raise NotFoundError(name, mode, netns, root_ipdb)
 
 
+# pylint: disable=too-many-arguments
 def create(dry_run, logger, name, mode,
-        uid=0, gid=0, ifr=None,
-        netns=None, root_ipdb=None):
+           uid=0, gid=0, ifr=None,
+           netns=None, root_ipdb=None):
     '''
     Create a tun/tap interface object, using a given interface name.
     '''
 
     description = "%s interface" % mode
 
-    interface._log_create(logger, name, description, netns, root_ipdb)
+    interface.log_create(logger, name, description, netns, root_ipdb)
 
     if dry_run:
         return Tuntap(logger, name, None, netns, root_ipdb, mode)
 
-    ipdb = interface._ipdb_get(name, description, netns, root_ipdb)
-    existing_if = interface._interface_get(name, ipdb)
+    ipdb = interface.ipdb_get(name, description, netns, root_ipdb)
+    existing_if = interface.interface_get(name, ipdb)
 
     if existing_if:
         if (existing_if.kind != mode or

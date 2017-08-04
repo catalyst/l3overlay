@@ -18,6 +18,11 @@
 #
 
 
+'''
+veth pair interface class and functions.
+'''
+
+
 from l3overlay.l3overlayd.network import interface
 
 from l3overlay.l3overlayd.network.interface.base import Interface
@@ -38,11 +43,12 @@ class VETH(Interface):
     description = IF_DESCRIPTION
 
 
-    def __init__(self, logger, name, interface, netns, root_ipdb, peer):
+    # pylint: disable=too-many-arguments
+    def __init__(self, logger, name, inter, netns, root_ipdb, peer):
         '''
         '''
 
-        super().__init__(logger, name, interface, netns, root_ipdb)
+        super().__init__(logger, name, inter, netns, root_ipdb)
 
         self.peer = peer
 
@@ -123,19 +129,20 @@ class VETH(Interface):
             )
 
 
+# pylint: disable=too-many-arguments
 def get(dry_run, logger, name, peer, netns=None, root_ipdb=None):
     '''
     Tries to find a veth interface with the given name in the
     chosen namespace and returns it.
     '''
 
-    interface._log_get(logger, name, IF_DESCRIPTION, netns, root_ipdb)
+    interface.log_get(logger, name, IF_DESCRIPTION, netns, root_ipdb)
 
     if dry_run:
         return VETH(logger, name, None, netns, root_ipdb, peer)
 
-    ipdb = interface._ipdb_get(name, IF_DESCRIPTION, netns, root_ipdb)
-    existing_if = interface._interface_get(name, ipdb, IF_TYPE)
+    ipdb = interface.ipdb_get(name, IF_DESCRIPTION, netns, root_ipdb)
+    existing_if = interface.interface_get(name, ipdb, IF_TYPE)
 
     if existing_if:
         return VETH(logger, name, existing_if, netns, root_ipdb, peer)
@@ -143,18 +150,19 @@ def get(dry_run, logger, name, peer, netns=None, root_ipdb=None):
         raise NotFoundError(name, IF_DESCRIPTION, netns, root_ipdb)
 
 
+# pylint: disable=too-many-arguments
 def create(dry_run, logger, name, peer, netns=None, root_ipdb=None):
     '''
     Create a veth interface object, using a given interface name.
     '''
 
-    interface._log_create(logger, name, IF_DESCRIPTION, netns, root_ipdb)
+    interface.log_create(logger, name, IF_DESCRIPTION, netns, root_ipdb)
 
     if dry_run:
         return VETH(logger, name, None, netns, root_ipdb, peer)
 
-    ipdb = interface._ipdb_get(name, IF_DESCRIPTION, netns, root_ipdb)
-    existing_if = interface._interface_get(name, ipdb)
+    ipdb = interface.ipdb_get(name, IF_DESCRIPTION, netns, root_ipdb)
+    existing_if = interface.interface_get(name, ipdb)
 
     if existing_if:
         if existing_if.kind != IF_TYPE or existing_if.peer != peer:

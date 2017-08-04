@@ -18,6 +18,11 @@
 #
 
 
+'''
+Worker abstract base class.
+'''
+
+
 import abc
 
 from l3overlay.util.exception import L3overlayError
@@ -27,68 +32,105 @@ STATES = ("settingup", "setup", "starting", "started", "stopping", "stopped", "r
 
 
 class InvalidWorkerStateError(L3overlayError):
+    '''
+    Exception raised when an invalid worker state type was found.
+    '''
     def __init__(self, worker, state, states):
         super().__init__(
             "invalid worker state type '%s' for %s, expected one of %s" %
-                    (state, worker.description, str.join(states, "/")))
+            (state, worker.description, str.join(states, "/")),
+        )
 
 class InvalidWorkerStateValueError(L3overlayError):
+    '''
+    Exception raised when an invalid worker state value was found.
+    '''
     def __init__(self, worker, state, value):
         super().__init__(
             "invalid worker state value '%s' in state type '%s' for %s, expected True/False" %
-                    (value, state, worker.description))
+            (value, state, worker.description),
+        )
 
 
 class SetupTwiceError(L3overlayError):
+    '''
+    Exception raised when set_settingup() has been invoked twice.
+    '''
     def __init__(self, worker):
         super().__init__("%s setup twice" % worker.description)
 
 class NotYetSettingupError(L3overlayError):
+    '''
+    Exception raised when set_setup() has been invoked without calling set_settingup() first.
+    '''
     def __init__(self, worker):
         super().__init__("%s not yet set to setting up" % worker.description)
 
 class NotYetSetupError(L3overlayError):
+    '''
+    Exception raised when set_starting() has been invoked without the worker being setup first.
+    '''
     def __init__(self, worker):
         super().__init__("%s not yet set up" % worker.description)
 
 
 class StartedTwiceError(L3overlayError):
+    '''
+    Exception raised when set_starting() has been invoked twice.
+    '''
     def __init__(self, worker):
         super().__init__("%s started twice" % worker.description)
 
 class NotYetStartingError(L3overlayError):
+    '''
+    Exception raised when set_started() has been invoked without calling set_starting() first.
+    '''
     def __init__(self, worker):
         super().__init__("%s not yet set to starting" % worker.description)
 
 class NotYetStartedError(L3overlayError):
+    '''
+    Exception raised when set_stopping() has been invoked without the worker being started first.
+    '''
     def __init__(self, worker):
         super().__init__("%s not yet started" % worker.description)
 
 
 class StoppedTwiceError(L3overlayError):
+    '''
+    Exception raised when set_stopping() has been invoked twice.
+    '''
     def __init__(self, worker):
         super().__init__("%s stopped twice" % worker.description)
 
 class NotYetStoppingError(L3overlayError):
+    '''
+    Exception raised when set_stopped() has been invoked without calling set_stopping() first.
+    '''
     def __init__(self, worker):
         super().__init__("%s not yet set to stopping" % worker.description)
 
 class NotYetStoppedError(L3overlayError):
+    '''
+    Exception raised when set_removing() has been invoked without the worker being stopped first.
+    '''
     def __init__(self, worker):
         super().__init__("%s not yet stopped" % worker.description)
 
 
 class RemovedTwiceError(L3overlayError):
+    '''
+    Exception raised when set_removing() has been invoked twice.
+    '''
     def __init__(self, worker):
         super().__init__("%s removed twice" % worker.description)
 
 class NotYetRemovingError(L3overlayError):
+    '''
+    Exception raised when set_removed() has been invoked without calling set_removing() first.
+    '''
     def __init__(self, worker):
         super().__init__("%s not yet set to removing" % worker.description)
-
-class NotYetRemovedError(L3overlayError):
-    def __init__(self, worker):
-        super().__init__("%s not yet removed" % worker.description)
 
 
 class Worker(metaclass=abc.ABCMeta):
@@ -98,10 +140,12 @@ class Worker(metaclass=abc.ABCMeta):
     for this.
     '''
 
+    # pylint: disable=too-many-public-methods
+
     description = "worker"
 
 
-    def __init__(self, states={}, use_setup=False, use_remove=False):
+    def __init__(self, states=None, use_setup=False, use_remove=False):
         '''
         Set up worker internal fields.
         '''
@@ -119,10 +163,10 @@ class Worker(metaclass=abc.ABCMeta):
             for (key, value) in states.items():
                 if key in self._states:
                     if not isinstance(value, bool):
-                        raise InvalidWorkerStateValueError(self, state, STATES)
+                        raise InvalidWorkerStateValueError(self, key, value)
                     self._states[key] = value
                 else:
-                    raise InvalidWorkerStateError(self, state, value)
+                    raise InvalidWorkerStateError(self, key, self._states.keys())
 
 
     def _assert_state(self):
@@ -407,4 +451,3 @@ class Worker(metaclass=abc.ABCMeta):
         '''
 
         pass
-

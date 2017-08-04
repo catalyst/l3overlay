@@ -18,20 +18,26 @@
 #
 
 
+'''
+Utility functions.
+'''
+
+
 import configparser
 import errno
 import ipaddress
-import jinja2
 import logging
-import re
 import os
-import pkg_resources
 import random
+import re
 import shutil
 import signal
 import string
 import sys
 import time
+
+import pkg_resources
+import jinja2
 
 from l3overlay.util.exception import L3overlayError
 
@@ -42,9 +48,15 @@ from l3overlay.util.exception import L3overlayError
 
 
 class GetError(L3overlayError):
+    '''
+    get() function exception base class.
+    '''
     pass
 
 class SearchError(L3overlayError):
+    '''
+    Exception raised when a file was unable to be found in the search paths.
+    '''
     def __init__(self, filename):
         super().__init__("unable to find file name '%s' in search paths" % filename)
 
@@ -80,10 +92,12 @@ def integer_get(value, minval=None, maxval=None):
         integer = int(value)
 
         if minval is not None and integer < minval:
-            raise GetError("integer value %s too low, minimum value %i required" % (integer, minval))
+            raise GetError("integer value %s too low, minimum value %i required" %
+                           (integer, minval))
 
         if maxval is not None and integer > maxval:
-            raise GetError("integer value %s too high, maximum value %i required" % (integer, maxval))
+            raise GetError("integer value %s too high, maximum value %i required" %
+                           (integer, maxval))
 
         return integer
 
@@ -91,7 +105,7 @@ def integer_get(value, minval=None, maxval=None):
         raise GetError("value '%s' is not a valid integer" % value)
 
 
-def hex_get_string(value, min=None, max=None):
+def hex_get_string(value, mindigits=None, maxdigits=None):
     '''
     Check that a string is a valid hexadecimal integer, optionally
     checking if it is within a minimum and maximum length. Returns the
@@ -110,15 +124,17 @@ def hex_get_string(value, min=None, max=None):
         if not length:
             raise GetError("empty string not a valid hex integer")
 
-        if min is not None and length < min:
-            raise GetError("hex string '%s' too short, minimum %i digits required" % (value, min))
+        if mindigits is not None and length < mindigits:
+            raise GetError("hex string '%s' too short, minimum %i digits required" %
+                           (value, mindigits))
 
-        if max is not None and length > max:
-            raise GetError("hex string '%s' too long, maximum %i digits required" % (value, max))
+        if maxdigits is not None and length > maxdigits:
+            raise GetError("hex string '%s' too long, maximum %i digits required" %
+                           (value, maxdigits))
 
-        for v in value:
-            if v not in string.hexdigits:
-                raise GetError("string '%s' not a valid hexadecimal integer")
+        for digit in value:
+            if digit not in string.hexdigits:
+                raise GetError("string '%s' not a valid hexadecimal integer" % value)
 
         return "0x%s" % value
 
@@ -136,12 +152,12 @@ def enum_get(value, enum):
     if not isinstance(value, str):
         raise GetError("value '%s' is not an enumerable string" % str(value))
 
-    for e in enum:
-        if value.lower() == e.lower():
-            return e
+    for enu in enum:
+        if value.lower() == enu.lower():
+            return enu
 
     raise GetError("value '%s' not in enumeration list, must be one of %s" %
-            (value, str.join("/", enum)))
+                   (value, str.join("/", enum)))
 
 
 def name_get(value):
@@ -154,12 +170,12 @@ def name_get(value):
     if not isinstance(value, str):
         raise GetError("non-string value '%s' not a valid name" % value)
 
-    if len(value) == 0:
+    if not value:
         raise GetError("empty string not a valid name")
 
     name = value.strip()
 
-    if not re.fullmatch("[^\s][^\s]*", name):
+    if not re.fullmatch("[^\\s][^\\s]*", name):
         raise GetError("given string not a valid name (contains whitespace): %s" % name)
 
     return name
@@ -181,17 +197,17 @@ def path_get(value, relative_dir=None):
     if os.path.isabs(value):
         return value
     elif relative_dir is not None:
-        return os.path.join(relative_dir, value)
+        return os.path.abspath(os.path.join(relative_dir, value))
     else:
         raise GetError("value '%s' not a fully qualified file system path" % value)
 
 
-def section_header(type, name):
+def section_header(section_type, section_name):
     '''
     Build a section header from the given type and name.
     '''
 
-    return "%s:%s" % (type, name)
+    return "%s:%s" % (name_get(section_type), name_get(section_name))
 
 
 def section_split(section):
@@ -202,10 +218,11 @@ def section_split(section):
     '''
 
     parts = section.split(":")
+
     if len(parts) < 2:
         return (name_get(parts[0]), None)
-    else:
-        return (name_get(parts[0]), name_get(parts[1]))
+
+    return (name_get(parts[0]), name_get(parts[1]))
 
 
 def section_type_get(section):
@@ -230,7 +247,7 @@ def ip_network_get(value):
     is not a valid IP network. Supports both IPv4 and IPv6.
     '''
 
-    if isinstance(value, ipaddress.IPv4Address) or isinstance(value, ipaddress.IPv6Address):
+    if isinstance(value, (ipaddress.IPv4Address, ipaddress.IPv6Address)):
         raise GetError(
             "%s not allowed to be converted to IP network" % type(value).__name__,
         )
@@ -262,9 +279,10 @@ def ip_address_get(value):
     is not a valid IP address. Supports both IPv4 and IPv6.
     '''
 
-    if isinstance(value, ipaddress.IPv4Network) or isinstance(value, ipaddress.IPv6Network):
+    if isinstance(value, (ipaddress.IPv4Network, ipaddress.IPv6Network)):
         raise GetError(
-            "%s not allowed to be converted to IP address, use class attributes" % type(value).__name__,
+            "%s not allowed to be converted to IP address, use class attributes" %
+            type(value).__name__,
         )
 
     try:
@@ -315,8 +333,8 @@ def netmask_dd_to_cidr(netmask):
 
         integer += (seg << (24 - (8 * index)))
 
-    for b in bin(integer)[2:]:
-        if b == '1':
+    for bina in bin(integer)[2:]:
+        if bina == '1':
             i += 1
         else:
             break
@@ -332,7 +350,7 @@ def netmask_get(value, use_ipv6=False):
 
     maxlen = 128 if use_ipv6 else 32
 
-    if isinstance(value, str) and re.match("\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}", value):
+    if isinstance(value, str) and re.match("\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}", value):
         if use_ipv6:
             raise GetError("dotted decimal netmask invalid when use_ipv6 is true, use CIDR instead")
 
@@ -361,7 +379,7 @@ def bird_prefix_get(value):
     '''
 
     netmask_pattern = "-?[0-9][0-9]*"
-    netmask_range_pattern = "^\{[0-9][0-9]*,[0-9][0-9]*\}$"
+    netmask_range_pattern = "^\\{[0-9][0-9]*,[0-9][0-9]*\\}$"
     netmask_operator_pattern = "^[+-]$"
 
     prefix = re.split("/", value)
@@ -378,7 +396,10 @@ def bird_prefix_get(value):
 
     # Check for a valid netmask in the netmask segment.
     try:
-        netmask = netmask_get(re.match(netmask_pattern, prefix[1]).group(), ip_address_is_v6(address))
+        netmask = netmask_get(
+            re.match(netmask_pattern, prefix[1]).group(),
+            ip_address_is_v6(address),
+        )
     except GetError:
         raise GetError("invalid BIRD prefix '%s', invalid netmask segment" % value)
 
@@ -399,11 +420,14 @@ def bird_prefix_get(value):
         if re.match(netmask_range_pattern, expr):
             netmasks = re.findall(netmask_pattern, expr)
 
-            for n in netmasks:
+            for net in netmasks:
                 try:
-                    netmask_get(n, ip_address_is_v6(address))
-                except Get:
-                    raise GetError("invalid BIRD prefix '%s', invalid netmask %i in expression segment" % (value, n))
+                    netmask_get(net, ip_address_is_v6(address))
+                except GetError:
+                    raise GetError(
+                        "invalid BIRD prefix '%s', invalid netmask %i in expression segment" %
+                        (value, net),
+                    )
         elif not re.match(netmask_operator_pattern, expr):
             raise GetError("invalid BIRD prefix '%s', invalid expression segment" % value)
 
@@ -411,21 +435,21 @@ def bird_prefix_get(value):
     return value
 
 
-def list_get(s, length=None, pattern="\\s*,\\s*"):
+def list_get(stri, length=None, pattern="\\s*,\\s*"):
     '''
     Convert a string separated by regular expression pattern into a list.
     The default pattern separated by a comma, absorbing whitespace in between.
     '''
 
-    if not isinstance(s, str):
-        raise GetError("non-string value '%s' is not a valid separated string" % s)
+    if not isinstance(stri, str):
+        raise GetError("non-string value '%s' is not a valid separated string" % stri)
 
-    l = re.split(pattern, s)
+    lis = re.split(pattern, stri)
 
-    if length and length != len(l):
-        raise GetError("list length %s does not match required length %s" % (len(l), length))
+    if length and length != len(lis):
+        raise GetError("list length %s does not match required length %s" % (len(lis), length))
 
-    return l
+    return lis
 
 
 #
@@ -439,17 +463,17 @@ def random_string(length, alpha=True, num=False):
     letters, numbers, or both.
     '''
 
-    set = []
+    stri = []
 
     if alpha:
-        set.append(string.ascii_letters)
+        stri.append(string.ascii_letters)
 
     if num:
-        set.append(string.digits)
+        stri.append(string.digits)
 
-    set = str.join("", set)
+    stri = "".join(stri)
 
-    return str.join("", (random.choice(set) for __ in range(length)))
+    return "".join((random.choice(stri) for __ in range(length)))
 
 
 #
@@ -482,7 +506,7 @@ def path_root():
 # 5. (executable directory)/etc/l3overlay
 # 6. (executable directory)/../etc/l3overlay
 # 7. /etc/l3overlay
-search_paths = [
+SEARCH_PATHS = (
     os.getcwd(),
     os.path.join(os.getcwd(), "..", "etc", "l3overlay"),
     os.path.join(os.getcwd(), "etc", "l3overlay"),
@@ -490,11 +514,11 @@ search_paths = [
     os.path.join(path_my_dir(), "..", "etc", "l3overlay"),
     os.path.join(path_my_dir(), "etc", "l3overlay"),
     os.path.join(path_root(), "etc", "l3overlay"),
-]
+)
 
-def path_search(filename, paths=search_paths):
+def path_search(filename, paths=SEARCH_PATHS):
     '''
-    Returns the first instance of a valid filepath, made from the given 
+    Returns the first instance of a valid filepath, made from the given
     filename joined with each element from the list of paths. If it doesn't
     find a match, returns None.
 
@@ -520,7 +544,7 @@ def file_remove(path):
 def directory_create(path, mode=0o777, exist_ok=True):
     '''
     Make the directory tree defined in the given file path, including all
-    intermediate directories. If the path already exists and is a 
+    intermediate directories. If the path already exists and is a
     directory, does nothing.
     '''
 
@@ -543,6 +567,7 @@ def directory_remove(path, nonexist_ok=True):
 
 def command_path(command, not_found_ok=False):
     '''
+    Return the full filepath of a command.
     '''
 
     path = shutil.which(command)
@@ -571,8 +596,8 @@ def pid_create(pid_file, mode=0o666):
     if old_pid and old_pid != os.getpid():
         raise RuntimeError("PID file '%s' locked by process %i" % (pid_file, old_pid))
 
-    with open(pid_file, "w") as f:
-        f.write("%i\n" % os.getpid())
+    with open(pid_file, "w") as fil:
+        fil.write("%i\n" % os.getpid())
 
     os.chmod(pid_file, mode)
 
@@ -582,9 +607,11 @@ def pid_get(pid=None, pid_file=None):
     Checks for the existence of a PID on the running system. If true,
     returns the PID number. If false, returns None.
     Can either use a PID number directly, or take in a PID file and check
-    that. If the PID file is not valid or the PID contained inside does 
+    that. If the PID file is not valid or the PID contained inside does
     not exist, this method deletes that PID file.
     '''
+
+    # pylint: disable=too-many-branches
 
     if pid and pid_file:
         raise ValueError("pid and pid_file are mutually exclusive arguments")
@@ -592,18 +619,18 @@ def pid_get(pid=None, pid_file=None):
     if pid_file is not None:
         if os.path.exists(pid_file):
             data = None
-            with open(pid_file, "r") as f:
-                data = f.read().strip()
+            with open(pid_file, "r") as fil:
+                data = fil.read().strip()
 
-            if len(data) > 0 and re.match("[0-9][0-9]*", data):
+            if data and re.match("[0-9][0-9]*", data):
                 pid = int(data)
             else:
                 # Invalid PID file. Remove it.
                 os.remove(pid_file)
                 return None
         else:
-           # PID file doesn't exist.
-           return None
+            # PID file doesn't exist.
+            return None
     elif pid is None:
         raise ValueError("must specify one of pid or pid_file")
 
@@ -615,13 +642,13 @@ def pid_get(pid=None, pid_file=None):
 
     try:
         os.kill(pid, 0)
-    except OSError as e:
+    except OSError as err:
         # ESRCH = No such process
-        if e.errno == errno.ESRCH:
+        if err.errno == errno.ESRCH:
             return None
         # EPERM = Permission denied
         # A process clearly exists if we don't have access to it.
-        elif e.errno == errno.EPERM:
+        elif err.errno == errno.EPERM:
             return pid
         # EINVAL = Invalid signal
         # Something went wrong.
@@ -644,22 +671,22 @@ def pid_exists(pid=None, pid_file=None):
     return True if pid_get(pid, pid_file) else False
 
 
-def pid_kill(pid=None, pid_file=None, signal=signal.SIGTERM, increment=0.001, timeout=10):
+def pid_kill(pid=None, pid_file=None, sign=signal.SIGTERM, increment=0.001, timeout=10):
     '''
     Sends a signal to the process of the given PID or PID file, and waits
     for it to terminate.
     '''
 
-    p = pid_get(pid, pid_file)
+    pid_num = pid_get(pid, pid_file)
 
-    if p:
-        t = 0.0
-        os.kill(p, signal)
-        while t < timeout and pid_exists(pid=p):
+    if pid_num:
+        count = 0.0
+        os.kill(pid_num, sign)
+        while count < timeout and pid_exists(pid=pid_num):
             time.sleep(increment)
-            t += increment
-        if pid_exists(pid=p):
-            raise RuntimeError("unable to terminate PID %s using signal '%s'" % (p, signal))
+            count += increment
+        if pid_exists(pid=pid_num):
+            raise RuntimeError("unable to terminate PID %s using signal '%s'" % (pid_num, sign))
 
 
 #
@@ -672,14 +699,14 @@ def config(conf=None):
     Parse a given configuration file, and return its configuration object.
     '''
 
-    config = configparser.ConfigParser()
+    config_obj = configparser.ConfigParser()
 
     if conf:
         if not os.path.isfile(conf):
             raise FileNotFoundError(conf)
-        config.read(conf)
+        config_obj.read(conf)
 
-    return config
+    return config_obj
 
 
 #
@@ -687,16 +714,17 @@ def config(conf=None):
 #
 
 
-def template_read(dir, file):
+def template_read(template_dir, template_file):
     '''
+    Read a template file and return a template object.
     '''
 
-    if not os.path.isfile(os.path.join(dir, file)):
-        dir = os.path.dirname(
-            pkg_resources.resource_filename("l3overlay", os.path.join("template", file)),
+    if not os.path.isfile(os.path.join(template_dir, template_file)):
+        template_dir = os.path.dirname(
+            pkg_resources.resource_filename("l3overlay", os.path.join("template", template_file)),
         )
 
     return jinja2.Environment(
-        trim_blocks = True,
-        loader = jinja2.FileSystemLoader(dir),
-    ).get_template(file)
+        trim_blocks=True,
+        loader=jinja2.FileSystemLoader(template_dir),
+    ).get_template(template_file)

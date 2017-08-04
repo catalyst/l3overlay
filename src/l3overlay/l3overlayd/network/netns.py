@@ -1,6 +1,6 @@
 #
 # IPsec overlay network manager (l3overlay)
-# l3overlay/l3overlayd/network/netns.py - network namespace functions
+# l3overlay/l3overlayd/network/netns.py - network namespace class and functions
 #
 # Copyright (c) 2017 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify
@@ -18,8 +18,14 @@
 #
 
 
-import pyroute2
+'''
+Network namespace class and functions.
+'''
+
+
 import subprocess
+
+import pyroute2
 
 import pyroute2.netns
 
@@ -36,8 +42,11 @@ from l3overlay.util.worker import NotYetStartedError
 
 
 class UnableToCreateNetnsError(L3overlayError):
+    '''
+    Exception to raise when a network namespace was unable to be created.
+    '''
     def __init__(self, netns, message):
-        super().__init("unable to create network namespace '%s': %s" % (netns.name, message))
+        super().__init__("unable to create network namespace '%s': %s" % (netns.name, message))
 
 
 class NetNS(Worker):
@@ -80,16 +89,18 @@ class NetNS(Worker):
                 except FileExistsError:
                     # Network namespace already exists
                     pass
-                except e:
-                    raise UnableToCreateNetnsError(self, e.message)
+                except Exception as exc:
+                    # pylint: disable=no-member
+                    raise UnableToCreateNetnsError(self, exc.message)
 
+            # pylint: disable=no-member
             self.logger.debug("creating NetNS and IPDB objects for '%s'" % self.name)
             self.netns = pyroute2.NetNS(self.name)
             self.ipdb = pyroute2.IPDB(nl=self.netns)
 
             # Bring up the loopback interface inside the namespace.
-            lo = interface.get(self.dry_run, self.logger, "lo", netns=self)
-            lo.up()
+            lo_if = interface.get(self.dry_run, self.logger, "lo", netns=self)
+            lo_if.up()
 
         self.logger.debug("finished starting network namespace '%s'" % self.name)
 
@@ -135,6 +146,7 @@ class NetNS(Worker):
         return interface.get(self.dry_run, self.logger, name, netns=self)
 
 
+    # pylint: disable=invalid-name
     def Popen(self, *args, **kwargs):
         '''
         Start a process in this network namespace using the Popen interface.
@@ -148,7 +160,13 @@ class NetNS(Worker):
             # stub release() method, to be API compatible
             # with the real deal.
             class NSPopen(subprocess.Popen):
+                '''
+                Dummy NSPopen class.
+                '''
                 def release(self):
+                    '''
+                    Dummy release method.
+                    '''
                     pass
 
             return NSPopen(
@@ -156,9 +174,10 @@ class NetNS(Worker):
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
-        else:
-            return pyroute2.netns.process.proxy.NSPopen(self.name, *args, **kwargs)
 
+        return pyroute2.netns.process.proxy.NSPopen(self.name, *args, **kwargs)
+
+# pylint: disable=no-member
 Worker.register(NetNS)
 
 

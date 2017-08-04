@@ -18,6 +18,11 @@
 #
 
 
+'''
+VLAN overlay static interface.
+'''
+
+
 from l3overlay import util
 
 from l3overlay.l3overlayd.network import interface
@@ -31,23 +36,31 @@ from l3overlay.l3overlayd.overlay import active_interface
 from l3overlay.l3overlayd.overlay.static_interface.base import StaticInterface
 
 
+# pylint: disable=too-many-instance-attributes
 class VLAN(StaticInterface):
     '''
     Used to configure a IEEE 802.1Q VLAN interface.
     '''
 
+    # pylint: disable=too-many-arguments
     def __init__(self, logger, name,
-                id, physical_interface, address, netmask):
+                 vlan_id, physical_interface, address, netmask):
         '''
         Set up static vlan internal fields.
         '''
 
         super().__init__(logger, name)
 
-        self.id = id
+        self.vlan_id = vlan_id
         self.physical_interface = physical_interface
         self.address = address
         self.netmask = netmask
+
+        # Initialised in setup().
+        self.vlan_name = None
+        self.root_veth_name = None
+        self.netns_veth_name = None
+        self.bridge_name = None
 
 
     def setup(self, daemon, overlay):
@@ -75,7 +88,7 @@ class VLAN(StaticInterface):
             self.dry_run,
             self.logger,
             self.physical_interface,
-            root_ipdb = self.root_ipdb,
+            root_ipdb=self.root_ipdb,
         )
 
         # Create the VLAN interface.
@@ -83,9 +96,9 @@ class VLAN(StaticInterface):
             self.dry_run,
             self.logger,
             self.vlan_name,
-            physical_if, 
-            self.id,
-            root_ipdb = self.root_ipdb,
+            physical_if,
+            self.vlan_id,
+            root_ipdb=self.root_ipdb,
         )
 
         # Create the veth pair.
@@ -94,7 +107,7 @@ class VLAN(StaticInterface):
             self.logger,
             self.root_veth_name,
             self.netns_veth_name,
-            root_ipdb = self.root_ipdb,
+            root_ipdb=self.root_ipdb,
         )
 
         # Move the netns veth interface to the network namespace.
@@ -111,7 +124,7 @@ class VLAN(StaticInterface):
             self.dry_run,
             self.logger,
             self.bridge_name,
-            root_ipdb = self.root_ipdb,
+            root_ipdb=self.root_ipdb,
         )
 
         # Add the physical interface and the root veth interface to the
@@ -142,7 +155,7 @@ class VLAN(StaticInterface):
             self.logger,
             self.root_veth_name,
             self.netns_veth_name,
-            root_ipdb = self.root_ipdb,
+            root_ipdb=self.root_ipdb,
         ).remove()
         vlan.get(self.dry_run, self.logger, self.vlan_name, root_ipdb=self.root_ipdb).remove()
 
@@ -178,21 +191,21 @@ def read(logger, name, config):
     Create a static vlan from the given configuration object.
     '''
 
-    id = util.integer_get(config["id"], minval=0, maxval=4096)
+    vlan_id = util.integer_get(config["id"], minval=0, maxval=4096)
     physical_interface = util.name_get(config["physical-interface"])
     address = util.ip_address_get(config["address"])
     netmask = util.netmask_get(config["netmask"], util.ip_address_is_v6(address))
 
     return VLAN(logger, name,
-            id, physical_interface, address, netmask)
+                vlan_id, physical_interface, address, netmask)
 
 
-def write(vlan, config):
+def write(vla, config):
     '''
     Write the static vlan to the given configuration object.
     '''
 
-    config["id"] = str(vlan.id)
-    config["physical-interface"] = vlan.physical_interface
-    config["address"] = str(vlan.address)
-    config["netmask"] = str(vlan.netmask)
+    config["id"] = str(vla.vlan_id)
+    config["physical-interface"] = vla.physical_interface
+    config["address"] = str(vla.address)
+    config["netmask"] = str(vla.netmask)

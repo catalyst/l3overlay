@@ -18,7 +18,11 @@
 #
 
 
-import os
+'''
+IPsec process manager.
+'''
+
+
 import subprocess
 
 from l3overlay import util
@@ -29,10 +33,14 @@ from l3overlay.util.worker import Worker
 
 
 class UnexpectedReturnCodeError(L3overlayError):
+    '''
+    Exception to raise when the process returns an unexpected code.
+    '''
     def __init__(self, command, code):
         super().__init__("unexpected '%s' return code: %i" % (command, code))
 
 
+# pylint: disable=too-many-instance-attributes
 class Process(Worker):
     '''
     IPsec process manager.
@@ -70,7 +78,7 @@ class Process(Worker):
         self.conns = dict()
         self.secrets = dict()
 
-        for link in daemon.mesh_links:
+        for link in daemon.mesh_links.keys():
             self.tunnel_add(link, daemon.ipsec_psk)
         for link, data in daemon.ipsec_tunnels.items():
             if data["ipsec-psk"]:
@@ -93,8 +101,8 @@ class Process(Worker):
 
         self.logger.debug("creating IPsec configuration file '%s'" % self.ipsec_conf)
         if not self.dry_run:
-            with open(self.ipsec_conf, "w") as f:
-                f.write(self.ipsec_conf_template.render(
+            with open(self.ipsec_conf, "w") as fil:
+                fil.write(self.ipsec_conf_template.render(
                     file=self.ipsec_conf,
                     ipsec_manage=self.ipsec_manage,
                     conns=self.conns,
@@ -106,8 +114,8 @@ class Process(Worker):
             addresses.add(local)
             addresses.add(remote)
         if not self.dry_run:
-            with open(self.ipsec_secrets, "w") as f:
-                f.write(self.ipsec_secrets_template.render(
+            with open(self.ipsec_secrets, "w") as fil:
+                fil.write(self.ipsec_secrets_template.render(
                     file=self.ipsec_secrets,
                     secrets=self.secrets,
                 ))
@@ -200,6 +208,7 @@ class Process(Worker):
             self.secrets[psk] = set()
         self.secrets[psk].update(link)
 
+# pylint: disable=no-member
 Worker.register(Process)
 
 

@@ -18,6 +18,11 @@
 #
 
 
+'''
+Static interface functions.
+'''
+
+
 from l3overlay import util
 
 from l3overlay.l3overlayd.overlay.interface import ReadError
@@ -33,27 +38,12 @@ from l3overlay.l3overlayd.overlay.static_interface import veth
 from l3overlay.l3overlayd.overlay.static_interface import vlan
 
 
-def section_type_is_static_interface(section):
-    '''
-    Return True if the type of the given section is a static
-    interface of some kind.
-    '''
-
-    interface_type, name = util.section_split(section)
-
-    return (interface_type == "static-bgp" or
-            interface_type == "static-dummy" or
-            interface_type == "static-overlay-link" or
-            interface_type == "static-tunnel" or
-            interface_type == "static-tuntap" or
-            interface_type == "static-veth" or
-            interface_type == "static-vlan")
-
-
 def read(logger, interface_type, name, config):
     '''
     Read an interface from the given configuration object.
     '''
+
+    # pylint: disable=too-many-return-statements
 
     if interface_type == "static-bgp":
         return bgp.read(logger, name, config)
@@ -71,10 +61,9 @@ def read(logger, interface_type, name, config):
         return veth.read(logger, name, config)
     elif interface_type == "static-vlan":
         return vlan.read(logger, name, config)
-    elif name.startswith("static"):
-        raise ReadError("unsupported static interface type '%s' with name '%s'" % (interface_type, name))
     else:
-        raise ReadError("unsupported section type '%s'" % section)
+        raise ReadError("unsupported static interface type '%s' with name '%s'" %
+                        (interface_type, name))
 
 
 def write(interface, config):

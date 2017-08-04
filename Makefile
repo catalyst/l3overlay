@@ -183,7 +183,8 @@ all:
 
 
 lint:
-	$(PYLINT) $(MODULE_DIR)
+	$(PYLINT) $(MODULE_DIR) --disable=duplicate-code 2>&1 | tee make-lint.log
+	@echo "pylint output written to make-lint.log"
 
 
 test:
@@ -225,6 +226,7 @@ uninstall:
 
 
 clean:
+	$(RM) make-lint.log
 	$(RM) default/l3overlay
 	$(RM) systemd/l3overlay.service
 	$(RM) init.d/l3overlay

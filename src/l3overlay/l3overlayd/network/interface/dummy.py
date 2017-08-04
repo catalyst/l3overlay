@@ -17,6 +17,11 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+'''
+Dummy interface class and functions.
+'''
+
+
 from l3overlay.l3overlayd.network import interface
 
 from l3overlay.l3overlayd.network.interface.base import Interface
@@ -43,13 +48,13 @@ def get(dry_run, logger, name, netns=None, root_ipdb=None):
     chosen namespace and returns it.
     '''
 
-    interface._log_get(logger, name, IF_DESCRIPTION, netns, root_ipdb)
+    interface.log_get(logger, name, IF_DESCRIPTION, netns, root_ipdb)
 
     if dry_run:
         return Dummy(logger, name, None, netns, root_ipdb)
 
-    ipdb = interface._ipdb_get(name, IF_DESCRIPTION, netns, root_ipdb)
-    existing_if = interface._interface_get(name, ipdb, IF_TYPE)
+    ipdb = interface.ipdb_get(name, IF_DESCRIPTION, netns, root_ipdb)
+    existing_if = interface.interface_get(name, ipdb, IF_TYPE)
 
     if existing_if:
         return Dummy(logger, name, existing_if, netns, root_ipdb)
@@ -62,13 +67,13 @@ def create(dry_run, logger, name, netns=None, root_ipdb=None):
     Create a dummy interface object, using a given interface name.
     '''
 
-    interface._log_create(logger, name, IF_DESCRIPTION, netns, root_ipdb)
+    interface.log_create(logger, name, IF_DESCRIPTION, netns, root_ipdb)
 
     if dry_run:
         return Dummy(logger, name, None, netns, root_ipdb)
 
-    ipdb = interface._ipdb_get(name, IF_DESCRIPTION, netns, root_ipdb)
-    existing_if = interface._interface_get(name, ipdb)
+    ipdb = interface.ipdb_get(name, IF_DESCRIPTION, netns, root_ipdb)
+    existing_if = interface.interface_get(name, ipdb)
 
     if existing_if:
         if existing_if.kind != IF_TYPE:

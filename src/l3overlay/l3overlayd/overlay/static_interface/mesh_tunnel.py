@@ -1,6 +1,6 @@
 #
 # IPsec overlay network manager (l3overlay)
-# l3overlay/l3overlayd/overlay/static_interface/mesh_tunnel.py - mesh tunnel
+# l3overlay/l3overlayd/overlay/static_interface/mesh_tunnel.py - mesh tunnel interface
 #
 # Copyright (c) 2017 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify
@@ -18,9 +18,12 @@
 #
 
 
-from l3overlay import util
+'''
+Mesh tunnel interface.
+'''
 
-from l3overlay.l3overlayd.network import interface
+
+from l3overlay import util
 
 from l3overlay.l3overlayd.network.interface import bridge
 from l3overlay.l3overlayd.network.interface import gre
@@ -31,15 +34,17 @@ from l3overlay.l3overlayd.overlay import active_interface
 from l3overlay.l3overlayd.overlay.static_interface.base import StaticInterface
 
 
+# pylint: disable=too-many-instance-attributes
 class MeshTunnel(StaticInterface):
     '''
     Used to configure a mesh tunnel interface.
     '''
 
+    # pylint: disable=too-many-arguments
     def __init__(self, logger, name,
-            node_local, node_remote,
-            physical_local, physical_remote,
-            virtual_local, virtual_remote):
+                 node_local, node_remote,
+                 physical_local, physical_remote,
+                 virtual_local, virtual_remote):
         '''
         Set up mesh tunnel internal fields.
         '''
@@ -56,6 +61,12 @@ class MeshTunnel(StaticInterface):
         self.virtual_remote = virtual_remote
         self.virtual_netmask = 127 if util.ip_address_is_v6(self.virtual_local) else 31
 
+        # Initialised in setup().
+        self.asn = None
+        self.bridge_name = None
+        self.root_veth_name = None
+        self.netns_veth_name = None
+
 
     def setup(self, daemon, overlay):
         '''
@@ -71,7 +82,7 @@ class MeshTunnel(StaticInterface):
         self.asn = self.overlay.asn
 
         self.daemon.gre_key_add(self.physical_local, self.physical_remote, self.asn)
-        self.daemon.mesh_links.add((self.physical_local, self.physical_remote))
+        self.daemon.mesh_link_add(self.physical_local, self.physical_remote)
 
 
     def start(self):
@@ -88,8 +99,8 @@ class MeshTunnel(StaticInterface):
             "gretap",
             self.physical_local,
             self.physical_remote,
-            key = self.asn,
-            root_ipdb = self.root_ipdb,
+            key=self.asn,
+            root_ipdb=self.root_ipdb,
         )
 
         root_veth_if = veth.create(
@@ -97,7 +108,7 @@ class MeshTunnel(StaticInterface):
             self.logger,
             self.root_veth_name,
             self.netns_veth_name,
-            root_ipdb = self.root_ipdb,
+            root_ipdb=self.root_ipdb,
         )
 
         netns_veth_if = root_veth_if.peer_get(peer_netns=self.netns)
@@ -107,7 +118,7 @@ class MeshTunnel(StaticInterface):
             self.dry_run,
             self.logger,
             self.bridge_name,
-            root_ipdb = self.root_ipdb,
+            root_ipdb=self.root_ipdb,
         )
         bridge_if.add_port(tunnel_if)
         bridge_if.add_port(root_veth_if)
@@ -150,6 +161,7 @@ class MeshTunnel(StaticInterface):
         '''
 
         self.daemon.gre_key_remove(self.physical_local, self.physical_remote, self.asn)
+        self.daemon.mesh_link_remove(self.physical_local, self.physical_remote)
 
 
     def is_ipv6(self):
@@ -164,7 +176,7 @@ class MeshTunnel(StaticInterface):
             return False
         else:
             raise RuntimeError("unexpected virtual netmask value '%s', expected 127 or 31" %
-                    self.virtual_netmask)
+                               self.virtual_netmask)
 
 
     def active_interfaces(self):
@@ -182,10 +194,11 @@ class MeshTunnel(StaticInterface):
 StaticInterface.register(MeshTunnel)
 
 
+# pylint: disable=too-many-arguments
 def create(logger, name,
-            node_local, node_remote,
-            physical_local, physical_remote,
-            virtual_local, virtual_remote):
+           node_local, node_remote,
+           physical_local, physical_remote,
+           virtual_local, virtual_remote):
     '''
     Create a mesh tunnel.
     '''

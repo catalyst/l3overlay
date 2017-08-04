@@ -76,7 +76,7 @@ setuptools.setup(
 
     entry_points = {
         "console_scripts": [
-            "l3overlayd = l3overlay.l3overlayd:main",
+            "l3overlayd = l3overlay.l3overlayd.main:main",
             "l3overlay-birdc = l3overlay.l3overlay_birdc:main",
         ],
     },

@@ -18,6 +18,11 @@
 #
 
 
+'''
+Network interface base class.
+'''
+
+
 import time
 
 from l3overlay.l3overlayd.network.interface.exception import NotRemovedError
@@ -36,6 +41,7 @@ class Interface(object):
     description = "interface"
 
 
+    # pylint: disable=too-many-arguments
     def __init__(self, logger, name, interface, netns, root_ipdb):
         '''
         Set up network interface internal fields and runtime state.
@@ -71,7 +77,8 @@ class Interface(object):
         self._check_state()
 
         if self.logger:
-            self.logger.debug("assigning IP address '%s/%i' to %s '%s'" % (str(address), netmask, self.description, self.name))
+            self.logger.debug("assigning IP address '%s/%i' to %s '%s'" %
+                              (str(address), netmask, self.description, self.name))
 
         ip_tuple = (str(address), netmask)
         ip_string = "%s/%i" % ip_tuple
@@ -104,7 +111,7 @@ class Interface(object):
 
         if self.logger:
             self.logger.debug("moving %s '%s' to %s" %
-                    (self.description, self.name, netns.description))
+                              (self.description, self.name, netns.description))
 
         if self.interface:
             if self.netns == netns:
@@ -113,7 +120,7 @@ class Interface(object):
             if self.name in netns.ipdb.by_name.keys():
                 if self.logger:
                     self.logger.debug("removing existing interface with name '%s' in %s" %
-                            (self.name, netns.description))
+                                      (self.name, netns.description))
                 netns.interface_get(self.name).remove()
 
             self.interface.net_ns_fd = netns.name
@@ -163,6 +170,7 @@ class Interface(object):
             self.interface = self.ipdb.interfaces[self.name]
 
 
+    # pylint: disable=invalid-name
     def up(self):
         '''
         Bring up the given interface.

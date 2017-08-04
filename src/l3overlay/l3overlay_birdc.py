@@ -1,6 +1,6 @@
 #
 # IPsec overlay network manager (l3overlay)
-# l3overlay/l3overlay_birdc.py - l3overlay overlay-specific birdc wrapper
+# l3overlay/l3overlay_birdc.py - l3overlay overlay-specific birdc wrapper script
 #
 # Copyright (c) 2017 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify
@@ -18,6 +18,11 @@
 #
 
 
+'''
+l3overlay overlay-specific birdc wrapper script.
+'''
+
+
 import argparse
 import os
 
@@ -26,7 +31,7 @@ from l3overlay import util
 
 def main():
     '''
-    l3overlay overlay-specific birdc wrapper.
+    l3overlay overlay-specific birdc wrapper script.
     '''
 
     # Find birdc command. Fails if it is not available.
@@ -77,12 +82,29 @@ def main():
     if args["lib_dir"]:
         lib_dir = args["lib_dir"]
     else:
-        global_conf = args["global_conf"] if "global_conf" in args else util.path_search("global.conf")
+        if "global_conf" in args:
+            global_conf = args["global_conf"]
+        else:
+            global_conf = util.path_search("global.conf")
         config = util.config(global_conf)["global"] if global_conf else None
-        lib_dir = config["lib-dir"] if config and "lib-dir" in config else os.path.join(util.path_root(), "var", "lib", "l3overlay")
+        if config and "lib-dir" in config:
+            lib_dir = config["lib-dir"]
+        else:
+            lib_dir = os.path.join(util.path_root(), "var", "lib", "l3overlay")
 
     # Build birdc command line arguments.
-    birdc_args = [birdc, "-s", os.path.join(lib_dir, "overlays", overlay_name, "run", "bird", "bird6.ctl" if use_bird6 else "bird.ctl")]
+    birdc_args = [
+        birdc,
+        "-s",
+        os.path.join(
+            lib_dir,
+            "overlays",
+            overlay_name,
+            "run",
+            "bird",
+            "bird6.ctl" if use_bird6 else "bird.ctl",
+        ),
+    ]
     if birdc_user_args:
         birdc_args.extend(birdc_user_args)
 

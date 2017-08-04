@@ -18,6 +18,11 @@
 #
 
 
+'''
+Overlay static interface base class.
+'''
+
+
 import abc
 
 from l3overlay.l3overlayd.overlay.interface import Interface

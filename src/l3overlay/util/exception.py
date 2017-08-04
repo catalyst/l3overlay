@@ -18,5 +18,14 @@
 #
 
 
+'''
+l3overlay exception base class.
+'''
+
+
 class L3overlayError(Exception):
+    '''
+    l3overlay exception base class.
+    '''
+
     pass

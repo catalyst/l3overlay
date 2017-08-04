@@ -18,17 +18,26 @@
 #
 
 
-import abc
+'''
+Overlay interface abstract base class.
+'''
 
-from l3overlay import util
+
+import abc
 
 from l3overlay.util.exception import L3overlayError
 
 
 class ReadError(L3overlayError):
+    '''
+    Overlay interface read method error base class.
+    '''
     pass
 
 class WriteError(L3overlayError):
+    '''
+    Overlay interface write method error base class.
+    '''
     pass
 
 
@@ -44,6 +53,13 @@ class Interface(metaclass=abc.ABCMeta):
 
         self.logger = logger
         self.name = name
+
+        # Initialised in setup().
+        self.daemon = None
+        self.dry_run = None
+        self.root_ipdb = None
+        self.overlay = None
+        self.netns = None
 
 
     def setup(self, daemon, overlay):
@@ -77,6 +93,7 @@ class Interface(metaclass=abc.ABCMeta):
         return
 
 
+    # pylint: disable=no-self-use
     def remove(self):
         '''
         Optional method to clean up a static interface runtime state.

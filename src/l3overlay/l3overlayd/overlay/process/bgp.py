@@ -18,9 +18,12 @@
 #
 
 
+'''
+BGP process manager.
+'''
+
 import os
 import re
-import signal
 import subprocess
 import socket
 
@@ -45,10 +48,14 @@ RECV_MAX = 1024
 
 
 class UnexpectedResponseError(L3overlayError):
+    '''
+    Exception to raise when an unexpected response was received from BIRD.
+    '''
     def __init__(self, action, data):
         super().__init__("unexpected response from BIRD when %s:\n%s" % (action, data))
 
 
+# pylint: disable=too-many-instance-attributes
 class Process(Worker):
     '''
     BGP process manager.
@@ -143,6 +150,8 @@ class Process(Worker):
         Setup the BGP process.
         '''
 
+        # pylint: disable=too-many-branches
+
         self.set_settingup()
 
         self.logger.info("setting BGP process")
@@ -154,34 +163,34 @@ class Process(Worker):
         else:
             self.bird_config["mesh_tunnels"] = self.mesh_tunnels
 
-        for si in self.static_interfaces:
+        for stat in self.static_interfaces:
             bc_add = None
-            if si.is_ipv6():
+            if stat.is_ipv6():
                 bc_add = self.bird_config_add
             else:
                 bc_add = self.bird6_config_add
 
-            if isinstance(si, BGP):
-                bc_add("bgps", si)
-            elif isinstance(si, Dummy):
-                bc_add("dummies", si)
-            elif isinstance(si, Tunnel):
-                bc_add("tunnels", si)
-            elif isinstance(si, Tuntap):
-                bc_add("tuntaps", si)
-            elif isinstance(si, VETH):
-                bc_add("veths", si)
-            elif isinstance(si, VLAN):
-                bc_add("vlans", si)
-            elif isinstance(si, OverlayLink):
-                bc_add("overlay_links", si)
+            if isinstance(stat, BGP):
+                bc_add("bgps", stat)
+            elif isinstance(stat, Dummy):
+                bc_add("dummies", stat)
+            elif isinstance(stat, Tunnel):
+                bc_add("tunnels", stat)
+            elif isinstance(stat, Tuntap):
+                bc_add("tuntaps", stat)
+            elif isinstance(stat, VETH):
+                bc_add("veths", stat)
+            elif isinstance(stat, VLAN):
+                bc_add("vlans", stat)
+            elif isinstance(stat, OverlayLink):
+                bc_add("overlay_links", stat)
                 # Add the corresponding BGP configuration for
                 # the overlay link to the inner overlay's BGP process.
-                inner_overlay = self.daemon.overlays[si.inner_overlay_name]
-                if si.is_ipv6():
-                    inner_overlay.bgp_process.bird_config_add("overlay_links", si)
+                inner_overlay = self.daemon.overlays[stat.inner_overlay_name]
+                if stat.is_ipv6():
+                    inner_overlay.bgp_process.bird_config_add("overlay_links", stat)
                 else:
-                    inner_overlay.bgp_process.bird6_config_add("overlay_links", si)
+                    inner_overlay.bgp_process.bird6_config_add("overlay_links", stat)
 
         self.logger.info("finished setting up BGP process")
 
@@ -240,10 +249,14 @@ class Process(Worker):
         self.set_started()
 
 
+
+    # pylint: disable=too-many-arguments
     def _start_bird_daemon(self, bird, bird_conf, bird_config, bird_log, bird_ctl, bird_pid):
         '''
         Start (or reload) a BIRD daemon using the given parameters.
         '''
+
+        # pylint: disable=too-many-branches
 
         self.logger.debug("creating BIRD configuration file '%s'" % bird_conf)
 
@@ -254,8 +267,8 @@ class Process(Worker):
         bird_config["asn"] = self.asn
 
         if not self.dry_run:
-            with open(bird_conf, "w") as f:
-                f.write(self.bird_conf_template.render(bird_config))
+            with open(bird_conf, "w") as fil:
+                fil.write(self.bird_conf_template.render(bird_config))
 
         if util.pid_exists(pid_file=bird_pid):
             # Note that socket.error.errno == errno.ECONNREFUSED
@@ -286,9 +299,11 @@ class Process(Worker):
                 sock.send(bytes("configure \"%s\"\n" % bird_conf, 'UTF-8'))
                 data = sock.recv(RECV_MAX).decode("UTF-8")
 
-            if ("0002-Reading configuration from %s" % bird_conf not in data or
-                        ("0003 Reconfigured" not in data and
-                                "0004 Reconfiguration in progress" not in data)):
+            if (
+                    "0002-Reading configuration from %s" % bird_conf not in data or
+                    ("0003 Reconfigured" not in data and
+                     "0004 Reconfiguration in progress" not in data)
+            ):
                 raise UnexpectedResponseError("reloading config", data)
 
             if not self.dry_run:
@@ -302,13 +317,12 @@ class Process(Worker):
                 "-P", bird_pid,
             ]
 
-            self.logger.debug("starting BIRD using command '%s'" %
-                    str.join(" ", bird_command))
+            self.logger.debug("starting BIRD using command '%s'" % " ".join(bird_command))
 
             bird_process = self.netns.Popen(
                 bird_command,
-                stdout = subprocess.PIPE,
-                stderr = subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
             )
 
             try:

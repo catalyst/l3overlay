@@ -17,15 +17,28 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+'''
+Network interface exception classes.
+'''
+
 
 from l3overlay.util.exception import L3overlayError
 
 
+REMOVE_WAIT_MAX = 5.0
+
+
 class GetError(L3overlayError):
+    '''
+    Interface get method exception base class.
+    '''
     pass
 
 
 class NotFoundError(L3overlayError):
+    '''
+    Exception to raise when an interface was unable to be found.
+    '''
     def __init__(self, name, description="interface", netns=None, root_ipdb=None):
         if netns:
             super().__init__("unable to find %s with name '%s' in %s" % (
@@ -46,6 +59,9 @@ class NotFoundError(L3overlayError):
 
 
 class NotRemovedError(L3overlayError):
+    '''
+    Exception to raise when and interface was not removed when it should have been.
+    '''
     def __init__(self, interface):
         if interface.netns:
             super().__init__(
@@ -58,6 +74,7 @@ class NotRemovedError(L3overlayError):
                 ))
         elif interface.root_ipdb:
             super().__init__(
+                # pylint: disable=line-too-long
                 "%s '%s' in root namespace still exists even after waiting %i second%s for removal" % (
                     interface.description,
                     interface.name,
@@ -66,7 +83,7 @@ class NotRemovedError(L3overlayError):
                 ))
         else:
             super().__init__(
-                "%s '%s' still exists even after waiting %i second%s for removal" % (
+                "%s '%s' still exists even after waiting %.1f second%s for removal" % (
                     interface.description,
                     interface.name,
                     REMOVE_WAIT_MAX,
@@ -75,6 +92,9 @@ class NotRemovedError(L3overlayError):
 
 
 class RemovedThenModifiedError(L3overlayError):
+    '''
+    Exception to raise when an interface was removed and then modified afterwards.
+    '''
     def __init__(self, interface):
         if interface.netns:
             super().__init__("%s '%s' in %s removed and then modified" % (
@@ -95,12 +115,15 @@ class RemovedThenModifiedError(L3overlayError):
 
 
 class UnexpectedTypeError(L3overlayError):
-    def __init__(self, name, type, *expected_types, netns=None, root_ipdb=None):
+    '''
+    Exception to raise when the interface found was of an unexpected type.
+    '''
+    def __init__(self, name, typ, *expected_types, netns=None, root_ipdb=None):
         if netns:
             super().__init__(
                 "found interface with name '%s' of type '%s' in %s, expected '%s'" % (
                     name,
-                    type,
+                    typ,
                     netns.description,
                     str.join("/", expected_types),
                 ))
@@ -108,13 +131,13 @@ class UnexpectedTypeError(L3overlayError):
             super().__init__(
                 "found interface with name '%s' of type '%s' in root namespace, expected '%s'" % (
                     name,
-                    type,
+                    typ,
                     str.join("/", expected_types),
                 ))
         else:
             super().__init__(
                 "found interface with name '%s' of type '%s', expected '%s'" % (
                     name,
-                    type,
+                    typ,
                     str.join("/", expected_types),
                 ))

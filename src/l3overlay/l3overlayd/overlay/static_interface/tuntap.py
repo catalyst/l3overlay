@@ -18,6 +18,11 @@
 #
 
 
+'''
+tuntap overlay static interface.
+'''
+
+
 from l3overlay import util
 
 from l3overlay.l3overlayd.network.interface import tuntap
@@ -32,8 +37,9 @@ class Tuntap(StaticInterface):
     Used to configure a TUN/TAP interface.
     '''
 
+    # pylint: disable=too-many-arguments
     def __init__(self, logger, name,
-            mode, address, netmask, uid, gid):
+                 mode, address, netmask, uid, gid):
         '''
         Set up static tuntap internal state.
         '''
@@ -45,6 +51,9 @@ class Tuntap(StaticInterface):
         self.netmask = netmask
         self.uid = uid
         self.gid = gid
+
+        # Initialised in setup().
+        self.tuntap_name = None
 
 
     def setup(self, daemon, overlay):
@@ -71,7 +80,7 @@ class Tuntap(StaticInterface):
             self.mode,
             self.uid,
             self.gid,
-            netns = self.netns,
+            netns=self.netns,
         )
         tuntap_if.add_ip(self.address, self.netmask)
         tuntap_if.up()
@@ -86,7 +95,13 @@ class Tuntap(StaticInterface):
 
         self.logger.info("stopping static tuntap '%s'" % self.name)
 
-        tuntap.get(self.dry_run, self.logger, self.tuntap_name, self.mode, netns=self.netns).remove()
+        tuntap.get(
+            self.dry_run,
+            self.logger,
+            self.tuntap_name,
+            self.mode,
+            netns=self.netns,
+        ).remove()
 
         self.logger.info("finished stopping static tuntap '%s'" % self.name)
 
@@ -123,18 +138,18 @@ def read(logger, name, config):
     gid = util.integer_get(config["gid"], minval=0) if "gid" in config else None
 
     return Tuntap(logger, name,
-            mode, address, netmask, uid, gid)
+                  mode, address, netmask, uid, gid)
 
 
-def write(tuntap, config):
+def write(tunt, config):
     '''
     Write the static tuntap to the given configuration object.
     '''
 
-    config["mode"] = tuntap.mode.lower()
-    config["address"] = str(tuntap.address)
-    config["netmask"] = str(tuntap.netmask)
-    if tuntap.uid:
-        config["uid"] = str(tuntap.uid)
-    if tuntap.gid:
-        config["gid"] = str(tuntap.gid)
+    config["mode"] = tunt.mode.lower()
+    config["address"] = str(tunt.address)
+    config["netmask"] = str(tunt.netmask)
+    if tunt.uid:
+        config["uid"] = str(tunt.uid)
+    if tunt.gid:
+        config["gid"] = str(tunt.gid)

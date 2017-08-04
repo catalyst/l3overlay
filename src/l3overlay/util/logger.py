@@ -18,6 +18,11 @@
 #
 
 
+'''
+Logger class and functions.
+'''
+
+
 import logging
 import os
 import stat
@@ -28,6 +33,7 @@ from l3overlay.util.worker import Worker
 from l3overlay.util.worker import NotYetStartedError
 
 
+# pylint: disable=too-many-instance-attributes
 class Logger(Worker):
     '''
     Logger.
@@ -40,7 +46,7 @@ class Logger(Worker):
 
         super().__init__()
 
-        self.log = log
+        self.log_file = log
         self.log_level = log_level
         self.logger_name = logger_name
         self.logger_section = logger_section
@@ -48,22 +54,25 @@ class Logger(Worker):
         self.name = "%s-%s" % (logger_name, logger_section) if logger_section else logger_name
         self.description = "logger '%s'" % self.name
 
-        lf = str.format(
+        logf = str.format(
             "%(asctime)s {0}: <{1}> [%(levelname)s] %(message)s",
-             logger_name,
-             logger_section,
+            logger_name,
+            logger_section,
         ) if logger_section else "%(asctime)s %(name)s: [%(levelname)s] %(message)s"
 
-        self.logger_formatter = logging.Formatter(lf)
+        self.logger_formatter = logging.Formatter(logf)
 
-        if self.log:
-            util.directory_create(os.path.dirname(self.log))
-            self.logger_handler = logging.FileHandler(self.log)
-            os.chmod(self.log, stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH)
+        if self.log_file:
+            util.directory_create(os.path.dirname(self.log_file))
+            self.logger_handler = logging.FileHandler(self.log_file)
+            os.chmod(self.log_file, stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH)
         else:
             self.logger_handler = logging.NullHandler()
 
         self.logger_handler.setFormatter(self.logger_formatter)
+
+        # Initialised in start().
+        self.logger = None
 
 
     def start(self):

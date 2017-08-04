@@ -18,6 +18,11 @@
 #
 
 
+'''
+Bridge interface class and functions.
+'''
+
+
 import time
 
 from l3overlay.l3overlayd.network import interface
@@ -49,14 +54,14 @@ class Bridge(Interface):
 
         if self.logger:
             self.logger.debug("adding port for %s '%s' to %s '%s'" %
-                    (added_if.description, added_if.name, self.description, self.name))
+                              (added_if.description, added_if.name, self.description, self.name))
 
         if self.interface:
 
             # GRE interfaces are a layer 3 interface. GRETAP interfaces are fine, though.
             if "kind" in added_if.interface and added_if.interface["kind"] == "gre":
                 raise RuntimeError("unable to add gre interface '%s' to bridge interface '%s'" %
-                        (added_if.name, self.name))
+                                   (added_if.name, self.name))
 
             if added_if.interface.index not in self.interface.ports:
                 self.interface.add_port(added_if.interface).commit()
@@ -79,13 +84,13 @@ def get(dry_run, logger, name, netns=None, root_ipdb=None):
     chosen namespace and returns it.
     '''
 
-    interface._log_get(logger, name, IF_DESCRIPTION, netns, root_ipdb)
+    interface.log_get(logger, name, IF_DESCRIPTION, netns, root_ipdb)
 
     if dry_run:
         return Bridge(logger, name, None, netns, root_ipdb)
 
-    ipdb = interface._ipdb_get(name, IF_DESCRIPTION, netns, root_ipdb)
-    existing_if = interface._interface_get(name, ipdb, IF_TYPE)
+    ipdb = interface.ipdb_get(name, IF_DESCRIPTION, netns, root_ipdb)
+    existing_if = interface.interface_get(name, ipdb, IF_TYPE)
 
     if existing_if:
         return Bridge(logger, name, existing_if, netns, root_ipdb)
@@ -98,13 +103,13 @@ def create(dry_run, logger, name, netns=None, root_ipdb=None):
     Create a bridge interface object, using a given interface name.
     '''
 
-    interface._log_create(logger, name, IF_DESCRIPTION, netns, root_ipdb)
+    interface.log_create(logger, name, IF_DESCRIPTION, netns, root_ipdb)
 
     if dry_run:
         return Bridge(logger, name, None, netns, root_ipdb)
 
-    ipdb = interface._ipdb_get(name, IF_DESCRIPTION, netns, root_ipdb)
-    existing_if = interface._interface_get(name, ipdb)
+    ipdb = interface.ipdb_get(name, IF_DESCRIPTION, netns, root_ipdb)
+    existing_if = interface.interface_get(name, ipdb)
 
     # Always remove any existing interfaces with the given name.
     # Even if it is already a bridge, it could have ports attached

@@ -18,6 +18,11 @@
 #
 
 
+'''
+Dummy overlay static interface.
+'''
+
+
 from l3overlay import util
 
 from l3overlay.l3overlayd.network.interface import dummy
@@ -33,7 +38,7 @@ class Dummy(StaticInterface):
     '''
 
     def __init__(self, logger, name,
-            address, netmask):
+                 address, netmask):
         '''
         Set up static dummy fields.
         '''
@@ -42,6 +47,9 @@ class Dummy(StaticInterface):
 
         self.address = address
         self.netmask = netmask
+
+        # Initialised in setup().
+        self.dummy_name = None
 
 
     def setup(self, daemon, overlay):
@@ -65,7 +73,7 @@ class Dummy(StaticInterface):
             self.dry_run,
             self.logger,
             self.dummy_name,
-            netns = self.netns,
+            netns=self.netns,
         )
         dummy_if.add_ip(self.address, self.netmask)
         dummy_if.up()
@@ -114,7 +122,7 @@ def read(logger, name, config):
     netmask = util.netmask_get(config["netmask"], util.ip_address_is_v6(address))
 
     return Dummy(logger, name,
-            address, netmask)
+                 address, netmask)
 
 
 def write(dummy, config):

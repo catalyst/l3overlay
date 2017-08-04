@@ -18,6 +18,11 @@
 #
 
 
+'''
+Active interface functions.
+'''
+
+
 from l3overlay import util
 
 from l3overlay.l3overlayd.overlay.active_interface.base import ActiveInterface
@@ -29,7 +34,7 @@ def create(logger, interface_name, netns_name):
     '''
 
     return ActiveInterface(logger, interface_name,
-            interface_name, netns_name)
+                           interface_name, netns_name)
 
 
 def read(logger, name, config):
@@ -41,7 +46,7 @@ def read(logger, name, config):
     netns_name = util.name_get(config["netns-name"]) if "netns-name" in config else None
 
     return ActiveInterface(logger, name,
-            interface_name, netns_name)
+                           interface_name, netns_name)
 
 
 def write(active_interface, config):

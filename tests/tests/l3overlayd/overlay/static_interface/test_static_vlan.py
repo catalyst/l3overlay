@@ -65,7 +65,7 @@ class StaticVLANTest(StaticInterfaceBaseTest.Class):
         Test that 'id' is properly handled by the static vlan interface.
         '''
 
-        self.assert_integer(self.section, "id", minval=0, maxval=4096)
+        self.assert_integer(self.section, "id", minval=0, maxval=4096, internal_key="vlan_id")
 
 
     def test_physical_interface(self):

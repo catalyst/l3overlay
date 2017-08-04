@@ -18,18 +18,27 @@
 #
 
 
+'''
+BGP protocol overlay static interface.
+'''
+
+
 from l3overlay import util
 
 from l3overlay.l3overlayd.overlay.static_interface.base import StaticInterface
 
 
+# pylint: disable=too-many-instance-attributes
 class BGP(StaticInterface):
     '''
     Used to configure a static BGP protocol.
     '''
 
+    # pylint: disable=too-many-arguments
     def __init__(self, logger, name,
-            neighbor, local, local_asn, neighbor_asn, bfd, ttl_security, description, import_prefixes):
+                 neighbor, local, local_asn, neighbor_asn, bfd, ttl_security,
+                 description,
+                 import_prefixes):
         '''
         Set up static bgp internal fields.
         '''
@@ -105,18 +114,30 @@ def read(logger, name, config):
     neighbor = util.ip_address_get(config["neighbor"])
     local = util.ip_address_get(config["local"]) if "local" in config else None
 
-    local_asn = util.integer_get(config["local-asn"], minval=0, maxval=65535) if "local-asn" in config else None
-    neighbor_asn = util.integer_get(config["neighbor-asn"], minval=0, maxval=65535) if "neighbor-asn" in config else None
+    if "local-asn" in config:
+        local_asn = util.integer_get(config["local-asn"], minval=0, maxval=65535)
+    else:
+        local_asn = None
+    if "neighbor-asn" in config:
+        neighbor_asn = util.integer_get(config["neighbor-asn"], minval=0, maxval=65535)
+    else:
+        neighbor_asn = None
 
     bfd = util.boolean_get(config["bfd"]) if "bfd" in config else False
     ttl_security = util.boolean_get(config["ttl-security"]) if "ttl-security" in config else False
 
     description = config["description"] if "description" in config else None
 
-    import_prefixes = [util.bird_prefix_get(v) for k, v in config.items() if k.startswith("import-prefix")]
+    import_prefixes = [
+        util.bird_prefix_get(v) for k, v in config.items() if k.startswith("import-prefix")
+    ]
 
-    return BGP(logger, name,
-            neighbor, local, local_asn, neighbor_asn, bfd, ttl_security, description, import_prefixes)
+    return BGP(
+        logger, name,
+        neighbor, local, local_asn, neighbor_asn, bfd, ttl_security,
+        description,
+        import_prefixes,
+    )
 
 
 def write(bgp, config):

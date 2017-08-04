@@ -18,10 +18,14 @@
 #
 
 
+'''
+veth pair overlay static interface.
+'''
+
+
 from l3overlay import util
 
 from l3overlay.l3overlayd.network import netns
-from l3overlay.l3overlayd.network import interface
 
 from l3overlay.l3overlayd.network.interface import bridge
 from l3overlay.l3overlayd.network.interface import dummy
@@ -34,13 +38,15 @@ from l3overlay.l3overlayd.overlay.interface import ReadError
 from l3overlay.l3overlayd.overlay.static_interface.base import StaticInterface
 
 
+# pylint: disable=too-many-instance-attributes
 class VETH(StaticInterface):
     '''
     Used to configure a veth pair interface.
     '''
 
+    # pylint: disable=too-many-arguments
     def __init__(self, logger, name,
-                inner_address, outer_address, inner_namespace, outer_interface_bridged, netmask):
+                 inner_address, outer_address, inner_namespace, outer_interface_bridged, netmask):
         '''
         Set up static veth internal fields.
         '''
@@ -52,6 +58,14 @@ class VETH(StaticInterface):
         self.inner_namespace = inner_namespace
         self.outer_interface_bridged = outer_interface_bridged
         self.netmask = netmask
+
+        # Initialised in setup().
+        self.dummy_name = None
+        self.bridge_name = None
+        self.inner_name = None
+        self.outer_name = None
+        self.outer_netns = None
+        self.inner_netns = None
 
 
     def setup(self, daemon, overlay):
@@ -73,7 +87,7 @@ class VETH(StaticInterface):
         # Otherwise, use the root namespace.
         if self.inner_namespace:
             self.logger.debug("setting inner namespace to network namespace '%s'" %
-                    self.inner_namespace)
+                              self.inner_namespace)
             self.inner_netns = netns.get(self.dry_run, self.logger, self.inner_namespace)
         else:
             self.logger.debug("setting inner namespace to root namespace")
@@ -103,7 +117,7 @@ class VETH(StaticInterface):
         outer_if.netns_set(self.outer_netns)
 
         self.logger.debug("setting inner veth interface '%s' as the inner address interface" %
-                self.inner_name)
+                          self.inner_name)
         inner_address_if = inner_if
 
         if self.outer_interface_bridged:
@@ -111,22 +125,24 @@ class VETH(StaticInterface):
                 self.dry_run,
                 self.logger,
                 self.dummy_name,
-                netns = self.outer_netns,
+                netns=self.outer_netns,
             )
 
             bridge_if = bridge.create(
                 self.dry_run,
                 self.logger,
                 self.bridge_name,
-                netns = self.outer_netns,
+                netns=self.outer_netns,
             )
             bridge_if.add_port(outer_if)
             bridge_if.add_port(dummy_if)
 
-            self.logger.debug("setting bridge interface '%s' as the outer address interface" % self.bridge_name)
+            self.logger.debug("setting bridge interface '%s' as the outer address interface" %
+                              self.bridge_name)
             outer_address_if = bridge_if
         else:
-            self.logger.debug("setting outer veth interface '%s' as the outer address interface" % self.outer_name)
+            self.logger.debug("setting outer veth interface '%s' as the outer address interface" %
+                              self.outer_name)
             outer_address_if = outer_if
 
         if self.inner_address:
@@ -163,14 +179,14 @@ class VETH(StaticInterface):
                 self.dry_run,
                 self.logger,
                 self.bridge_name,
-                netns = self.outer_netns,
+                netns=self.outer_netns,
             ).remove()
 
             dummy.get(
                 self.dry_run,
                 self.logger,
                 self.dummy_name,
-                netns = self.outer_netns,
+                netns=self.outer_netns,
             ).remove()
 
         veth.get(
@@ -178,8 +194,8 @@ class VETH(StaticInterface):
             self.logger,
             self.inner_name,
             self.outer_name,
-            netns = self.inner_netns if self.inner_namespace else None,
-            root_ipdb = self.root_ipdb if not self.inner_namespace else None,
+            netns=self.inner_netns if self.inner_namespace else None,
+            root_ipdb=self.root_ipdb if not self.inner_namespace else None,
         ).remove()
 
         if self.inner_namespace:
@@ -199,8 +215,8 @@ class VETH(StaticInterface):
             return util.ip_address_is_v6(self.outer_address)
         elif self.inner_address:
             return util.ip_address_is_v6(self.inner_address)
-        else:
-            return False
+
+        return False
 
 
     def active_interfaces(self):
@@ -233,10 +249,24 @@ def read(logger, name, config):
     Create a static veth from the given configuration object.
     '''
 
-    inner_address = util.ip_address_get(config["inner-address"]) if "inner-address" in config else None
-    outer_address = util.ip_address_get(config["outer-address"]) if "outer-address" in config else None
-    inner_namespace = util.name_get(config["inner-namespace"]) if "inner-namespace" in config else None
-    outer_interface_bridged = util.boolean_get(config["outer-interface-bridged"]) if "outer-interface-bridged" in config else False
+    # pylint: disable=too-many-branches
+
+    if "inner-address" in config:
+        inner_address = util.ip_address_get(config["inner-address"])
+    else:
+        inner_address = None
+    if "outer-address" in config:
+        outer_address = util.ip_address_get(config["outer-address"])
+    else:
+        outer_address = None
+    if "inner-namespace" in config:
+        inner_namespace = util.name_get(config["inner-namespace"])
+    else:
+        inner_namespace = None
+    if "outer-interface-bridged" in config:
+        outer_interface_bridged = util.boolean_get(config["outer-interface-bridged"])
+    else:
+        outer_interface_bridged = False
 
     netmask = None
     if outer_address:
@@ -246,28 +276,38 @@ def read(logger, name, config):
 
     if inner_address is not None and outer_address is not None:
         if not outer_interface_bridged:
-            raise ReadError("inner-address and outer-address can only be defined at the same time if outer-interface-bridged is true")
+            raise ReadError(
+                "inner-address and outer-address can only be defined at the same time "
+                "if outer-interface-bridged is true",
+            )
 
-        if type(inner_address) != type(outer_address):
-            raise ReadError("inner-address '%s' (%s) and outer-address '%s' (%s) must be the same type of IP address" %
-                    (str(inner_address), str(type(inner_address)),
-                        str(outer_address), str(type(outer_address))))
+        if not isinstance(inner_address, type(outer_address)):
+            raise ReadError(
+                "inner-address '%s' (%s) and outer-address '%s' (%s) "
+                "must be the same type of IP address" %
+                (
+                    str(inner_address), str(type(inner_address)),
+                    str(outer_address), str(type(outer_address)),
+                ),
+            )
 
-    return VETH(logger, name,
-            inner_address, outer_address, inner_namespace, outer_interface_bridged, netmask)
+    return VETH(
+        logger, name,
+        inner_address, outer_address, inner_namespace, outer_interface_bridged, netmask,
+    )
 
 
-def write(veth, config):
+def write(vet, config):
     '''
     Write the static veth to the given configuration object.
     '''
 
-    if veth.inner_address:
-        config["inner-address"] = str(veth.inner_address)
-    if veth.outer_address:
-        config["outer-address"] = str(veth.outer_address)
-    if veth.inner_namespace:
-        config["inner-namespace"] = veth.inner_namespace
-    config["outer-interface-bridged"] = str(veth.outer_interface_bridged).lower()
-    if veth.netmask:
-        config["netmask"] = str(veth.netmask)
+    if vet.inner_address:
+        config["inner-address"] = str(vet.inner_address)
+    if vet.outer_address:
+        config["outer-address"] = str(vet.outer_address)
+    if vet.inner_namespace:
+        config["inner-namespace"] = vet.inner_namespace
+    config["outer-interface-bridged"] = str(vet.outer_interface_bridged).lower()
+    if vet.netmask:
+        config["netmask"] = str(vet.netmask)

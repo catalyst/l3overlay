@@ -18,6 +18,11 @@
 #
 
 
+'''
+Active interface base class.
+'''
+
+
 from l3overlay.l3overlayd.network import interface
 from l3overlay.l3overlayd.network import netns
 
@@ -31,7 +36,7 @@ class ActiveInterface(Interface):
     '''
 
     def __init__(self, logger, name,
-            interface_name, netns_name):
+                 interface_name, netns_name):
         '''
         Set up active interface internal fields.
         '''
@@ -42,17 +47,9 @@ class ActiveInterface(Interface):
         self.netns_name = netns_name
 
 
-    def setup(self, daemon, overlay):
-        '''
-        Set up static bgp runtime state.
-        '''
-
-        super().setup(daemon, overlay)
-
-
     def start(self):
         '''
-        Starts with the BGP process.
+        Already started before the object is created.
         '''
 
         pass
@@ -60,39 +57,39 @@ class ActiveInterface(Interface):
 
     def stop(self):
         '''
-        Stops with the BGP process.
+        Stop the active interface.
         '''
 
         self.logger.info("stopping active interface '%s'" % self.name)
 
         # Keep ns undefined in the case of using the root namespace.
         if not self.netns_name:
-            ns = None
+            netn = None
         # If the given namespace of the active interface is the overlay namespace,
         # use the overlay namespace directly.
         elif self.netns_name == self.netns.name:
-            ns = self.netns
+            netn = self.netns
         # Start a NetNS object for the specific network namespace specified,
         # if it is not the overlay namespace.
         elif self.netns_name != self.netns.name:
-            ns = netns.get(self.dry_run, self.logger, self.netns_name)
-            ns.start()
+            netn = netns.get(self.dry_run, self.logger, self.netns_name)
+            netn.start()
 
         # Remove the interface, IF it can be found in the appropriate namespace.
-        if ((ns and self.interface_name in ns.ipdb.by_name.keys()) or
-                (not ns and self.interface_name in self.root_ipdb.by_name.keys())):
+        if ((netn and self.interface_name in netn.ipdb.by_name.keys()) or
+                (not netn and self.interface_name in self.root_ipdb.by_name.keys())):
             interface.get(
                 self.dry_run,
                 self.logger,
                 self.interface_name,
-                ns,
+                netn,
                 self.root_ipdb if not self.netns_name else None,
             ).remove()
 
         # Shutdown the runtime data for the specific network namespace, if it is
         # not the overlay namespace.
         if self.netns_name and self.netns_name != self.netns.name:
-            ns.stop()
+            netn.stop()
 
         self.logger.info("finished stopping active interface '%s'" % self.name)
 

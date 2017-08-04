@@ -1,5 +1,5 @@
 # l3overlayd build data
-/.config
+/make-lint.log
 
 /.tests/
 

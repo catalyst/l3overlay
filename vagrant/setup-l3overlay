@@ -51,6 +51,7 @@ apt-get install -y python3-pip
 # pip3 install --upgrade setuptools # Needed for Ubuntu 14.04.
 pip3 install pyroute2==0.4.6
 pip3 install jinja2
+pip3 install pylint
 
 service l3overlay stop || true
 

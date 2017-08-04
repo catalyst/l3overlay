@@ -17,8 +17,14 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+'''
+Process manager helper classes.
+'''
 
 class ProcessError(Exception):
+    '''
+    Process error base class.
+    '''
     def __init__(self, message, popen, stdout, stderr):
         super().__init__("%s\n\nCommand: %s\n\nReturn code: %i\n\nstdout:\n%s\n\nstderr:\n%s" % (
             message,

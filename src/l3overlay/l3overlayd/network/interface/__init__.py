@@ -18,6 +18,11 @@
 #
 
 
+'''
+Network interface functions.
+'''
+
+
 from l3overlay.l3overlayd.network.interface.base import Interface
 
 from l3overlay.l3overlayd.network.interface.exception import GetError
@@ -28,7 +33,7 @@ from l3overlay.l3overlayd.network.interface.exception import UnexpectedTypeError
 IF_DESCRIPTION = "interface"
 
 
-def _log_get(logger, name, description, netns, root_ipdb):
+def log_get(logger, name, description, netns, root_ipdb):
     '''
     Internal helper method to write appropriate logging output
     for network interface 'get' functions.
@@ -36,13 +41,13 @@ def _log_get(logger, name, description, netns, root_ipdb):
 
     if netns:
         logger.debug("getting runtime state for %s '%s' in %s" %
-                (description, name, netns.description))
+                     (description, name, netns.description))
     elif root_ipdb:
         logger.debug("getting runtime state for %s '%s' in root namespace" %
-                (description, name))
+                     (description, name))
 
 
-def _log_create(logger, name, description, netns, root_ipdb):
+def log_create(logger, name, description, netns, root_ipdb):
     '''
     Internal helper method to write appropriate logging output
     for network interface 'create' functions.
@@ -50,13 +55,13 @@ def _log_create(logger, name, description, netns, root_ipdb):
 
     if netns:
         logger.debug("creating %s '%s' in %s" %
-                (description, name, netns.description))
+                     (description, name, netns.description))
     elif root_ipdb:
         logger.debug("creating %s '%s' in root namespace" %
-                (description, name))
+                     (description, name))
 
 
-def _ipdb_get(name, description, netns, root_ipdb):
+def ipdb_get(name, description, netns, root_ipdb):
     '''
     Get the applicable IPDB for the given interface name,
     determined from one of netns and root_idpb.
@@ -68,10 +73,10 @@ def _ipdb_get(name, description, netns, root_ipdb):
         return root_ipdb
     else:
         raise GetError("netns and root_ipdb unspecified when processing %s '%s'" %
-                (description, name))
+                       (description, name))
 
 
-def _interface_get(name, ipdb, *types):
+def interface_get(name, ipdb, *types):
     '''
     Tries to find an interface with the given name in the
     chosen namespace and returns it.
@@ -94,13 +99,13 @@ def get(dry_run, logger, name, netns=None, root_ipdb=None):
     chosen namespace and returns it.
     '''
 
-    _log_get(logger, name, IF_DESCRIPTION, netns, root_ipdb)
+    log_get(logger, name, IF_DESCRIPTION, netns, root_ipdb)
 
     if dry_run:
         return Interface(logger, name, None, netns, root_ipdb)
 
-    ipdb = _ipdb_get(name, IF_DESCRIPTION, netns, root_ipdb)
-    existing_if = _interface_get(name, ipdb)
+    ipdb = ipdb_get(name, IF_DESCRIPTION, netns, root_ipdb)
+    existing_if = interface_get(name, ipdb)
 
     if existing_if:
         return Interface(logger, name, existing_if, netns, root_ipdb)

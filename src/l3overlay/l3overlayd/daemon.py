@@ -18,13 +18,20 @@
 #
 
 
+'''
+Daemon class for overlay management.
+'''
+
+
 import os
-import pyroute2
-import shutil
 import re
+import shutil
+
+import pyroute2
+
+from l3overlay import util
 
 from l3overlay.l3overlayd import overlay
-from l3overlay.l3overlayd import util
 
 from l3overlay.l3overlayd.overlay.static_interface.overlay_link import OverlayLink
 from l3overlay.l3overlayd.overlay.static_interface.veth import VETH
@@ -32,40 +39,61 @@ from l3overlay.l3overlayd.overlay.static_interface.veth import VETH
 from l3overlay.l3overlayd.process import ipsec as ipsec_process
 
 from l3overlay.util import logger
-from l3overlay.util import worker
 
 from l3overlay.util.exception import L3overlayError
 
+from l3overlay.util.worker import Worker
+
 
 class KeyAddedTwiceError(L3overlayError):
+    '''
+    Exception to raise when a GRE tunnel key has been added for use twice.
+    '''
     def __init__(self, local, remote, key):
         super().__init__("key '%s' added twice for link (%s, %s)" % (key, local, remote))
 
 class NoOverlayConfError(L3overlayError):
+    '''
+    Exception to raise when no overlay configuration files are found.
+    '''
     def __init__(self):
         super().__init__("no overlay configuration files found")
 
 class MeshLinkNonexistentError(L3overlayError):
+    '''
+    Exception to raise when trying to delete a non-existent mesh link.
+    '''
     def __init__(self, local, remote):
         super().__init__("unable to delete non-existent mesh link (%s, %s)" % (local, remote))
 
 class IPsecTunnelMismatchedPSKError(L3overlayError):
+    '''
+    Exception to raise when PSKs are mismatched when adding to the use count
+    of an IPsec tunnel.
+    '''
     def __init__(self, local, remote, expected_psk, actual_psk):
         super().__init__(
-            "increasing usage count on already added IPsec tunnel (%s, %s) failed:" +
+            "increasing usage count on already added IPsec tunnel (%s, %s) failed:"
             "expected PSK '%s', got '%s'" %
-                    (local, remote, expected_psk, actual_psk)
+            (local, remote, expected_psk, actual_psk)
         )
 
 class IPsecTunnelNonexistentError(L3overlayError):
+    '''
+    Exception to raise when trying to delete a non-existent IPsec tunnel.
+    '''
     def __init__(self, local, remote):
         super().__init__("unable to delete non-existent IPsec tunnel (%s, %s)" % (local, remote))
 
 class ReadError(L3overlayError):
+    '''
+    l3overlay read method error base class.
+    '''
     pass
 
 
-class Daemon(worker.Worker):
+# pylint: disable=too-many-instance-attributes
+class Daemon(Worker):
     '''
     Daemon class for overlay management.
     '''
@@ -73,12 +101,13 @@ class Daemon(worker.Worker):
     description = "daemon"
 
 
-    def __init__(self, dry_run, logger,
-            log, log_level, use_ipsec, ipsec_manage, ipsec_psk,
-            lib_dir, overlay_dir,
-            fwbuilder_script_dir, overlay_conf_dir, template_dir,
-            pid, ipsec_conf, ipsec_secrets,
-            overlays):
+    # pylint: disable=too-many-arguments,too-many-locals
+    def __init__(self, dry_run, logg,
+                 log, log_level, use_ipsec, ipsec_manage, ipsec_psk,
+                 lib_dir, overlay_dir,
+                 fwbuilder_script_dir, overlay_conf_dir, template_dir,
+                 pid, ipsec_conf, ipsec_secrets,
+                 overlays):
         '''
         Set up daemon internal fields.
         '''
@@ -86,7 +115,7 @@ class Daemon(worker.Worker):
         super().__init__(use_setup=True)
 
         self.dry_run = dry_run
-        self.logger = logger
+        self.logger = logg
 
         self.log = log
         self.log_level = log_level
@@ -107,6 +136,14 @@ class Daemon(worker.Worker):
 
         self.overlays = overlays.copy()
         self.sorted_overlays = Daemon.overlays_sorted(self.overlays)
+
+        # Initialised in setup().
+        self.interface_names = None
+        self.gre_keys = None
+        self.mesh_links = None
+        self.ipsec_tunnels = None
+        self.ipsec_process = None
+        self.root_ipdb = None
 
 
     @staticmethod
@@ -132,37 +169,37 @@ class Daemon(worker.Worker):
 
 
     @staticmethod
-    def _overlays_sorted(overlays, overlay_names, sorted_overlays, ol):
+    def _overlays_sorted(overlays, overlay_names, sorted_overlays, ove):
         '''
         Recursive helper method to overlays_list_sorted.
         '''
 
-        for si in ol.static_interfaces:
-            if isinstance(si, VETH) and si.inner_namespace in overlays:
+        for sta in ove.static_interfaces:
+            if isinstance(sta, VETH) and sta.inner_namespace in overlays:
                 try:
-                    overlay_names.remove(si.inner_namespace)
+                    overlay_names.remove(sta.inner_namespace)
                 except ValueError:
                     continue
                 Daemon._overlays_sorted(
                     overlays,
                     overlay_names,
                     sorted_overlays,
-                    overlays[si.inner_namespace],
+                    overlays[sta.inner_namespace],
                 )
 
-            elif isinstance(si, OverlayLink):
+            elif isinstance(sta, OverlayLink):
                 try:
-                    overlay_names.remove(si.inner_overlay_name)
+                    overlay_names.remove(sta.inner_overlay_name)
                 except ValueError:
                     continue
                 Daemon._overlays_sorted(
                     overlays,
                     overlay_names,
                     sorted_overlays,
-                    overlays[si.inner_overlay_name],
+                    overlays[sta.inner_overlay_name],
                 )
 
-        sorted_overlays.append(ol)
+        sorted_overlays.append(ove)
 
 
     def setup(self):
@@ -173,34 +210,35 @@ class Daemon(worker.Worker):
         try:
             self.set_settingup()
 
-            self._interface_names = set()
+            self.interface_names = set()
 
-            self._gre_keys = {}
+            self.gre_keys = dict()
 
-            self.mesh_links = set()
-            self.ipsec_tunnels = {}
+            self.mesh_links = dict()
+            self.ipsec_tunnels = dict()
 
+            # pylint: disable=no-member
             self.root_ipdb = pyroute2.IPDB() if not self.dry_run else None
-        except Exception as e:
+        except Exception as exc:
             if self.logger.is_running():
-                self.logger.exception(e)
+                self.logger.exception(exc)
             raise
 
-        for o in self.sorted_overlays:
+        for ove in self.sorted_overlays:
             try:
-                o.setup(self)
-            except Exception as e:
-                if o.logger.is_running():
-                    o.logger.exception(e)
+                ove.setup(self)
+            except Exception as exc:
+                if ove.logger.is_running():
+                    ove.logger.exception(exc)
                 raise
 
         try:
             self.ipsec_process = ipsec_process.create(self)
 
             self.set_setup()
-        except Exception as e:
+        except Exception as exc:
             if self.logger.is_running():
-                self.logger.exception(e)
+                self.logger.exception(exc)
             raise
 
 
@@ -215,27 +253,27 @@ class Daemon(worker.Worker):
             self.cleanup()
             self.create_lib_dir()
 
-        except Exception as e:
+        except Exception as exc:
             if self.logger.is_running():
-                self.logger.exception(e)
+                self.logger.exception(exc)
             raise
 
-        for o in self.sorted_overlays:
+        for ove in self.sorted_overlays:
             try:
-                o.start()
+                ove.start()
 
-            except Exception as e:
-                if o.logger.is_running():
-                    o.logger.exception(e)
+            except Exception as exc:
+                if ove.logger.is_running():
+                    ove.logger.exception(exc)
                 raise
 
         try:
             self.ipsec_process.start()
             self.set_started()
 
-        except Exception as e:
+        except Exception as exc:
             if self.logger.is_running():
-                self.logger.exception(e)
+                self.logger.exception(exc)
             raise
 
 
@@ -254,13 +292,21 @@ class Daemon(worker.Worker):
                         self.logger.info("cleaning up overlay '%s'" % overlay_name)
 
                         overlay_conf = os.path.join(overlays_dir, overlay_name, "overlay.conf")
-                        o = overlay.read(self.log, self.log_level, conf=overlay_conf)
 
-                        o.setup(self)
-                        o.start()
+                        if not os.path.isfile(overlay_conf):
+                            self.logger.warning(
+                                "unable to find running config for overlay '%s', "
+                                "skipping cleanup" % overlay_name
+                            )
+                            continue
 
-                        o.stop()
-                        o.remove()
+                        ove = overlay.read(self.log, self.log_level, conf=overlay_conf)
+
+                        ove.setup(self)
+                        ove.start()
+
+                        ove.stop()
+                        ove.remove()
 
                         self.logger.info("finished cleaning up overlay '%s'" % overlay_name)
 
@@ -293,24 +339,24 @@ class Daemon(worker.Worker):
             self.set_stopping()
             self.ipsec_process.stop()
             self.ipsec_process.remove()
-        except Exception as e:
+        except Exception as exc:
             if self.logger.is_running():
-                self.logger.exception(e)
+                self.logger.exception(exc)
             raise
 
-        for o in reversed(self.sorted_overlays):
+        for ove in reversed(self.sorted_overlays):
             try:
-                o.stop()
-            except Exception as e:
-                if o.logger.is_running():
-                    o.logger.exception(e)
+                ove.stop()
+            except Exception as exc:
+                if ove.logger.is_running():
+                    ove.logger.exception(exc)
                 raise
 
             try:
-                o.remove()
-            except Exception as e:
+                ove.remove()
+            except Exception as exc:
                 if self.logger.is_running():
-                    self.logger.exception(e)
+                    self.logger.exception(exc)
                 raise
 
         try:
@@ -318,9 +364,9 @@ class Daemon(worker.Worker):
             if not self.dry_run:
                 util.directory_remove(self.lib_dir)
             self.set_stopped()
-        except Exception as e:
+        except Exception as exc:
             if self.logger.is_running():
-                self.logger.exception(e)
+                self.logger.exception(exc)
             raise
 
 
@@ -337,9 +383,9 @@ class Daemon(worker.Worker):
             self.logger.stop()
             self.set_removed()
 
-        except Exception as e:
+        except Exception as exc:
             if self.logger.is_running():
-                self.logger.exception(e)
+                self.logger.exception(exc)
             raise
 
 
@@ -364,12 +410,12 @@ class Daemon(worker.Worker):
 
             ifname = "%s%i" % (ifname_base, ifname_num)
 
-            if ifname not in self._interface_names:
+            if ifname not in self.interface_names:
                 break
 
             ifname_num += 1
 
-        self._interface_names.add(ifname)
+        self.interface_names.add(ifname)
         return ifname
 
 
@@ -381,13 +427,13 @@ class Daemon(worker.Worker):
 
         link = (local, remote)
 
-        if link not in self._gre_keys:
-            self._gre_keys[link] = set()
+        if link not in self.gre_keys:
+            self.gre_keys[link] = set()
 
-        if key in self._gre_keys[link]:
+        if key in self.gre_keys[link]:
             raise KeyAddedTwiceError(local, remote, key)
         else:
-            self._gre_keys[link].add(key)
+            self.gre_keys[link].add(key)
 
 
     def gre_key_remove(self, local, remote, key):
@@ -398,20 +444,22 @@ class Daemon(worker.Worker):
 
         link = (local, remote)
 
-        if link not in self._gre_keys:
+        if link not in self.gre_keys:
             return
 
-        if key in self._gre_keys[link]:
-            self._gre_keys[link].remove(key)
+        if key in self.gre_keys[link]:
+            self.gre_keys[link].remove(key)
 
 
     def mesh_link_add(self, local, remote):
         '''
+        Add a link to the mesh tunnel database, to be read
+        by the IPsec process.
         '''
 
         link = (local, remote)
 
-        if not link in self.mesh_links:
+        if link not in self.mesh_links:
             self.mesh_links[link] = 0
 
         self.mesh_links[link] += 1
@@ -419,6 +467,7 @@ class Daemon(worker.Worker):
 
     def mesh_link_remove(self, local, remote):
         '''
+        Remove a link from the mesh tunnel database.
         '''
 
         link = (local, remote)
@@ -434,8 +483,8 @@ class Daemon(worker.Worker):
 
     def ipsec_tunnel_add(self, local, remote, ipsec_psk=None):
         '''
-        Add a unique (to this daemon) key value for the given
-        (local, remote) link.
+        Add a link to the IPsec tunnel database, to be read
+        by the IPsec process.
         '''
 
         link = (local, remote)
@@ -459,8 +508,7 @@ class Daemon(worker.Worker):
 
     def ipsec_tunnel_remove(self, local, remote):
         '''
-        Remove a unique (to this daemon) key value for the given
-        (local, remote) link.
+        Remove a link from the IPsec tunnel database.
         '''
 
         link = (local, remote)
@@ -473,7 +521,8 @@ class Daemon(worker.Worker):
         else:
             raise IPsecTunnelNonexistentError(local, remote)
 
-worker.Worker.register(Daemon)
+# pylint: disable=no-member
+Worker.register(Daemon)
 
 
 class ValueReader(object):
@@ -512,8 +561,8 @@ class ValueReader(object):
             return self.args[arg_key]
         elif self.config and config_key in self.config and self.config[config_key] is not None:
             return self.config[config_key]
-        else:
-            return default
+
+        return default
 
 
     def boolean_get(self, key, check_args=True, args_optional=False, default=False):
@@ -533,22 +582,22 @@ class ValueReader(object):
         if in_args:
             if no_arg_key not in self.args and arg_key not in self.args:
                 raise ReadError("%s and %s not defined in args for boolean argument '%s'" %
-                        (arg_key, no_arg_key, key))
+                                (arg_key, no_arg_key, key))
             if no_arg_key in self.args and arg_key not in self.args:
                 raise ReadError("%s not defined in args for boolean argument '%s'" %
-                        (arg_key, key))
+                                (arg_key, key))
             if arg_key in self.args and no_arg_key not in self.args:
                 raise ReadError("%s not defined in args for boolean argument '%s'" %
-                        (no_arg_key, key))
+                                (no_arg_key, key))
 
-        if in_args and util.boolean_get(self.args[arg_key]) == True:
+        if in_args and util.boolean_get(self.args[arg_key]):
             return True
-        elif in_args and util.boolean_get(self.args[no_arg_key]) == False:
+        elif in_args and not util.boolean_get(self.args[no_arg_key]):
             return False
         elif self.config and config_key in self.config and self.config[config_key] is not None:
             return util.boolean_get(self.config[config_key])
-        else:
-            return default
+
+        return default
 
 
     def path_get(self, key, check_args=True, args_optional=False, default=None):
@@ -571,14 +620,18 @@ class ValueReader(object):
             return util.path_get(self.args[arg_key], relative_dir=os.getcwd())
         elif self.config and config_key in self.config and self.config[config_key] is not None:
             return util.path_get(self.config[config_key], relative_dir=os.path.dirname(self.conf))
-        else:
-            return default
+
+        return default
 
 
 def read(args):
     '''
     Create a daemon object using the given argument dictionary.
     '''
+
+    # pylint: disable=too-many-branches
+    # pylint: disable=too-many-locals
+    # pylint: disable=too-many-statements
 
     # Load the global configuration file (if specified),
     # and create a ValueReader based on that and the given arguments.
@@ -596,13 +649,13 @@ def read(args):
     )
 
     # Start the logger.
-    lg = logger.create(log, log_level, "l3overlay")
-    lg.start()
+    logg = logger.create(log, log_level, "l3overlay")
+    logg.start()
 
     # Log exceptions for the rest of the initialisation process.
     try:
         if global_config:
-            lg.debug("loaded global configuration file '%s'" % global_conf)
+            logg.debug("loaded global configuration file '%s'" % global_conf)
 
         # Get (general) global configuration.
         dry_run = reader.boolean_get("dry-run", default=False)
@@ -611,32 +664,35 @@ def read(args):
         ipsec_manage = reader.boolean_get("ipsec-manage", default=True)
 
         _psk = reader.get("ipsec-psk", args_optional=True)
-        ipsec_psk = util.hex_get_string(_psk, min=6, max=64) if _psk is not None else None
+        if _psk is not None:
+            ipsec_psk = util.hex_get_string(_psk, mindigits=6, maxdigits=64)
+        else:
+            ipsec_psk = None
 
         # Get required directory paths.
         lib_dir = reader.path_get(
             "lib-dir",
-            default = os.path.join(util.path_root(), "var", "lib", "l3overlay"),
+            default=os.path.join(util.path_root(), "var", "lib", "l3overlay"),
         )
         overlay_dir = os.path.join(lib_dir, "overlays")
 
         fwbuilder_script_dir = reader.path_get(
             "fwbuilder-script-dir",
-            default = util.path_search("fwbuilder-scripts"),
+            default=util.path_search("fwbuilder-scripts"),
         )
         overlay_conf_dir = reader.path_get(
             "overlay-conf-dir",
-            default = util.path_search("overlays"),
+            default=util.path_search("overlays"),
         )
         template_dir = reader.path_get(
             "template-dir",
-            default = util.path_search("templates"),
+            default=util.path_search("templates"),
         )
 
         # Get required file paths.
         pid = reader.path_get(
             "pid",
-            default = os.path.join(util.path_root(), "var", "run", "l3overlayd.pid"),
+            default=os.path.join(util.path_root(), "var", "run", "l3overlayd.pid"),
         )
 
         if ipsec_manage:
@@ -653,47 +709,53 @@ def read(args):
 
         if overlay_confs is not None:
             if isinstance(overlay_confs, str):
-                overlay_confs = tuple(util.path_get(overlay_confs, relative_dir=os.getcwd()))
-            elif isinstance(overlay_confs, list) or isinstance(overlay_confs, dict):
-                overlay_confs = tuple((util.path_get(oc, relative_dir=os.getcwd()) for oc in overlay_confs))
+                overlay_confs = tuple(
+                    util.path_get(overlay_confs, relative_dir=os.getcwd()),
+                )
+            elif isinstance(overlay_confs, (list, dict)):
+                overlay_confs = tuple(
+                    (util.path_get(oc, relative_dir=os.getcwd()) for oc in overlay_confs),
+                )
             else:
                 raise ReadError("expected string, list or dict for overlay_confs, got %s: %s" %
-                        (type(overlay_confs), overlay_confs))
+                                (type(overlay_confs), overlay_confs))
 
         elif overlay_conf_dir is not None:
-            overlay_confs = tuple((os.path.join(overlay_conf_dir, oc) for oc in os.listdir(overlay_conf_dir)))
+            overlay_confs = tuple(
+                (os.path.join(overlay_conf_dir, oc) for oc in os.listdir(overlay_conf_dir)),
+            )
 
         else:
             raise NoOverlayConfError()
 
-        lg.debug("Global configuration:")
-        lg.debug("  dry-run = %s" % dry_run)
-        lg.debug("  use-ipsec = %s" % use_ipsec)
-        lg.debug("  ipsec-manage = %s" % ipsec_manage)
-        lg.debug("  ipsec-psk = %s" %
-                ("<redacted, length %i>" % len(ipsec_psk) if ipsec_psk else None))
-        lg.debug("  lib-dir = %s" % lib_dir)
-        lg.debug("  fwbuilder-script-dir = %s" % fwbuilder_script_dir)
-        lg.debug("  overlay-conf-dir = %s" % overlay_conf_dir)
-        lg.debug("  template-dir = %s" % template_dir)
-        lg.debug("")
+        logg.debug("Global configuration:")
+        logg.debug("  dry-run = %s" % dry_run)
+        logg.debug("  use-ipsec = %s" % use_ipsec)
+        logg.debug("  ipsec-manage = %s" % ipsec_manage)
+        logg.debug("  ipsec-psk = %s" %
+                   ("<redacted, length %i>" % len(ipsec_psk) if ipsec_psk else None))
+        logg.debug("  lib-dir = %s" % lib_dir)
+        logg.debug("  fwbuilder-script-dir = %s" % fwbuilder_script_dir)
+        logg.debug("  overlay-conf-dir = %s" % overlay_conf_dir)
+        logg.debug("  template-dir = %s" % template_dir)
+        logg.debug("")
 
 
-        lg.debug("Overlay configuration files:")
+        logg.debug("Overlay configuration files:")
         for overlay_conf in overlay_confs:
-            lg.debug("  %s" % overlay_conf)
-        lg.debug("")
+            logg.debug("  %s" % overlay_conf)
+        logg.debug("")
 
         # Create the application state for each overlay.
         overlays = {}
 
         for overlay_conf in overlay_confs:
-            o = overlay.read(log, log_level, conf=overlay_conf)
-            overlays[o.name] = o
+            ove = overlay.read(log, log_level, conf=overlay_conf)
+            overlays[ove.name] = ove
 
         # Return a set up daemon object.
         return Daemon(
-            dry_run, lg,
+            dry_run, logg,
             log, log_level, use_ipsec, ipsec_manage, ipsec_psk,
             lib_dir, overlay_dir,
             fwbuilder_script_dir, overlay_conf_dir, template_dir,
@@ -701,8 +763,8 @@ def read(args):
             overlays,
         )
 
-    except Exception as e:
-        lg.exception(e)
+    except Exception as exc:
+        logg.exception(exc)
         raise
 
 
@@ -734,7 +796,7 @@ def write(daemon, global_conf, overlay_conf_dir):
 
     global_config.write(global_conf)
 
-    for o in daemon.overlays.values():
+    for ove in daemon.overlays.values():
         overlay_config = util.config()
-        o.write(overlay_config)
-        overlay_config.write(os.path.join(overlay_conf_dir, "%s.conf" % o.name))
+        ove.write(overlay_config)
+        overlay_config.write(os.path.join(overlay_conf_dir, "%s.conf" % ove.name))

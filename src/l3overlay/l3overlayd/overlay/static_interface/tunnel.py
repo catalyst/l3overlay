@@ -18,6 +18,11 @@
 #
 
 
+'''
+Tunnel overlay static interface.
+'''
+
+
 from l3overlay import util
 
 from l3overlay.l3overlayd.network.interface import gre
@@ -28,28 +33,17 @@ from l3overlay.l3overlayd.overlay.interface import ReadError
 
 from l3overlay.l3overlayd.overlay.static_interface.base import StaticInterface
 
-from l3overlay.util.exception import L3overlayError
 
-
-class NonUniqueTunnelError(L3overlayError):
-    def __init__(self, tunnel):
-        super().__init__("more than one tunnel without key value for address pair (%s, %s)" %
-                (tunnel.local, tunnel.remote))
-
-class KeyNumUnavailableError(L3overlayError):
-    def __init__(self, tunnel, key):
-        super().__init__("more than one tunnel using key value %s for address pair (%s, %s)" %
-                (key, tunnel.local, tunnel.remote))
-
-
+# pylint: disable=too-many-instance-attributes
 class Tunnel(StaticInterface):
     '''
     Used to configure a GRE/GRETAP tunnel interface.
     '''
 
+    # pylint: disable=too-many-arguments
     def __init__(self, logger, name,
-                mode, local, remote, address, netmask,
-                key, ikey, okey):
+                 mode, local, remote, address, netmask,
+                 key, ikey, okey):
         '''
         Set up static tunnel internal fields.
         '''
@@ -65,6 +59,9 @@ class Tunnel(StaticInterface):
         self.key = key
         self.ikey = ikey
         self.okey = okey
+
+        # Initalised in setup().
+        self.tunnel_name = None
 
 
     def setup(self, daemon, overlay):
@@ -96,10 +93,10 @@ class Tunnel(StaticInterface):
             self.mode,
             self.local,
             self.remote,
-            key = self.key,
-            ikey = self.ikey,
-            okey = self.okey,
-            netns = self.netns,
+            key=self.key,
+            ikey=self.ikey,
+            okey=self.okey,
+            netns=self.netns,
         )
         tunnel_if.add_ip(self.address, self.netmask)
         tunnel_if.up()

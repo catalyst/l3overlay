@@ -18,9 +18,13 @@
 #
 
 
+'''
+Overlay link overlay static interface.
+'''
+
+
 from l3overlay import util
 
-from l3overlay.l3overlayd.network import interface
 from l3overlay.l3overlayd.network import netns
 
 from l3overlay.l3overlayd.network.interface import bridge
@@ -34,14 +38,16 @@ from l3overlay.l3overlayd.overlay.interface import ReadError
 from l3overlay.l3overlayd.overlay.static_interface.base import StaticInterface
 
 
+# pylint: disable=too-many-instance-attributes
 class OverlayLink(StaticInterface):
     '''
     Used to configure a fully addressed and linked
     point-to-point connection between two overlays.
     '''
 
+    # pylint: disable=too-many-arguments
     def __init__(self, logger, name,
-                outer_address, inner_address, inner_overlay_name, netmask):
+                 outer_address, inner_address, inner_overlay_name, netmask):
         '''
         Set up static overlay link internal state.
         '''
@@ -52,6 +58,17 @@ class OverlayLink(StaticInterface):
         self.inner_address = inner_address
         self.inner_overlay_name = inner_overlay_name
         self.netmask = netmask
+
+        # Initialised in setup().
+        self.outer_overlay_name = None
+        self.outer_asn = None
+        self.inner_overlay = None
+        self.inner_netns = None
+        self.inner_asn = None
+        self.dummy_name = None
+        self.bridge_name = None
+        self.outer_name = None
+        self.inner_name = None
 
 
     def setup(self, daemon, overlay):
@@ -101,7 +118,7 @@ class OverlayLink(StaticInterface):
             self.logger,
             self.outer_name,
             self.inner_name,
-            netns = self.netns,
+            netns=self.netns,
         )
 
         inner_if = outer_if.peer_get(peer_netns=self.inner_netns)
@@ -113,7 +130,7 @@ class OverlayLink(StaticInterface):
             self.dry_run,
             self.logger,
             self.dummy_name,
-            netns = self.netns,
+            netns=self.netns,
         )
 
         # Create the bridge interface for the dummy interface and the
@@ -122,7 +139,7 @@ class OverlayLink(StaticInterface):
             self.dry_run,
             self.logger,
             self.bridge_name,
-            netns = self.netns,
+            netns=self.netns,
         )
         bridge_if.add_port(outer_if)
         bridge_if.add_port(dummy_if)
@@ -156,7 +173,13 @@ class OverlayLink(StaticInterface):
 
         bridge.get(self.dry_run, self.logger, self.bridge_name, netns=self.netns).remove()
         dummy.get(self.dry_run, self.logger, self.dummy_name, netns=self.netns).remove()
-        veth.get(self.dry_run, self.logger, self.outer_name, self.inner_name, netns=self.netns).remove()
+        veth.get(
+            self.dry_run,
+            self.logger,
+            self.outer_name,
+            self.inner_name,
+            netns=self.netns,
+        ).remove()
 
         self.inner_netns.stop()
 
@@ -188,13 +211,20 @@ def read(logger, name, config):
     inner_overlay_name = util.name_get(config["inner-overlay-name"])
     netmask = util.netmask_get(config["netmask"], util.ip_address_is_v6(inner_address))
 
-    if (type(inner_address) != type(outer_address)):
-        raise ReadError("inner address '%s' (%s) and outer address '%s' (%s) must be the same type of IP address" %
-                (inner_address, str(type(nner_address)),
-                    outer_address, str(type(outer_address))))
+    if not isinstance(inner_address, type(outer_address)):
+        raise ReadError(
+            "inner address '%s' (%s) and outer address '%s' (%s) "
+            "must be the same type of IP address" %
+            (
+                inner_address, str(type(inner_address)),
+                outer_address, str(type(outer_address)),
+            ),
+        )
 
-    return OverlayLink(logger, name,
-            outer_address, inner_address, inner_overlay_name, netmask)
+    return OverlayLink(
+        logger, name,
+        outer_address, inner_address, inner_overlay_name, netmask,
+    )
 
 
 def write(overlay_link, config):
