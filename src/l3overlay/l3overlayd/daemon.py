@@ -672,7 +672,7 @@ def read(args):
         # Get required directory paths.
         lib_dir = reader.path_get(
             "lib-dir",
-            default=os.path.join(util.path_root(), "var", "lib", "l3overlay"),
+            default=os.path.join(util.PATH_ROOT_DIR, "var", "lib", "l3overlay"),
         )
         overlay_dir = os.path.join(lib_dir, "overlays")
 
@@ -692,15 +692,21 @@ def read(args):
         # Get required file paths.
         pid = reader.path_get(
             "pid",
-            default=os.path.join(util.path_root(), "var", "run", "l3overlayd.pid"),
+            default=os.path.join(util.PATH_ROOT_DIR, "var", "run", "l3overlayd.pid"),
         )
 
         if ipsec_manage:
-            ipsec_conf_default = os.path.join(util.path_root(), "etc", "ipsec.conf")
-            ipsec_secrets_default = os.path.join(util.path_root(), "etc", "ipsec.secrets")
+            ipsec_conf_default = os.path.join(util.PATH_ROOT_DIR, "etc", "ipsec.conf")
+            ipsec_secrets_default = os.path.join(util.PATH_ROOT_DIR, "etc", "ipsec.secrets")
         else:
-            ipsec_conf_default = os.path.join(util.path_root(), "etc", "ipsec.d", "l3overlay.conf")
-            ipsec_secrets_default = os.path.join(util.path_root(), "etc", "ipsec.l3overlay.secrets")
+            ipsec_conf_default = os.path.join(
+                util.PATH_ROOT_DIR,
+                "etc", "ipsec.d", "l3overlay.conf",
+            )
+            ipsec_secrets_default = os.path.join(
+                util.PATH_ROOT_DIR,
+                "etc", "ipsec.l3overlay.secrets",
+            )
         ipsec_conf = reader.path_get("ipsec-conf", default=ipsec_conf_default)
         ipsec_secrets = reader.path_get("ipsec-secrets", default=ipsec_secrets_default)
 

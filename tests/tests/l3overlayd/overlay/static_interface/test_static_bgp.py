@@ -1,6 +1,6 @@
 #
 # IPsec overlay network manager (l3overlay)
-# tests/l3overlayd/overlay/static_interface/test_static_bgp.py - unit test for reading static bgp protocols
+# tests/l3overlayd/overlay/static_interface/test_static_bgp.py - unit test for static bgp protocols
 #
 # Copyright (c) 2017 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify
@@ -18,22 +18,26 @@
 #
 
 
+'''
+Unit tests for reading static BGP protocols.
+'''
+
+
 import os
-import unittest
 
 from l3overlay import util
 
-from l3overlay.l3overlayd import overlay
-
-from tests.l3overlayd.overlay.static_interface.base import StaticInterfaceBaseTest
+from tests.l3overlayd.overlay.static_interface import StaticInterfaceBaseTest
 
 
-class StaticBGPTest(StaticInterfaceBaseTest.Class):
+class StaticBGPTest(StaticInterfaceBaseTest):
     '''
     Unit test for reading static bgp protocols.
     '''
 
     name = "test_static_bgp"
+    conf_dir = os.path.join(os.path.abspath(os.path.dirname(__file__)), name)
+
 
     #
     ##
@@ -119,11 +123,26 @@ class StaticBGPTest(StaticInterfaceBaseTest.Class):
         '''
 
         # Test invalid values.
-        self.assert_fail(self.section, "import-prefix", value="172.16.0.0/-1", exception=util.GetError)
-        self.assert_fail(self.section, "import-prefix", value="172.16.0.0/33", exception=util.GetError)
-        self.assert_fail(self.section, "import-prefix", value="2001:db8::/129", exception=util.GetError)
-        self.assert_fail(self.section, "import-prefix", value="172.16.0.0/16{-1,33}", exception=util.GetError)
-        self.assert_fail(self.section, "import-prefix", value="2001:db8::/32{-1,129}", exception=util.GetError)
+        self.assert_fail(
+            self.section, "import-prefix",
+            value="172.16.0.0/-1", exception=util.GetError,
+        )
+        self.assert_fail(
+            self.section, "import-prefix",
+            value="172.16.0.0/33", exception=util.GetError,
+        )
+        self.assert_fail(
+            self.section, "import-prefix", value="2001:db8::/129",
+            exception=util.GetError,
+        )
+        self.assert_fail(
+            self.section, "import-prefix",
+            value="172.16.0.0/16{-1,33}", exception=util.GetError,
+        )
+        self.assert_fail(
+            self.section, "import-prefix",
+            value="2001:db8::/32{-1,129}", exception=util.GetError,
+        )
 
         # Test valid values.
         self.assert_success(self.section, "import-prefix", value="172.16.0.0/16")
@@ -136,9 +155,5 @@ class StaticBGPTest(StaticInterfaceBaseTest.Class):
         self.assert_success(self.section, "import-prefix", value="2001:db8::/32-")
         self.assert_success(self.section, "import-prefix", value="2001:db8::/32{48,64}")
 
-        oc = self.config_get(self.section, "import-prefix-0", value="172.16.0.0/24")
-        self.assert_success(self.section, "import-prefix-1", value="172.16.1.0/24", conf=oc)
-
-
-if __name__ == "__main__":
-    unittest.main()
+        over = self.config_get(self.section, "import-prefix-0", value="172.16.0.0/24")
+        self.assert_success(self.section, "import-prefix-1", value="172.16.1.0/24", conf=over)

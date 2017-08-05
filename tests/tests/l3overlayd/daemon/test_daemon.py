@@ -18,23 +18,32 @@
 #
 
 
-import l3overlay
+'''
+Unit test for reading Daemon objects.
+'''
+
+
 import os
-import unittest
 
 from l3overlay import util
 
 from l3overlay.l3overlayd import daemon
 
-from tests.l3overlayd.daemon.base import DaemonBaseTest
+from tests.l3overlayd.daemon import DaemonBaseTest
 
 
-class DaemonTest(DaemonBaseTest.Class):
+class DaemonTest(DaemonBaseTest):
     '''
     l3overlay unit test for reading Daemon objects.
     '''
 
     name = "test_daemon"
+    conf_dir = os.path.join(os.path.abspath(os.path.dirname(__file__)), name)
+
+
+    #
+    ##
+    #
 
 
     def test_log_level(self):
@@ -70,7 +79,7 @@ class DaemonTest(DaemonBaseTest.Class):
         Test that 'ipsec_psk' is properly handled by the daemon.
         '''
 
-        self.assert_hex_string("ipsec_psk", min=6, max=64)
+        self.assert_hex_string("ipsec_psk", mindigits=6, maxdigits=64)
 
 
     def test_lib_dir(self):
@@ -136,23 +145,27 @@ class DaemonTest(DaemonBaseTest.Class):
 
         overlay_conf_dir = self.global_conf["overlay_conf_dir"]
 
-        gc = self.global_conf.copy()
-        gc["overlay_global_conf"] = None
+        glob = self.global_conf.copy()
+        glob["overlay_global_conf"] = None
 
         # Test absolute paths.
         value = [os.path.join(overlay_conf_dir, f) for f in os.listdir(overlay_conf_dir)]
         self.assert_success(
             "overlay_conf",
             value=value,
-            conf=gc,
+            conf=glob,
         )
 
         # Test relative paths.
-        value = [os.path.relpath(os.path.join(overlay_conf_dir, f)) for f in os.listdir(overlay_conf_dir)]
+        value = [
+            os.path.relpath(
+                os.path.join(overlay_conf_dir, f),
+            ) for f in os.listdir(overlay_conf_dir)
+        ]
         self.assert_success(
             "overlay_conf",
             value=value,
-            conf=gc,
+            conf=glob,
         )
 
         # Test non-existent paths.
@@ -160,15 +173,11 @@ class DaemonTest(DaemonBaseTest.Class):
             "overlay_conf",
             value=[util.random_string(16)],
             exception=FileNotFoundError,
-            conf=gc,
+            conf=glob,
         )
 
         # Test invalid values.
-        self.assert_fail("overlay_conf", value="", exception=util.GetError, conf=gc)
-        self.assert_fail("overlay_conf", value=1, exception=daemon.ReadError, conf=gc)
-        self.assert_fail("overlay_conf", value=[""], exception=util.GetError, conf=gc)
-        self.assert_fail("overlay_conf", value=[1], exception=util.GetError, conf=gc)
-
-
-if __name__ == "__main__":
-    unittest.main()
+        self.assert_fail("overlay_conf", value="", exception=util.GetError, conf=glob)
+        self.assert_fail("overlay_conf", value=1, exception=daemon.ReadError, conf=glob)
+        self.assert_fail("overlay_conf", value=[""], exception=util.GetError, conf=glob)
+        self.assert_fail("overlay_conf", value=[1], exception=util.GetError, conf=glob)

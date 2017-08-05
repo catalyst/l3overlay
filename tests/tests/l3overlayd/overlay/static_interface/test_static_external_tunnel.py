@@ -1,6 +1,6 @@
 #
 # IPsec overlay network manager (l3overlay)
-# tests/l3overlayd/overlay/static_interfaces/test_static_external_tunnel.py - unit test for reading static external tunnel interfaces
+# tests/l3overlayd/overlay/static_interfaces/test_static_external_tunnel.py - stat. external tunnel
 #
 # Copyright (c) 2017 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify
@@ -18,22 +18,26 @@
 #
 
 
-import os
-import unittest
+'''
+Unit tests for reading static external tunnel interfaces.
+'''
 
-from l3overlay import util
+
+import os
 
 from l3overlay.l3overlayd import overlay
 
-from tests.l3overlayd.overlay.static_interface.base import StaticInterfaceBaseTest
+from tests.l3overlayd.overlay.static_interface import StaticInterfaceBaseTest
 
 
-class StaticExternalTunnelTest(StaticInterfaceBaseTest.Class):
+class StaticExternalTunnelTest(StaticInterfaceBaseTest):
     '''
     Unit test for reading static external tunnel interfaces.
     '''
 
     name = "test_static_external_tunnel"
+    conf_dir = os.path.join(os.path.abspath(os.path.dirname(__file__)), name)
+
 
     #
     ##
@@ -80,7 +84,8 @@ class StaticExternalTunnelTest(StaticInterfaceBaseTest.Class):
 
     def test_address_netmask(self):
         '''
-        Test that 'address' and 'netmask' are properly handled by the static external tunnel interface.
+        Test that 'address' and 'netmask' are properly handled by the static external tunnel
+        interface.
         '''
 
         self.assert_address_netmask(self.section, "address", "netmask")
@@ -104,8 +109,8 @@ class StaticExternalTunnelTest(StaticInterfaceBaseTest.Class):
 
         # Success when okey is defined at the same time.
         # Also test argument handling at the same time.
-        oc = self.config_get(self.section, "okey", value="0")
-        self.assert_integer(self.section, "ikey", minval=0, conf=oc)
+        over = self.config_get(self.section, "okey", value="0")
+        self.assert_integer(self.section, "ikey", minval=0, conf=over)
 
 
     def test_okey(self):
@@ -118,8 +123,8 @@ class StaticExternalTunnelTest(StaticInterfaceBaseTest.Class):
 
         # Success when ikey is defined at the same time.
         # Also test argument handling at the same time.
-        oc = self.config_get(self.section, "ikey", value="0")
-        self.assert_integer(self.section, "okey", minval=0, conf=oc)
+        over = self.config_get(self.section, "ikey", value="0")
+        self.assert_integer(self.section, "okey", minval=0, conf=over)
 
 
     def test_use_ipsec(self):
@@ -135,8 +140,4 @@ class StaticExternalTunnelTest(StaticInterfaceBaseTest.Class):
         Test that 'ipsec-psk' is properly handled by the static external tunnel interface.
         '''
 
-        self.assert_hex_string(self.section, "ipsec-psk", min=6, max=64)
-
-
-if __name__ == "__main__":
-    unittest.main()
+        self.assert_hex_string(self.section, "ipsec-psk", mindigits=6, maxdigits=64)

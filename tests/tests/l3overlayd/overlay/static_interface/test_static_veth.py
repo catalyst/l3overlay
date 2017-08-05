@@ -1,6 +1,6 @@
 #
 # IPsec overlay network manager (l3overlay)
-# tests/l3overlayd/overlay/static_interface/test_static_veth.py - unit test for reading static veth interfaces
+# tests/l3overlayd/overlay/static_interface/test_static_veth.py - unit test for static veth pairs
 #
 # Copyright (c) 2017 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify
@@ -18,22 +18,26 @@
 #
 
 
-import os
-import unittest
+'''
+Unit tests for reading static veth interfaces.
+'''
 
-from l3overlay import util
+
+import os
 
 from l3overlay.l3overlayd import overlay
 
-from tests.l3overlayd.overlay.static_interface.base import StaticInterfaceBaseTest
+from tests.l3overlayd.overlay.static_interface import StaticInterfaceBaseTest
 
 
-class StaticVETHTest(StaticInterfaceBaseTest.Class):
+class StaticVETHTest(StaticInterfaceBaseTest):
     '''
     Unit test for reading static veth interfaces.
     '''
 
     name = "test_static_veth"
+    conf_dir = os.path.join(os.path.abspath(os.path.dirname(__file__)), name)
+
 
     #
     ##
@@ -63,7 +67,7 @@ class StaticVETHTest(StaticInterfaceBaseTest.Class):
         handled by the static veth interface.
         '''
 
-        oc = self.config_get(self.section, "inner-address", value="201.0.113.1")
+        over = self.config_get(self.section, "inner-address", value="201.0.113.1")
 
         # Test that both inner-address and outer-address cannot be defined
         # at the same time, without outer-interface-bridged being set to true.
@@ -72,15 +76,15 @@ class StaticVETHTest(StaticInterfaceBaseTest.Class):
             "outer-address",
             value="201.0.113.2",
             exception=overlay.interface.ReadError,
-            conf=oc,
+            conf=over,
         )
 
-        oc[self.section]["outer-interface-bridged"] = "true"
+        over[self.section]["outer-interface-bridged"] = "true"
         self.assert_success(
             self.section,
             "outer-address",
             value="201.0.113.2",
-            conf=oc,
+            conf=over,
         )
 
         # Test that IPv4 and IPv6 inner and outer addresses cannot be mixed.
@@ -89,7 +93,7 @@ class StaticVETHTest(StaticInterfaceBaseTest.Class):
             "outer-address",
             value="2001:db8::2",
             exception=overlay.interface.ReadError,
-            conf=oc,
+            conf=over,
         )
 
 
@@ -123,7 +127,3 @@ class StaticVETHTest(StaticInterfaceBaseTest.Class):
         '''
 
         self.assert_boolean(self.section, "outer-interface-bridged", test_default=True)
-
-
-if __name__ == "__main__":
-    unittest.main()
