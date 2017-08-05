@@ -61,6 +61,8 @@ SBIN_DIR = $(PREFIX)/sbin
 
 CONFIG_DIR = $(ETC_DIR)/l3overlay
 
+TEST_PRESERVE_TMP_DIR = 0
+
 # Makefile internal variable for service variables.
 SERVICE_PREFIX      = 
 # Actual parameters passed to configuration files.
@@ -110,10 +112,9 @@ SETUP_PY            = setup.py
 TEMPLATE_PROCESS_PY = template_process.py
 
 SRC_DIR    = src
-MODULE_DIR = $(SRC_DIR)/l3overlay
 
-TESTS_BIN_DIR = tests/tests
-TESTS_SRC_DIR = tests
+TEST_SRC_DIR = tests
+TEST_TMP_DIR = .tests
 
 
 ##############################
@@ -183,14 +184,18 @@ all:
 
 
 lint:
-	$(PYLINT) $(MODULE_DIR) --disable=duplicate-code 2>&1 | tee make-lint.log
+	$(PYLINT) $(SRC_DIR)/l3overlay --disable=duplicate-code 2>&1 | tee make-lint.log
 	@echo "pylint output written to make-lint.log"
 
 
 test:
-	@for t in $(shell $(FIND) $(TESTS_BIN_DIR) -name 'test_*.py'); do \
-		PYTHONPATH=$(TESTS_SRC_DIR):$(SRC_DIR) $(PYTHON) $$t || exit $$?; \
-	done
+	$(PYTHON) $(TEST_SRC_DIR)/tests/__init__.py
+	test -z $(TEST_PRESERVE_TMP_DIR) && rm -rf $(TEST_TMP_DIR) || true
+
+
+test-lint:
+	$(PYLINT) $(TEST_SRC_DIR)/tests --disable=duplicate-code 2>&1 | tee make-test-lint.log
+	@echo "pylint output written to make-test-lint.log"
 
 
 sdist:

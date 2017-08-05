@@ -90,7 +90,7 @@ def main():
         if config and "lib-dir" in config:
             lib_dir = config["lib-dir"]
         else:
-            lib_dir = os.path.join(util.path_root(), "var", "lib", "l3overlay")
+            lib_dir = os.path.join(util.PATH_ROOT_DIR, "var", "lib", "l3overlay")
 
     # Build birdc command line arguments.
     birdc_args = [

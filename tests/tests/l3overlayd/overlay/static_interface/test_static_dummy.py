@@ -1,6 +1,6 @@
 #
 # IPsec overlay network manager (l3overlay)
-# tests/l3overlayd/overlay/static_interface/test_static_dummy.py - unit test for reading static dummy interfaces
+# tests/l3overlayd/overlay/static_interface/test_static_dummy.py - unit test for static dummies
 #
 # Copyright (c) 2017 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify
@@ -18,22 +18,24 @@
 #
 
 
+'''
+Unit tests for reading static dummy interface.
+'''
+
+
 import os
-import unittest
 
-from l3overlay import util
-
-from l3overlay.l3overlayd import overlay
-
-from tests.l3overlayd.overlay.static_interface.base import StaticInterfaceBaseTest
+from tests.l3overlayd.overlay.static_interface import StaticInterfaceBaseTest
 
 
-class StaticDummyTest(StaticInterfaceBaseTest.Class):
+class StaticDummyTest(StaticInterfaceBaseTest):
     '''
     Unit test for reading static dummy interfaces.
     '''
 
     name = "test_static_dummy"
+    conf_dir = os.path.join(os.path.abspath(os.path.dirname(__file__)), name)
+
 
     #
     ##
@@ -64,7 +66,3 @@ class StaticDummyTest(StaticInterfaceBaseTest.Class):
         '''
 
         self.assert_address_netmask(self.section, "address", "netmask")
-
-
-if __name__ == "__main__":
-    unittest.main()

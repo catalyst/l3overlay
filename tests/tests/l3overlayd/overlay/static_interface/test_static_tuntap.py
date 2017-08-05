@@ -1,6 +1,6 @@
 #
 # IPsec overlay network manager (l3overlay)
-# tests/l3overlayd/overlay/static_interface/test_static_tuntap.py - unit test for reading static tuntap interfaces
+# tests/l3overlayd/overlay/static_interface/test_static_tuntap.py - unit test for static tuntaps
 #
 # Copyright (c) 2017 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify
@@ -18,22 +18,24 @@
 #
 
 
+'''
+Unit tests for reading static tuntap interfaces.
+'''
+
+
 import os
-import unittest
 
-from l3overlay import util
-
-from l3overlay.l3overlayd import overlay
-
-from tests.l3overlayd.overlay.static_interface.base import StaticInterfaceBaseTest
+from tests.l3overlayd.overlay.static_interface import StaticInterfaceBaseTest
 
 
-class StaticTuntapTest(StaticInterfaceBaseTest.Class):
+class StaticTuntapTest(StaticInterfaceBaseTest):
     '''
     Unit test for reading static tuntap interfaces.
     '''
 
     name = "test_static_tuntap"
+    conf_dir = os.path.join(os.path.abspath(os.path.dirname(__file__)), name)
+
 
     #
     ##
@@ -89,7 +91,3 @@ class StaticTuntapTest(StaticInterfaceBaseTest.Class):
         '''
 
         self.assert_integer(self.section, "gid", minval=0)
-
-
-if __name__ == "__main__":
-    unittest.main()

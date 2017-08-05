@@ -18,23 +18,28 @@
 #
 
 
+'''
+Unit test for reading Overlay objects.
+'''
+
+
 import ipaddress
 import os
-import unittest
 
 from l3overlay import util
 
 from l3overlay.l3overlayd import overlay
 
-from tests.l3overlayd.overlay.base import OverlayBaseTest
+from tests.l3overlayd.overlay import OverlayBaseTest
 
 
-class OverlayTest(OverlayBaseTest.Class):
+class OverlayTest(OverlayBaseTest):
     '''
     l3overlay unit test for reading Overlay objects.
     '''
 
     name = "test_overlay"
+    conf_dir = os.path.join(os.path.abspath(os.path.dirname(__file__)), name)
 
 
     #
@@ -101,7 +106,7 @@ class OverlayTest(OverlayBaseTest.Class):
                 ipaddress.ip_address(next(
                     (
                         v for k, v in self.overlay_conf["overlay"].items() if
-                                k.startswith("node-") and v.startswith(this_node)
+                        k.startswith("node-") and v.startswith(this_node)
                     ),
                 ).split(" ")[1]),
             )
@@ -142,31 +147,31 @@ class OverlayTest(OverlayBaseTest.Class):
         '''
 
         ## Test valid values.
-        oc = self.config_get()
-        for key in oc["overlay"].copy():
+        over = self.config_get()
+        for key in over["overlay"].copy():
             if key.startswith("node-"):
-                del oc["overlay"][key]
+                del over["overlay"][key]
 
         # Add the node which corresponds to 'this-node'.
-        oc["overlay"]["node-1"] = "%s 192.0.2.1" % self.overlay_conf["overlay"]["this-node"]
-        self.assert_success(conf=oc)
+        over["overlay"]["node-1"] = "%s 192.0.2.1" % self.overlay_conf["overlay"]["this-node"]
+        self.assert_success(conf=over)
 
         # Add a second (separate) test node.
         self.assert_success(
             "overlay",
             "node-2",
             value="test-overlay-2 192.0.2.2",
-            conf=oc,
+            conf=over,
         )
 
         ## Test invalid values.
-        oc = self.config_get()
-        for key in oc["overlay"].copy():
+        over = self.config_get()
+        for key in over["overlay"].copy():
             if key.startswith("node-"):
-                del oc["overlay"][key]
+                del over["overlay"][key]
 
         # Test that no nodes causes it to fail.
-        self.assert_fail(exception=overlay.NoNodeListError, conf=oc)
+        self.assert_fail(exception=overlay.NoNodeListError, conf=over)
 
         # Add invalid data to the list.
         self.assert_fail("overlay", "node-1", value=1, exception=util.GetError)
@@ -175,7 +180,7 @@ class OverlayTest(OverlayBaseTest.Class):
             "node-1",
             value="%s 192.0.2.1 fail" % self.overlay_conf["overlay"]["this-node"],
             exception=util.GetError,
-            conf=oc,
+            conf=over,
         )
 
         # Test that 'this-node' is missing, by having a single-node list
@@ -185,7 +190,7 @@ class OverlayTest(OverlayBaseTest.Class):
             "node-1",
             value="%s 192.0.2.1" % util.random_string(6),
             exception=overlay.MissingThisNodeError,
-            conf=oc,
+            conf=over,
         )
 
 
@@ -199,7 +204,3 @@ class OverlayTest(OverlayBaseTest.Class):
             value={util.random_string(4): util.random_string(16)},
             exception=overlay.UnsupportedSectionTypeError,
         )
-
-
-if __name__ == "__main__":
-    unittest.main()

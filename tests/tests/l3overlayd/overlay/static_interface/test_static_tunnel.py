@@ -1,6 +1,6 @@
 #
 # IPsec overlay network manager (l3overlay)
-# tests/l3overlayd/overlay/static_interfaces/test_static_tunnel.py - unit test for reading static tunnel interfaces
+# tests/l3overlayd/overlay/static_interfaces/test_static_tunnel.py - unit test for static tunnels
 #
 # Copyright (c) 2017 Catalyst.net Ltd
 # This program is free software: you can redistribute it and/or modify
@@ -18,22 +18,26 @@
 #
 
 
-import os
-import unittest
+'''
+Unit tests for reading static tunnel interfaces.
+'''
 
-from l3overlay import util
+
+import os
 
 from l3overlay.l3overlayd import overlay
 
-from tests.l3overlayd.overlay.static_interface.base import StaticInterfaceBaseTest
+from tests.l3overlayd.overlay.static_interface import StaticInterfaceBaseTest
 
 
-class StaticTunnelTest(StaticInterfaceBaseTest.Class):
+class StaticTunnelTest(StaticInterfaceBaseTest):
     '''
     Unit test for reading static tunnel interfaces.
     '''
 
     name = "test_static_tunnel"
+    conf_dir = os.path.join(os.path.abspath(os.path.dirname(__file__)), name)
+
 
     #
     ##
@@ -111,8 +115,8 @@ class StaticTunnelTest(StaticInterfaceBaseTest.Class):
 
         # Success when okey is defined at the same time.
         # Also test argument handling at the same time.
-        oc = self.config_get(self.section, "okey", value="0")
-        self.assert_integer(self.section, "ikey", minval=0, conf=oc)
+        over = self.config_get(self.section, "okey", value="0")
+        self.assert_integer(self.section, "ikey", minval=0, conf=over)
 
 
     def test_okey(self):
@@ -125,9 +129,5 @@ class StaticTunnelTest(StaticInterfaceBaseTest.Class):
 
         # Success when ikey is defined at the same time.
         # Also test argument handling at the same time.
-        oc = self.config_get(self.section, "ikey", value="0")
-        self.assert_integer(self.section, "okey", minval=0, conf=oc)
-
-
-if __name__ == "__main__":
-    unittest.main()
+        over = self.config_get(self.section, "ikey", value="0")
+        self.assert_integer(self.section, "okey", minval=0, conf=over)

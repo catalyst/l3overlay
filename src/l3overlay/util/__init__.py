@@ -481,21 +481,33 @@ def random_string(length, alpha=True, num=False):
 #
 
 
-def path_my_dir():
+def path_cwd_dir():
+    '''
+    Return the current working directory.
+    '''
+
+    return os.getcwd()
+
+
+def path_script_dir():
     '''
     Return the directory containing this script.
     '''
 
-    return os.path.dirname(os.path.realpath(sys.argv[0]))
+    return os.path.abspath(os.path.dirname(os.path.realpath(sys.argv[0])))
 
 
-def path_root():
+def path_root_dir():
     '''
     Return the operating system root directory. System independent.
     '''
 
     return os.path.abspath(os.sep)
 
+
+# Path related constants.
+PATH_SCRIPT_DIR = path_script_dir()
+PATH_ROOT_DIR = path_root_dir()
 
 # Define the search paths for util.path_search().
 # Search for files in the following locations, in this order:
@@ -507,13 +519,13 @@ def path_root():
 # 6. (executable directory)/../etc/l3overlay
 # 7. /etc/l3overlay
 SEARCH_PATHS = (
-    os.getcwd(),
-    os.path.join(os.getcwd(), "..", "etc", "l3overlay"),
-    os.path.join(os.getcwd(), "etc", "l3overlay"),
-    path_my_dir(),
-    os.path.join(path_my_dir(), "..", "etc", "l3overlay"),
-    os.path.join(path_my_dir(), "etc", "l3overlay"),
-    os.path.join(path_root(), "etc", "l3overlay"),
+    path_cwd_dir(),
+    os.path.join(path_cwd_dir(), "..", "etc", "l3overlay"),
+    os.path.join(path_cwd_dir(), "etc", "l3overlay"),
+    PATH_SCRIPT_DIR,
+    os.path.join(PATH_SCRIPT_DIR, "..", "etc", "l3overlay"),
+    os.path.join(PATH_SCRIPT_DIR, "etc", "l3overlay"),
+    os.path.join(PATH_ROOT_DIR, "etc", "l3overlay"),
 )
 
 def path_search(filename, paths=SEARCH_PATHS):
