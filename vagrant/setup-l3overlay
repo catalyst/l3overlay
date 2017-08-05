@@ -53,6 +53,7 @@ pip3 install pyroute2==0.4.6
 pip3 install jinja2
 pip3 install pylint
 
+ipsec restart
 service l3overlay stop || true
 
 make -C /vagrant test
