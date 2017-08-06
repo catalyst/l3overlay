@@ -39,7 +39,8 @@ TMP_DIR = os.path.join(PROJECT_DIR, ".tests")
 # Add the l3overlay source tree to the PYTHONPATH. Without
 # this, the l3overlay module cannot be imported, or will be
 # imported from the system library store.
-sys.path.insert(0, SRC_DIR)
+if sys.path[0] != SRC_DIR:
+    sys.path.insert(0, SRC_DIR)
 
 
 # Launch the test suite main routine.
