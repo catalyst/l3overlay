@@ -81,8 +81,8 @@ class Process(Worker):
         for link in daemon.mesh_links.keys():
             self.tunnel_add(link, daemon.ipsec_psk)
         for link, data in daemon.ipsec_tunnels.items():
-            if data["ipsec-psk"]:
-                self.tunnel_add(link, data["ipsec-psk"])
+            psk = data["ipsec-psk"] if data["ipsec-psk"] else daemon.ipsec_psk
+            self.tunnel_add(link, psk)
 
         self.ipsec = util.command_path("ipsec") if not self.dry_run else util.command_path("true")
 
@@ -109,10 +109,6 @@ class Process(Worker):
                 ))
 
         self.logger.debug("creating IPsec secrets file '%s'" % self.ipsec_secrets)
-        addresses = set()
-        for local, remote in self.conns.values():
-            addresses.add(local)
-            addresses.add(remote)
         if not self.dry_run:
             with open(self.ipsec_secrets, "w") as fil:
                 fil.write(self.ipsec_secrets_template.render(
