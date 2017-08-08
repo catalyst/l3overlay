@@ -42,13 +42,15 @@ Vagrant.configure("2") do |config|
         chmod +x /usr/local/bin/setup-l3overlay
     SHELL
 
-    config.vm.define "l3overlay-1" do |l3overlay1|
-        l3overlay1.vm.network "private_network", ip: "192.168.50.2"
-        l3overlay1.vm.provision "shell", inline: "setup-l3overlay l3overlay-1"
+    config.vm.define "l3overlay-1" do |l3overlay_1|
+        l3overlay_1.vm.network "private_network", ip: "192.168.50.2"
+        l3overlay_1.vm.network "private_network", ip: "192.168.50.4"
+        l3overlay_1.vm.provision "shell", inline: "setup-l3overlay l3overlay-1"
     end
 
-    config.vm.define "l3overlay-2" do |l3overlay2|
-        l3overlay2.vm.network "private_network", ip: "192.168.50.3"
-        l3overlay2.vm.provision "shell", inline: "setup-l3overlay l3overlay-2"
+    config.vm.define "l3overlay-2" do |l3overlay_2|
+        l3overlay_2.vm.network "private_network", ip: "192.168.50.3"
+        l3overlay_2.vm.network "private_network", ip: "192.168.50.5"
+        l3overlay_2.vm.provision "shell", inline: "setup-l3overlay l3overlay-2"
     end
 end
