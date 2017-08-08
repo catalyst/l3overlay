@@ -195,7 +195,7 @@ Specifies the logging output level that l3overlay should use. The default value 
 * Type: **boolean**
 * Required: no
 
-Specifies whether or not IPsec should be used to encrypt the overlay mesh tunnels. The default value is `false`. If set to `true`, strongSwan should be installed on the system.
+Specifies whether or not transport mode IPsec VPNs should be used to encrypt the overlay mesh tunnels. The default value is `false`. If set to `true`, strongSwan should be installed on the system.
 
 #### ipsec-psk
 * Type: **hex**, 6-64 digits
@@ -440,7 +440,7 @@ If this option is used, `ikey` is also required to be used.
 * Type: **boolean**
 * Required: no
 
-If true, create a tunnel mode IPsec VPN to encapsulate the GRETAP tunnel.
+If true, create a transport mode IPsec VPN to encapsulate the GRETAP tunnel.
 
 #### ipsec-psk
 * Type: **hex**, 6-64 digits
