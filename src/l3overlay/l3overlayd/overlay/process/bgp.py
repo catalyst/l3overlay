@@ -31,6 +31,7 @@ from l3overlay import util
 
 from l3overlay.l3overlayd.overlay.static_interface.bgp import BGP
 from l3overlay.l3overlayd.overlay.static_interface.dummy import Dummy
+from l3overlay.l3overlayd.overlay.static_interface.external_tunnel import ExternalTunnel
 from l3overlay.l3overlayd.overlay.static_interface.overlay_link import OverlayLink
 from l3overlay.l3overlayd.overlay.static_interface.tunnel import Tunnel
 from l3overlay.l3overlayd.overlay.static_interface.tuntap import Tuntap
@@ -174,6 +175,8 @@ class Process(Worker):
                 bc_add("bgps", stat)
             elif isinstance(stat, Dummy):
                 bc_add("dummies", stat)
+            elif isinstance(stat, ExternalTunnel):
+                bc_add("external_tunnels", stat)
             elif isinstance(stat, Tunnel):
                 bc_add("tunnels", stat)
             elif isinstance(stat, Tuntap):
