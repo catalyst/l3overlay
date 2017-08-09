@@ -35,6 +35,13 @@ class GetError(L3overlayError):
     pass
 
 
+class CreateError(L3overlayError):
+    '''
+    Interface create method exception base class.
+    '''
+    pass
+
+
 class NotFoundError(L3overlayError):
     '''
     Exception to raise when an interface was unable to be found.

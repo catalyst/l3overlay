@@ -27,6 +27,7 @@ from l3overlay.l3overlayd.network import interface
 
 from l3overlay.l3overlayd.network.interface.base import Interface
 
+from l3overlay.l3overlayd.network.interface.exception import CreateError
 from l3overlay.l3overlayd.network.interface.exception import NotFoundError
 
 
@@ -96,6 +97,10 @@ def create(dry_run, logger, name, kind,
     if key is not None:
         ikey = key
         okey = key
+    if ikey is None and okey is not None:
+        raise CreateError("okey '%i' specified, missing corresponding ikey" % okey)
+    if ikey is not None and okey is None:
+        raise CreateError("ikey '%i' specified, missing corresponding okey" % ikey)
 
     if existing_if:
         # pylint: disable=too-many-boolean-expressions
@@ -103,28 +108,31 @@ def create(dry_run, logger, name, kind,
                 existing_if.gre_local != str(local) or
                 existing_if.gre_remote != str(remote) or
                 existing_if.gre_link != link or
-                existing_if.gre_iflags != iflags or
-                existing_if.gre_oflags != oflags or
-                existing_if.gre_ikey != ikey or
-                existing_if.gre_okey != okey or
-                existing_if.gre_ttl != ttl):
+                existing_if.gre_ttl != ttl or
+                (ikey is not None and existing_if.gre_iflags != iflags) or
+                (ikey is not None and existing_if.gre_oflags != oflags) or
+                (ikey is not None and existing_if.gre_ikey != ikey) or
+                (ikey is not None and existing_if.gre_okey != okey)):
             logger.debug("removing interface '%s'" % name)
             Interface(None, name, existing_if, netns, root_ipdb).remove()
         else:
             return GRE(logger, name, existing_if, netns, root_ipdb, kind)
 
-    new_if = ipdb.create(
-        ifname=name,
-        kind=kind,
-        gre_local=str(local),
-        gre_remote=str(remote),
-        gre_link=link,
-        gre_iflags=iflags,
-        gre_oflags=oflags,
-        gre_ikey=ikey,
-        gre_okey=okey,
-        gre_ttl=ttl,
-    )
+    kwargs = {
+        "ifname": name,
+        "kind": kind,
+        "gre_local": str(local),
+        "gre_remote": str(remote),
+        "gre_link": link,
+        "gre_ttl": ttl,
+    }
+    if ikey:
+        kwargs["gre_ikey"] = ikey
+        kwargs["gre_okey"] = okey
+        kwargs["gre_iflags"] = iflags
+        kwargs["gre_oflags"] = oflags
+
+    new_if = ipdb.create(**kwargs)
     ipdb.commit()
 
     return GRE(logger, name, new_if, netns, root_ipdb, kind)
