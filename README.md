@@ -390,6 +390,8 @@ The subnet mask for the dummy interface address.
 
 This section is used to define a layer 2 (GRETAP) tunnel in the root namespace, which is then linked into the overlay by a bridged veth interface. It can be connected to any IP address available in the root namespace.
 
+**NOTE:** The static external tunnel can ONLY create **GRETAP (layer 2 GRE)** tunnel interfaces. It will not work when attempting to connect to a **GRE (layer 3)** tunnel interface.
+
 #### local
 * Type: **ip address**
 * Required: **yes**
